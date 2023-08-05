@@ -31,8 +31,8 @@ inline Square bitscan(Bitboard b) {
     return Square(63 - __builtin_clzll(b));
 }*/
 
-//#define bitscan_loop(B) for(; B; B &= B - 1)
-#define bitscan_loop(B) for(; B; B = _blsr_u64(B))
+#define bitscan_loop(B) for(; B; B &= B - 1)
+//#define bitscan_loop(B) for(; B; B = _blsr_u64(B))
 
 struct PextEntry {
     Bitboard  mask;
