@@ -5,6 +5,7 @@
 #include "test.h"
 #include "uci.h"
 #include "position.h"
+#include "perft.h"
 
 using namespace std;
 
@@ -37,7 +38,7 @@ void run() {
         cout << "[Test " << i << "/" << nbTest << "] \"" << t.fen << "\"" << endl;
 
         pos.setFromFEN(t.fen);
-        size_t result = Uci::perft<false>(pos, t.depth);
+        size_t result = perft<false>(pos, t.depth);
 
         if (result == t.nbNodes) {
             cout << "  SUCCESS - " << t.nbNodes << " == " << result << endl;

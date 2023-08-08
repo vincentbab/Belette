@@ -16,9 +16,6 @@ public:
 
     Move parseMove(std::string str) const;
 
-    template<bool Root>
-    static size_t perft(Position &pos, int depth);
-
     static Square parseSquare(std::string str);
     static std::string formatSquare(Square sq);
     static std::string formatMove(Move m);

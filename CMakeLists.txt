@@ -6,6 +6,7 @@ set(SRCS
     src/engine.cpp
     src/main.cpp
     src/move.cpp
+    src/perft.cpp
     src/position.cpp
     src/test.cpp
     src/uci_option.cpp

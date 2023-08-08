@@ -34,7 +34,7 @@ void Position::reset() {
     for(int i=0; i<NB_PIECE; i++) piecesBB[i] = EmptyBB;
     //for(int i=0; i<NB_PIECE_TYPE; i++) typeBB[i] = EmptyBB;
     //typeBB[ALL_PIECES] = EmptyBB;
-    //sideBB[WHITE] = sideBB[BLACK] = EmptyBB;
+    sideBB[WHITE] = sideBB[BLACK] = EmptyBB;
     sideToMove = WHITE;
 }
 

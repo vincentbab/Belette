@@ -1,7 +1,0 @@
-BabChess
-
-Simple chess engine
-
-Features:
- - Fast legal move generator using bitboards
- - ...

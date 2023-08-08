@@ -5,6 +5,7 @@
 #include "uci.h"
 #include "move.h"
 #include "test.h"
+#include "perft.h"
 
 using namespace std;
 
@@ -27,45 +28,6 @@ Uci::Uci(Engine &e): engine(e)  {
     commands["perft"] = &Uci::cmdPerft;
     commands["test"] = &Uci::cmdTest;
 }
-
-template<bool Div>
-size_t Uci::perft(Position &pos, int depth) {
-    //if (!Div && depth <= 0) return 1;
-
-    size_t total = 0;
-    MoveList moves;
-    generateLegalMoves(pos, moves);
-
-    if (!Div && depth <= 1) return moves.size();
-
-    for (Move m : moves) {
-        size_t n = 0;
-
-        if (Div && depth == 1) {
-            n = 1;
-        } else {
-            pos.doMove(m);
-            if (pos.getAttackers(pos.getSideToMove(), pos.getKingSquare(~pos.getSideToMove()), pos.getPiecesBB())) {
-                pos.undoMove(m);
-                cout << pos << endl;
-                cout << "Move: " << formatMove(m) << endl;
-                exit(1);
-            }
-            n = perft<false>(pos, depth - 1);
-            pos.undoMove(m);
-        }
-
-        total += n;
-
-        if (Div && n > 0)
-            cout << Uci::formatMove(m) << ": " << n << endl;
-    }
-
-    return total;
-}
-
-template size_t Uci::perft<true>(Position &pos, int depth);
-template size_t Uci::perft<false>(Position &pos, int depth);
 
 Square Uci::parseSquare(std::string str) {
     if (str.length() < 2) return SQ_NONE;

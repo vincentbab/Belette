@@ -58,7 +58,8 @@ public:
     inline Bitboard getPiecesBB(Side side, PieceType pt1, PieceType pt2) const { return sideBB[side] & (typeBB[pt1] | typeBB[pt2]); }
     inline Square getKingSquare(Side side) const { return Square(bitscan(sideBB[side] & typeBB[KING])); }*/
 
-    inline Bitboard getPiecesBB(Side side) const { return side == WHITE ? piecesBB[W_PAWN]|piecesBB[W_KING]|piecesBB[W_KNIGHT]|piecesBB[W_BISHOP]|piecesBB[W_ROOK]|piecesBB[W_QUEEN] : piecesBB[B_PAWN]|piecesBB[B_KING]|piecesBB[B_KNIGHT]|piecesBB[B_BISHOP]|piecesBB[B_ROOK]|piecesBB[B_QUEEN]; }
+    //inline Bitboard getPiecesBB(Side side) const { return side == WHITE ? piecesBB[W_PAWN]|piecesBB[W_KING]|piecesBB[W_KNIGHT]|piecesBB[W_BISHOP]|piecesBB[W_ROOK]|piecesBB[W_QUEEN] : piecesBB[B_PAWN]|piecesBB[B_KING]|piecesBB[B_KNIGHT]|piecesBB[B_BISHOP]|piecesBB[B_ROOK]|piecesBB[B_QUEEN]; }
+    inline Bitboard getPiecesBB(Side side) const { return sideBB[side]; }
     inline Bitboard getPiecesBB() const { return getPiecesBB(WHITE) | getPiecesBB(BLACK); }
     inline Bitboard getPiecesBB(Side side, PieceType pt) const { return piecesBB[piece(side, pt)]; }
     inline Bitboard getPiecesBB(Side side, PieceType pt1, PieceType pt2) const { return piecesBB[piece(side, pt1)] | piecesBB[piece(side, pt2)]; }
@@ -73,7 +74,7 @@ private:
 
     Piece pieces[NB_SQUARE];
     //Bitboard typeBB[NB_PIECE_TYPE];
-    //Bitboard sideBB[NB_SIDE];
+    Bitboard sideBB[NB_SIDE];
     Bitboard piecesBB[NB_PIECE];
 
     Side sideToMove;
@@ -112,7 +113,7 @@ inline void Position::setPiece(Square sq, Piece p) {
     pieces[sq] = p;
     //typeBB[ALL_PIECES] |= b;
     //typeBB[pieceType(p)] |= b;
-    //sideBB[side(p)] |= b;
+    sideBB[side(p)] |= b;
     piecesBB[p] |= b;
 }
 inline void Position::unsetPiece(Square sq) {
@@ -121,7 +122,7 @@ inline void Position::unsetPiece(Square sq) {
     pieces[sq] = NO_PIECE;
     //typeBB[ALL_PIECES] &= ~b;
     //typeBB[pieceType(p)] &= ~b;
-    //sideBB[side(p)] &= ~b;
+    sideBB[side(p)] &= ~b;
     piecesBB[p] &= ~b;
 }
 inline void Position::movePiece(Square from, Square to) {
@@ -132,7 +133,7 @@ inline void Position::movePiece(Square from, Square to) {
     pieces[from] = NO_PIECE;
     //typeBB[ALL_PIECES] ^= fromTo;
     //typeBB[pieceType(p)] ^= fromTo;
-    //sideBB[side(p)] ^= fromTo;
+    sideBB[side(p)] ^= fromTo;
     piecesBB[p] ^= fromTo;
 }
 
@@ -156,6 +157,8 @@ inline void Position::doMove(Move m) {
     state->halfMoves = oldState->halfMoves + 1;
     state->capture = capture;
 
+    sideToMove = ~sideToMove;
+
     switch(moveType(m)) {
         case NORMAL:
             {
@@ -165,6 +168,9 @@ inline void Position::doMove(Move m) {
                 }
                 
                 movePiece(from, to);
+
+                // Update castling right
+                state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
 
                 if (pieceType(pc) == PAWN) {
                     state->fiftyMoveRule = 0;
@@ -190,6 +196,9 @@ inline void Position::doMove(Move m) {
 
                 movePiece(from, to);
                 movePiece(rookFrom, rookTo);
+
+                // Update castling right
+                state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
             }
             break;
         case PROMOTION:
@@ -203,6 +212,9 @@ inline void Position::doMove(Move m) {
                 unsetPiece(from);
                 setPiece(to, piece(me, movePromotionType(m)));
                 state->fiftyMoveRule = 0;
+
+                // Update castling right
+                state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
             }
             break;
         case EN_PASSANT: 
@@ -217,13 +229,6 @@ inline void Position::doMove(Move m) {
             }
             break;
     }
-
-    // Update castling right
-    if (state->castlingRights && (CastlingRightsMask[from] | CastlingRightsMask[to])) {
-        state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
-    }
-
-    sideToMove = ~sideToMove;
 }
 
 inline void Position::undoMove(Move m) {
