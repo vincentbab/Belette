@@ -4,8 +4,8 @@ export BUILD_DIR := ./build
 export SRC_DIR := ./src
 
 CPPFLAGS := -Wall -fno-exceptions -fno-rtti -mbmi -mbmi2 -mpopcnt -msse
-DEBUG_CPPFLAGS := $(CPPFLAGS) -g -O0
-RELEASE_CPPFLAGS := $(CPPFLAGS) -O3 -funroll-loops -finline -fomit-frame-pointer -flto
+DEBUG_CPPFLAGS := $(CPPFLAGS) -g -O0 -DDEBUG
+RELEASE_CPPFLAGS := $(CPPFLAGS) -O3 -funroll-loops -finline -fomit-frame-pointer -flto -DNDEBUG
 
 LDFLAGS := -Wall -fno-exceptions -fno-rtti -mbmi -mbmi2 -mpopcnt -msse
 DEBUG_LDFLAGS := $(LDFLAGS)
