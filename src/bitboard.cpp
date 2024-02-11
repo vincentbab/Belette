@@ -1,6 +1,5 @@
 #include "bitboard.h"
 #include <iostream>
-#include "uci.h"
 
 using namespace std;
 
