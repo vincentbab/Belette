@@ -1,11 +1,11 @@
-#ifndef ARRAY_H_INCLUDED
-#define ARRAY_H_INCLUDED
+#ifndef FIXED_VECTOR_H_INCLUDED
+#define FIXED_VECTOR_H_INCLUDED
 
 #include <initializer_list>
 
 namespace BabChess {
 
-template <typename T, int N, typename SizeT = uint32_t> class Array {
+template <typename T, int N, typename SizeT = uint32_t> class fixed_vector {
     T elements[N];
     SizeT count;
 public:
@@ -17,12 +17,12 @@ public:
     inline iterator end() { return &elements[count]; }
     inline const_iterator end() const { return &elements[count]; }
 
-    Array() : count(0) {}
-    inline Array(std::initializer_list<T> il) {copy(il.begin(), il.end(), begin());count = il.end() - il.begin();}
-    inline Array(Array const &ml) = default;
-    inline Array(Array&&)=default;
-    inline Array& operator=(Array const &ml)=default;
-    inline Array& operator=(Array&&)=default;
+    fixed_vector() : count(0) {}
+    inline fixed_vector(std::initializer_list<T> il) {copy(il.begin(), il.end(), begin());count = il.end() - il.begin();}
+    inline fixed_vector(fixed_vector const &ml) = default;
+    inline fixed_vector(fixed_vector&&)=default;
+    inline fixed_vector& operator=(fixed_vector const &ml)=default;
+    inline fixed_vector& operator=(fixed_vector&&)=default;
     inline T &operator[](SizeT i) {assert(i < count); return elements[i];}
     inline const T &operator[](SizeT i) const {assert(i < count); return elements[i];}
     inline const T &front() const {assert(count > 0); return elements[0]; }
@@ -42,4 +42,4 @@ public:
 
 } /* namespace BabChess */
 
-#endif /* ARRAY_H_INCLUDED */
+#endif /* FIXED_VECTOR_H_INCLUDED */

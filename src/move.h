@@ -3,11 +3,11 @@
 
 #include "chess.h"
 #include "position.h"
-#include "array.h"
+#include "fixed_vector.h"
 
 namespace BabChess {
 
-typedef Array<Move, MAX_MOVE, uint8_t> MoveList;
+typedef fixed_vector<Move, MAX_MOVE, uint8_t> MoveList;
 
 struct CheckInfo {
     Bitboard checkMask;
