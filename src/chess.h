@@ -19,8 +19,6 @@ constexpr Bitboard EmptyBB = 0ULL;
 // 
 // bit 14-15: promotion piece type - 2 (from KNIGHT-2 to QUEEN-2)
 // bit 12-13: special move flag: castling (1), en passant (2), promotion (3)
-// 
-// TODO: ?? En passant bit is set only when a pawn can be captured ??
 enum Move : uint16_t {
     MOVE_NONE,
     MOVE_NULL = 65
