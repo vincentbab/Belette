@@ -80,19 +80,6 @@ inline bool enumeratePawnMoves(const Position &pos, const Handler& handler) {
     if constexpr (MGType & NON_QUIET_MOVES) {
         Bitboard pawnsCanPromote = pos.getPiecesBB(Me, PAWN) & rank7;
         if (pawnsCanPromote) {
-            // Quiet Promotion
-            {
-                Bitboard pawns = pawnsCanPromote & ~pos.pinDiag();
-                Bitboard quietPromotions = (shift<Up>(pawns & ~pos.pinOrtho()) | (shift<Up>(pawns & pos.pinOrtho()) & pos.pinOrtho())) & pos.getEmptyBB();
-
-                if constexpr (InCheck) quietPromotions &= pos.checkMask();
-
-                bitscan_loop(quietPromotions) {
-                    Square to = bitscan(quietPromotions);
-                    if (!enumeratePromotions(to - Up, to, handler)) return false;
-                }
-            }
-
             // Capture Promotion
             {
                 Bitboard pawns = pawnsCanPromote & ~pos.pinOrtho();
@@ -111,6 +98,19 @@ inline bool enumeratePawnMoves(const Position &pos, const Handler& handler) {
                 bitscan_loop(capRPromotions) {
                     Square to = bitscan(capRPromotions);
                     if (!enumeratePromotions(to - UpRight, to, handler)) return false;
+                }
+            }
+
+            // Quiet Promotion
+            {
+                Bitboard pawns = pawnsCanPromote & ~pos.pinDiag();
+                Bitboard quietPromotions = (shift<Up>(pawns & ~pos.pinOrtho()) | (shift<Up>(pawns & pos.pinOrtho()) & pos.pinOrtho())) & pos.getEmptyBB();
+
+                if constexpr (InCheck) quietPromotions &= pos.checkMask();
+
+                bitscan_loop(quietPromotions) {
+                    Square to = bitscan(quietPromotions);
+                    if (!enumeratePromotions(to - Up, to, handler)) return false;
                 }
             }
         }
