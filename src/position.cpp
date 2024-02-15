@@ -148,11 +148,77 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
         os << " | " << (1 + r) << std::endl << " +---+---+---+---+---+---+---+---+" << std::endl;
     }
 
-    os << "   a   b   c   d   e   f   g   h" << std::endl;
+    os << "   a   b   c   d   e   f   g   h" << std::endl << std::endl;
     os << "Side to move: " << (pos.getSideToMove() == WHITE ? "White" : "Black") << std::endl;
     os << "FEN: " << pos.fen() << endl;
+    os << "Checkers:";
+    Bitboard checkers = pos.checkers(); bitscan_loop(checkers) {
+        Square sq = bitscan(checkers);
+        os << " " << Uci::formatSquare(sq);
+    }
+    os << endl;
 
     return os;
+}
+
+/*
+WIP:
+inline bool Position::givesCheck(Move m) {
+    Side Me = getSideToMove();
+    Side Opp = ~Me;
+    Square ksq = getKingSquare(Opp);
+
+    Bitboard bb[NB_PIECE_TYPE] = {
+        getPiecesBB(),
+        getPiecesBB(Me, PAWN),
+        getPiecesBB(Me, KNIGHT),
+        getPiecesBB(Me, BISHOP),
+        getPiecesBB(Me, ROOK),
+        getPiecesBB(Me, QUEEN)
+    };
+
+    switch(moveType(m)) {
+        case NORMAL:
+        case CASTLING:
+        case PROMOTION:
+        case EN_PASSANT:
+        break;
+    }
+
+    return ((pawnAttacks(Me, ksq) & bb[PAWN])
+        || (attacks<KNIGHT>(ksq) & bb[KNIGHT])
+        || (attacks<BISHOP>(ksq, bb[ALL_PIECES]) & (bb[BISHOP] | bb[QUEEN]))
+        || (attacks<ROOK>(ksq, bb[ALL_PIECES]) & (bb[ROOK] | bb[QUEEN]))
+    );
+}*/
+
+inline void Position::setPiece(Square sq, Piece p) {
+    Bitboard b = bb(sq);
+    pieces[sq] = p;
+    //typeBB[ALL_PIECES] |= b;
+    //typeBB[pieceType(p)] |= b;
+    sideBB[side(p)] |= b;
+    piecesBB[p] |= b;
+}
+inline void Position::unsetPiece(Square sq) {
+    Bitboard b = bb(sq);
+    Piece p = pieces[sq];
+    pieces[sq] = NO_PIECE;
+    //typeBB[ALL_PIECES] &= ~b;
+    //typeBB[pieceType(p)] &= ~b;
+    sideBB[side(p)] &= ~b;
+    piecesBB[p] &= ~b;
+}
+inline void Position::movePiece(Square from, Square to) {
+    Bitboard fromTo = from | to;
+    Piece p = pieces[from];
+
+    pieces[to] = p;
+    pieces[from] = NO_PIECE;
+    //typeBB[ALL_PIECES] ^= fromTo;
+    //typeBB[pieceType(p)] ^= fromTo;
+    sideBB[side(p)] ^= fromTo;
+    piecesBB[p] ^= fromTo;
 }
 
 template<Side Me>
@@ -165,10 +231,7 @@ inline void Position::doMove(Move m) {
 
     assert(side(pc) == Me);
     assert(capture == NO_PIECE || side(capture) == ~Me);
-    if (pieceType(capture) == KING) {
-        assert(pieceType(capture) != KING);
-    }
-    
+    assert(pieceType(capture) != KING);
     assert(to == getEpSquare() || moveType(m) != EN_PASSANT);
 
     State *oldState = state++;

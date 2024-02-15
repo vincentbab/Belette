@@ -17,7 +17,7 @@ constexpr Bitboard EmptyBB = 0ULL;
 // bit  0- 5: destination square (from 0 to 63)
 // bit  6-11: origin square (from 0 to 63)
 // 
-// bit 14-15: promotion piece type - 2 (from KNIGHT-2 to QUEEN-2)
+// bit 14-15: promotion: pieceType-2 (from KNIGHT-2 to QUEEN-2)
 // bit 12-13: special move flag: castling (1), en passant (2), promotion (3)
 enum Move : uint16_t {
     MOVE_NONE,
@@ -39,7 +39,7 @@ enum PieceType {
     ALL_PIECES = 0,
     NO_PIECE_TYPE = 0, 
     PAWN = 1, KNIGHT, BISHOP, ROOK, QUEEN, KING,
-    NB_PIECE_TYPE = 8
+    NB_PIECE_TYPE = 7
 };
 
 enum Piece {

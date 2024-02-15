@@ -2,6 +2,7 @@
 #define FIXED_VECTOR_H_INCLUDED
 
 #include <initializer_list>
+#include <cassert>
 
 namespace BabChess {
 

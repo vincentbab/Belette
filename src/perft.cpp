@@ -11,11 +11,18 @@ template<bool Div, Side Me>
 size_t perft(Position &pos, int depth) {
     size_t total = 0;
     MoveList moves;
-    generateLegalMoves<Me>(pos, moves);
+    
+    if (!Div && depth <= 1) {
+        enumerateLegalMoves<Me>(pos, [&](Move m) {
+            total += 1;
+            return true;
+        });
 
-    if constexpr (!Div) if (depth <= 1) return moves.size();
+        return total;
+    }
 
-    for (Move m : moves) {
+    
+    enumerateLegalMoves<Me>(pos, [&](Move m) {
         size_t n = 0;
 
         if (Div && depth == 1) {
@@ -30,7 +37,9 @@ size_t perft(Position &pos, int depth) {
 
         if (Div && n > 0)
             cout << Uci::formatMove(m) << ": " << n << endl;
-    }
+
+        return true;
+    });
 
     return total;
 }

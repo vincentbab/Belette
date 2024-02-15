@@ -15,9 +15,7 @@ int main(int argc, char* argv[])
 
     BB::init();
 
-    Engine engine;
-    Uci uci(engine);
-    
+    Uci uci;
     uci.loop();
 
     return 0;

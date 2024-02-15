@@ -9,9 +9,15 @@
 
 namespace BabChess {
 
+class UciEngine : public Engine {
+
+    virtual void onThinkProgress();
+    virtual void onThinkFinish();
+};
+
 class Uci {
 public:
-    Uci(Engine &e);
+    Uci();
     void loop();
 
     Move parseMove(std::string str) const;
@@ -46,7 +52,7 @@ private:
     bool cmdPerft(std::istringstream& is);
     bool cmdTest(std::istringstream& is);
 
-    Engine engine;
+    UciEngine engine;
 };
 
 } /* namespace BabChess */

@@ -11,7 +11,7 @@ using namespace std;
 
 namespace BabChess {
 
-Uci::Uci(Engine &e): engine(e)  {
+Uci::Uci()  {
     options["Debug"] = UciOption(false);
 
     commands["uci"] = &Uci::cmdUci;
@@ -60,13 +60,17 @@ std::string Uci::formatMove(Move m) {
 Move Uci::parseMove(std::string str) const {
     if (str.length() == 5) str[4] = char(tolower(str[4]));
 
-    MoveList moves; generateLegalMoves(engine.position(), moves);
-    for (const auto& m : moves) {
-        if (str == formatMove(m))
-            return m;
-    }
+    Move move;
+    enumerateLegalMoves(engine.position(), [&](Move m) {
+        if (str == formatMove(m)) {
+            move = m;
+            return false;
+        }
 
-    return MOVE_NONE;
+        return true;
+    });
+
+    return move;
 }
 
 void Uci::loop() {
@@ -181,7 +185,48 @@ bool Uci::cmdPosition(istringstream& is) {
 }
 
 bool Uci::cmdGo(istringstream& is) {
-    //Engine.think()
+    string token;
+    ThinkParams params;
+
+    while (is >> token) {
+        if (token == "perft") {
+            return cmdPerft(is);
+        } else if (token == "searchmoves") {
+            // unsupported
+        } else if (token == "ponder") {
+            // unsupported
+        } else if (token == "wtime") {
+            is >> token;
+            params.timeLeft[WHITE] = stoi(token);
+        } else if (token == "btime") {
+            is >> token;
+            params.timeLeft[BLACK] = stoi(token);
+        } else if (token == "winc") {
+            is >> token;
+            params.increment[WHITE] = stoi(token);
+        } else if (token == "binc") {
+            is >> token;
+            params.increment[BLACK] = stoi(token);
+        } else if (token == "movestogo") {
+            is >> token;
+            params.movesToGo = stoi(token);
+        } else if (token == "depth") {
+            is >> token;
+            params.maxDepth = stoi(token);
+        } else if (token == "nodes") {
+            is >> token;
+            params.maxNodes = stoi(token);
+        } else if (token == "mate") {
+            // unsupported
+        } else if (token == "movetime") {
+            is >> token;
+            params.maxTime = stoi(token);
+        } else if (token == "infinite") {
+             
+        }
+    }
+
+    engine.think(params);
     return true;
 }
 
@@ -221,6 +266,14 @@ bool Uci::cmdTest(istringstream& is) {
     Test::run();
     
     return true;
+}
+
+void UciEngine::onThinkProgress() {
+    cout << "onThinkProgress()" << endl;
+}
+
+void UciEngine::onThinkFinish() {
+    cout << "onThinkFinish()" << endl;
 }
 
 } /* namespace BabChess */

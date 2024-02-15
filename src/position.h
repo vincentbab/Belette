@@ -39,8 +39,9 @@ public:
     
     inline void doMove(Move m) { getSideToMove() == WHITE ? doMove<WHITE>(m) : doMove<BLACK>(m); }
     template<Side Me> void doMove(Move m);
-
     template<Side Me> void undoMove(Move m);
+
+    //bool givesCheck(Move m);
 
     inline Side getSideToMove() const { return sideToMove; }
     inline int getFiftyMoveRule() const { return state->fiftyMoveRule; }
@@ -122,37 +123,6 @@ inline Bitboard Position::getAttackers(Square sq, Bitboard occupied) const {
         | (attacks<KING>(sq) & getPiecesBB(Me, KING))
     );
 }*/
-
-inline void Position::setPiece(Square sq, Piece p) {
-    Bitboard b = bb(sq);
-    pieces[sq] = p;
-    //typeBB[ALL_PIECES] |= b;
-    //typeBB[pieceType(p)] |= b;
-    sideBB[side(p)] |= b;
-    piecesBB[p] |= b;
-}
-inline void Position::unsetPiece(Square sq) {
-    Bitboard b = bb(sq);
-    Piece p = pieces[sq];
-    pieces[sq] = NO_PIECE;
-    //typeBB[ALL_PIECES] &= ~b;
-    //typeBB[pieceType(p)] &= ~b;
-    sideBB[side(p)] &= ~b;
-    piecesBB[p] &= ~b;
-}
-inline void Position::movePiece(Square from, Square to) {
-    Bitboard fromTo = from | to;
-    Piece p = pieces[from];
-
-    pieces[to] = p;
-    pieces[from] = NO_PIECE;
-    //typeBB[ALL_PIECES] ^= fromTo;
-    //typeBB[pieceType(p)] ^= fromTo;
-    sideBB[side(p)] ^= fromTo;
-    piecesBB[p] ^= fromTo;
-}
-
-
 
 } /* namespace BabChess */
 
