@@ -9,7 +9,7 @@ namespace BabChess {
 
 constexpr int MAX_DEPTH = 256;
 constexpr int MAX_HISTORY   = 2048;
-constexpr int MAX_MOVE   = 256;
+constexpr int MAX_MOVE   = 220;
 
 typedef uint64_t Bitboard;
 constexpr Bitboard EmptyBB = 0ULL;
@@ -208,7 +208,7 @@ constexpr CastlingRight CastlingRightsMask[NB_SQUARE] = {
 
 // Squares that need to be empty for castling
 constexpr Bitboard CastlingPath[NB_CASTLING_RIGHT] = {
-    EmptyBB,                           // NO_CASTLING
+    EmptyBB,                            // NO_CASTLING
     bb(SQ_F1) | bb(SQ_G1),              // WHITE_KING_SIDE = 1,
     bb(SQ_D1) | bb(SQ_C1) | bb(SQ_B1),  // WHITE_QUEEN_SIDE = 2,
     EmptyBB,
@@ -219,7 +219,7 @@ constexpr Bitboard CastlingPath[NB_CASTLING_RIGHT] = {
 
 // Squares that need not to be attacked by ennemy for castling
 constexpr Bitboard CastlingKingPath[NB_CASTLING_RIGHT] = {
-    EmptyBB,                           // NO_CASTLING
+    EmptyBB,                            // NO_CASTLING
     bb(SQ_E1) | bb(SQ_F1) | bb(SQ_G1),  // WHITE_KING_SIDE = 1,
     bb(SQ_E1) | bb(SQ_D1) | bb(SQ_C1),  // WHITE_QUEEN_SIDE = 2,
     EmptyBB,
@@ -273,7 +273,6 @@ inline PieceType pieceType(Piece p) {
 }
 
 inline Side side(Piece p) {
-    //if (p == NO_PIECE)
     assert(p != NO_PIECE);
     return Side(p >> 3);
 }

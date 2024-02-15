@@ -39,7 +39,10 @@ public:
     
     inline void doMove(Move m) { getSideToMove() == WHITE ? doMove<WHITE>(m) : doMove<BLACK>(m); }
     template<Side Me> void doMove(Move m);
+    template<Side Me, MoveType Mt, bool IsPawn, bool IsDoublePush> void doMove(Square from, Square to, PieceType promotionType = NO_PIECE_TYPE);
+
     template<Side Me> void undoMove(Move m);
+    template<Side Me, MoveType Mt> void undoMove(Square from, Square to);
 
     //bool givesCheck(Move m);
 
@@ -82,9 +85,9 @@ public:
 private:
     void setCastlingRights(CastlingRight cr);
 
-    inline void setPiece(Square sq, Piece p);
-    inline void unsetPiece(Square sq);
-    inline void movePiece(Square from, Square to);
+    template<Side Me> inline void setPiece(Square sq, Piece p);
+    template<Side Me> inline void unsetPiece(Square sq);
+    template<Side Me> inline void movePiece(Square from, Square to);
 
     template<Side Me> inline void updateCheckedSquares();
     template<Side Me> inline void updateCheckers();

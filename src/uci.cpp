@@ -61,7 +61,7 @@ Move Uci::parseMove(std::string str) const {
     if (str.length() == 5) str[4] = char(tolower(str[4]));
 
     Move move;
-    enumerateLegalMoves(engine.position(), [&](Move m) {
+    enumerateLegalMoves(engine.position(), [&](Move m, auto doMH, auto undoMH) {
         if (str == formatMove(m)) {
             move = m;
             return false;

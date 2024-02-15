@@ -13,7 +13,7 @@ PextEntry BISHOP_MOVE[NB_SQUARE];
 
 Bitboard BETWEEN_BB[NB_SQUARE][NB_SQUARE];
 
-Bitboard ROOK_DATA[0x19000];  
+Bitboard ROOK_DATA[0x19000];
 Bitboard BISHOP_DATA[0x1480];
 
 namespace BB {

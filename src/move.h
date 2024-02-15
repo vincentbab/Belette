@@ -15,12 +15,35 @@ enum MoveGenType {
     ALL_MOVES = QUIET_MOVES | NON_QUIET_MOVES,
 };
 
-template<typename Handler>
+#define MAKE_MOVE_HANDLER(type) \
+    auto doMoveHandler = [from, to](Position &p) { p.doMove<Me, type, false, false>(from, to); }; \
+    auto undoMoveHandler = [from, to](Position &p) { p.undoMove<Me, type>(from, to); }
+
+#define MAKE_MOVE_HANDLER_PAWN(type, isDoublePush) \
+    auto doMoveHandler = [from, to](Position &p) { p.doMove<Me, type, true, isDoublePush>(from, to); }; \
+    auto undoMoveHandler = [from, to](Position &p) { p.undoMove<Me, type>(from, to); }
+
+#define MAKE_MOVE_HANDLER_PROMOTION(type, promotionType) \
+    auto doMoveHandler = [from, to](Position &p) { p.doMove<Me, type, true, false>(from, to, promotionType); }; \
+    auto undoMoveHandler = [from, to](Position &p) { p.undoMove<Me, type>(from, to); }
+
+#define CALL_HANDLER(move) if (!handler(move, doMoveHandler, undoMoveHandler)) return false
+
+
+template<Side Me, PieceType PromotionType, typename Handler>
+inline bool enumeratePromotion(Square from, Square to, const Handler& handler) {
+    MAKE_MOVE_HANDLER_PROMOTION(PROMOTION, PromotionType);
+    CALL_HANDLER(makeMove<PROMOTION>(from, to, QUEEN));
+
+    return true;
+}
+
+template<Side Me, typename Handler>
 inline bool enumeratePromotions(Square from, Square to, const Handler& handler) {
-    if (!handler(makeMove<PROMOTION>(from, to, QUEEN))) return false;
-    if (!handler(makeMove<PROMOTION>(from, to, KNIGHT))) return false;
-    if (!handler(makeMove<PROMOTION>(from, to, ROOK))) return false;
-    if (!handler(makeMove<PROMOTION>(from, to, BISHOP))) return false;
+    if (!enumeratePromotion<Me, QUEEN>(from, to, handler)) return false;
+    if (!enumeratePromotion<Me, KNIGHT>(from, to, handler)) return false;
+    if (!enumeratePromotion<Me, ROOK>(from, to, handler)) return false;
+    if (!enumeratePromotion<Me, BISHOP>(from, to, handler)) return false;
 
     return true;
 }
@@ -29,88 +52,104 @@ inline bool enumeratePromotions(Square from, Square to, const Handler& handler) 
 template<Side Me, bool InCheck, typename Handler, MoveGenType MGType = ALL_MOVES>
 inline bool enumeratePawnMoves(const Position &pos, const Handler& handler) {
     constexpr Side Opp = ~Me;
-    constexpr Bitboard rank3 = (Me == WHITE) ? Rank3BB : Rank6BB;
-    constexpr Bitboard rank7 = (Me == WHITE) ? Rank7BB : Rank2BB;
+    constexpr Bitboard Rank3 = (Me == WHITE) ? Rank3BB : Rank6BB;
+    constexpr Bitboard Rank7 = (Me == WHITE) ? Rank7BB : Rank2BB;
     constexpr Direction Up = (Me == WHITE) ? UP : DOWN;
     constexpr Direction UpLeft = (Me == WHITE) ? UP_LEFT : DOWN_RIGHT;
     constexpr Direction UpRight = (Me == WHITE) ? UP_RIGHT : DOWN_LEFT;
 
+    Bitboard emptyBB = pos.getEmptyBB();
+    Bitboard pinOrtho = pos.pinOrtho();
+    Bitboard pinDiag = pos.pinDiag();
+    Bitboard checkMask = pos.checkMask();
+
     // Single & Double Push
     if constexpr (MGType & QUIET_MOVES) {
-        Bitboard pawns = pos.getPiecesBB(Me, PAWN) & ~rank7 & ~pos.pinDiag();
-        Bitboard singlePushes = (shift<Up>(pawns & ~pos.pinOrtho()) | (shift<Up>(pawns & pos.pinOrtho()) & pos.pinOrtho())) & pos.getEmptyBB();
-        Bitboard doublePushes = shift<Up>(singlePushes & rank3) & pos.getEmptyBB();
+        Bitboard pawns = pos.getPiecesBB(Me, PAWN) & ~Rank7 & ~pinDiag;
+        Bitboard singlePushes = (shift<Up>(pawns & ~pinOrtho) | (shift<Up>(pawns & pinOrtho) & pinOrtho)) & emptyBB;
+        Bitboard doublePushes = shift<Up>(singlePushes & Rank3) & emptyBB;
 
         if constexpr (InCheck) {
-            singlePushes &= pos.checkMask();
-            doublePushes &= pos.checkMask();
+            singlePushes &= checkMask;
+            doublePushes &= checkMask;
         }
 
         bitscan_loop(singlePushes) {
             Square to = bitscan(singlePushes);
-            if (!handler(makeMove(to - Up, to))) return false;
+            Square from = to - Up;
+            MAKE_MOVE_HANDLER_PAWN(NORMAL, false);
+            CALL_HANDLER(makeMove(from, to));
         }
         bitscan_loop(doublePushes) {
             Square to = bitscan(doublePushes);
-            if (!handler(makeMove(to - Up - Up, to))) return false;
+            Square from = to - Up - Up;
+            MAKE_MOVE_HANDLER_PAWN(NORMAL, true);
+            CALL_HANDLER(makeMove(from, to));
         }
     }
 
     // Normal Capture
     if constexpr (MGType & NON_QUIET_MOVES) {
-        Bitboard pawns = pos.getPiecesBB(Me, PAWN) & ~rank7 & ~pos.pinOrtho();
-        Bitboard capL = (shift<UpLeft>(pawns & ~pos.pinDiag()) | (shift<UpLeft>(pawns & pos.pinDiag()) & pos.pinDiag())) & pos.getPiecesBB(Opp);
-        Bitboard capR = (shift<UpRight>(pawns & ~pos.pinDiag()) | (shift<UpRight>(pawns & pos.pinDiag()) & pos.pinDiag())) & pos.getPiecesBB(Opp);
+        Bitboard pawns = pos.getPiecesBB(Me, PAWN) & ~Rank7 & ~pinOrtho;
+        Bitboard capL = (shift<UpLeft>(pawns & ~pinDiag) | (shift<UpLeft>(pawns & pinDiag) & pinDiag)) & pos.getPiecesBB(Opp);
+        Bitboard capR = (shift<UpRight>(pawns & ~pinDiag) | (shift<UpRight>(pawns & pinDiag) & pinDiag)) & pos.getPiecesBB(Opp);
 
         if constexpr (InCheck) {
-            capL &= pos.checkMask();
-            capR &= pos.checkMask();
+            capL &= checkMask;
+            capR &= checkMask;
         }
 
         bitscan_loop(capL) {
             Square to = bitscan(capL);
-            if (!handler(makeMove(to - UpLeft, to))) return false;
+            Square from = to - UpLeft;
+            MAKE_MOVE_HANDLER_PAWN(NORMAL, false);
+            CALL_HANDLER(makeMove(from, to));
         }
         bitscan_loop(capR) {
             Square to = bitscan(capR);
-            if (!handler(makeMove(to - UpRight, to))) return false;
+            Square from = to - UpRight;
+            MAKE_MOVE_HANDLER_PAWN(NORMAL, false);
+            CALL_HANDLER(makeMove(from, to));
         }
     }
 
     if constexpr (MGType & NON_QUIET_MOVES) {
-        Bitboard pawnsCanPromote = pos.getPiecesBB(Me, PAWN) & rank7;
+        Bitboard pawnsCanPromote = pos.getPiecesBB(Me, PAWN) & Rank7;
         if (pawnsCanPromote) {
             // Capture Promotion
             {
-                Bitboard pawns = pawnsCanPromote & ~pos.pinOrtho();
-                Bitboard capLPromotions = (shift<UpLeft>(pawns & ~pos.pinDiag()) | (shift<UpLeft>(pawns & pos.pinDiag()) & pos.pinDiag())) & pos.getPiecesBB(Opp);
-                Bitboard capRPromotions = (shift<UpRight>(pawns & ~pos.pinDiag()) | (shift<UpRight>(pawns & pos.pinDiag()) & pos.pinDiag())) & pos.getPiecesBB(Opp);
+                Bitboard pawns = pawnsCanPromote & ~pinOrtho;
+                Bitboard capLPromotions = (shift<UpLeft>(pawns & ~pinDiag) | (shift<UpLeft>(pawns & pinDiag) & pinDiag)) & pos.getPiecesBB(Opp);
+                Bitboard capRPromotions = (shift<UpRight>(pawns & ~pinDiag) | (shift<UpRight>(pawns & pinDiag) & pinDiag)) & pos.getPiecesBB(Opp);
 
                 if constexpr (InCheck) {
-                    capLPromotions &= pos.checkMask();
-                    capRPromotions &= pos.checkMask();
+                    capLPromotions &= checkMask;
+                    capRPromotions &= checkMask;
                 }
 
                 bitscan_loop(capLPromotions) {
                     Square to = bitscan(capLPromotions);
-                    if (!enumeratePromotions(to - UpLeft, to, handler)) return false;
+                    Square from = to - UpLeft;
+                    if (!enumeratePromotions<Me>(from, to, handler)) return false;
                 }
                 bitscan_loop(capRPromotions) {
                     Square to = bitscan(capRPromotions);
-                    if (!enumeratePromotions(to - UpRight, to, handler)) return false;
+                    Square from = to - UpRight;
+                    if (!enumeratePromotions<Me>(from, to, handler)) return false;
                 }
             }
 
             // Quiet Promotion
             {
-                Bitboard pawns = pawnsCanPromote & ~pos.pinDiag();
-                Bitboard quietPromotions = (shift<Up>(pawns & ~pos.pinOrtho()) | (shift<Up>(pawns & pos.pinOrtho()) & pos.pinOrtho())) & pos.getEmptyBB();
+                Bitboard pawns = pawnsCanPromote & ~pinDiag;
+                Bitboard quietPromotions = (shift<Up>(pawns & ~pinOrtho) | (shift<Up>(pawns & pinOrtho) & pinOrtho)) & emptyBB;
 
-                if constexpr (InCheck) quietPromotions &= pos.checkMask();
+                if constexpr (InCheck) quietPromotions &= checkMask;
 
                 bitscan_loop(quietPromotions) {
                     Square to = bitscan(quietPromotions);
-                    if (!enumeratePromotions(to - Up, to, handler)) return false;
+                    Square from = to - Up;
+                    if (!enumeratePromotions<Me>(from, to, handler)) return false;
                 }
             }
         }
@@ -122,13 +161,13 @@ inline bool enumeratePawnMoves(const Position &pos, const Handler& handler) {
             assert(pieceType(pos.getPieceAt(pos.getEpSquare() - pawnDirection(Me))) == PAWN);
 
             Bitboard epcapture = bb(pos.getEpSquare() - pawnDirection(Me)); // Pawn who will be captured enpassant
-            Bitboard enpassants = pawnAttacks(Opp, pos.getEpSquare()) & pos.getPiecesBB(Me, PAWN) & ~pos.pinOrtho();
+            Bitboard enpassants = pawnAttacks(Opp, pos.getEpSquare()) & pos.getPiecesBB(Me, PAWN) & ~pinOrtho;
 
             if constexpr (InCheck) {
                 // Case: 3k4/8/8/4pP2/3K4/8/8/8 w - e6 0 2
                 // If we are in check by the pawn who can be captured enpasant don't use the checkMask because it does not contain the EpSquare
                 if (!(pos.checkers() & epcapture)) {
-                    enpassants &= pos.checkMask();
+                    enpassants &= checkMask;
                 }
             }
 
@@ -138,7 +177,7 @@ inline bool enumeratePawnMoves(const Position &pos, const Handler& handler) {
 
                 // Case: 2r1k2r/Pp3ppp/1b3nbN/nPPp4/BB2P3/q2P1N2/Pp4PP/R2Q1RK1 w k d6 0 3
                 // Pawn is pinned diagonaly and EpSquare is not part of the pin mask
-                if ( (bb(from) & pos.pinDiag()) && !(bb(pos.getEpSquare()) & pos.pinDiag()))
+                if ( (bb(from) & pinDiag) && !(bb(pos.getEpSquare()) & pinDiag))
                     continue;
                 
                 // Case: 3k4/8/8/2KpP2r/8/8/8/8 w - - 0 2
@@ -147,7 +186,9 @@ inline bool enumeratePawnMoves(const Position &pos, const Handler& handler) {
                 if ( !((epRank & pos.getPiecesBB(Me, KING)) && (epRank & pos.getPiecesBB(Opp, ROOK, QUEEN)))
                     || !(attacks<ROOK>(pos.getKingSquare(Me), pos.getPiecesBB() ^ bb(from) ^ epcapture) & pos.getPiecesBB(Opp, ROOK, QUEEN)) )
                 {
-                    if (!handler(makeMove<EN_PASSANT>(from, pos.getEpSquare()))) return false;
+                    Square to = pos.getEpSquare();
+                    MAKE_MOVE_HANDLER_PAWN(EN_PASSANT, false);
+                    CALL_HANDLER(makeMove<EN_PASSANT>(from, to));
                 }
             }
         }
@@ -164,7 +205,10 @@ inline bool enumerateCastlingMoves(const Position &pos, const Handler& handler) 
 
     for (auto cr : {Me & KING_SIDE, Me & QUEEN_SIDE}) {
         if (pos.canCastle(cr) && pos.isEmpty(CastlingPath[cr]) && !(pos.checkedSquares() & CastlingKingPath[cr])) {
-            if (!handler(makeMove<CASTLING>(kingSquare, CastlingKingTo[cr]))) return false;
+            Square from = kingSquare;
+            Square to = CastlingKingTo[cr];
+            MAKE_MOVE_HANDLER(CASTLING);
+            CALL_HANDLER(makeMove<CASTLING>(from, to));
         }
     }
 
@@ -181,7 +225,9 @@ inline bool enumerateKingMoves(const Position &pos, const Handler& handler) {
     if constexpr (MGType == QUIET_MOVES) dest &= ~pos.getPiecesBB(~Me);
 
     bitscan_loop(dest) {
-        if (!handler(makeMove(from, bitscan(dest)))) return false;
+        Square to = bitscan(dest);
+        MAKE_MOVE_HANDLER(NORMAL);
+        CALL_HANDLER(makeMove(from, to));
     }
 
     return true;
@@ -200,7 +246,9 @@ inline bool enumerateKnightMoves(const Position &pos, const Handler& handler) {
         if constexpr (MGType == QUIET_MOVES) dest &= ~pos.getPiecesBB(~Me);
 
         bitscan_loop(dest) {
-            if (!handler(makeMove(from, bitscan(dest)))) return false;
+            Square to = bitscan(dest);
+            MAKE_MOVE_HANDLER(NORMAL);
+            CALL_HANDLER(makeMove(from, to));
         }
     }
 
@@ -210,6 +258,7 @@ inline bool enumerateKnightMoves(const Position &pos, const Handler& handler) {
 template<Side Me, bool InCheck, typename Handler, MoveGenType MGType = ALL_MOVES>
 inline bool enumerateSliderMoves(const Position &pos, const Handler& handler) {
     Bitboard pieces;
+    Bitboard oppPiecesBB = pos.getPiecesBB(~Me);
 
     // Non-pinned Bishop & Queen
     pieces = pos.getPiecesBB(Me, BISHOP, QUEEN) & ~pos.pinOrtho() & ~pos.pinDiag();
@@ -218,11 +267,13 @@ inline bool enumerateSliderMoves(const Position &pos, const Handler& handler) {
         Bitboard dest = attacks<BISHOP>(from, pos.getPiecesBB()) & ~pos.getPiecesBB(Me);
 
         if constexpr (InCheck) dest &= pos.checkMask();
-        if constexpr (MGType == NON_QUIET_MOVES) dest &= pos.getPiecesBB(~Me);
-        if constexpr (MGType == QUIET_MOVES) dest &= ~pos.getPiecesBB(~Me);
+        if constexpr (MGType == NON_QUIET_MOVES) dest &= oppPiecesBB;
+        if constexpr (MGType == QUIET_MOVES) dest &= ~oppPiecesBB;
 
         bitscan_loop(dest) {
-            if (!handler(makeMove(from, bitscan(dest)))) return false;
+            Square to = bitscan(dest);
+            MAKE_MOVE_HANDLER(NORMAL);
+            CALL_HANDLER(makeMove(from, to));
         }
     }
 
@@ -233,11 +284,13 @@ inline bool enumerateSliderMoves(const Position &pos, const Handler& handler) {
         Bitboard dest = attacks<BISHOP>(from, pos.getPiecesBB()) & ~pos.getPiecesBB(Me) & pos.pinDiag();
 
         if constexpr (InCheck) dest &= pos.checkMask();
-        if constexpr (MGType == NON_QUIET_MOVES) dest &= pos.getPiecesBB(~Me);
-        if constexpr (MGType == QUIET_MOVES) dest &= ~pos.getPiecesBB(~Me);
+        if constexpr (MGType == NON_QUIET_MOVES) dest &= oppPiecesBB;
+        if constexpr (MGType == QUIET_MOVES) dest &= ~oppPiecesBB;
 
         bitscan_loop(dest) {
-            if (!handler(makeMove(from, bitscan(dest)))) return false;
+            Square to = bitscan(dest);
+            MAKE_MOVE_HANDLER(NORMAL);
+            CALL_HANDLER(makeMove(from, to));
         }
     }
 
@@ -248,11 +301,13 @@ inline bool enumerateSliderMoves(const Position &pos, const Handler& handler) {
         Bitboard dest = attacks<ROOK>(from, pos.getPiecesBB()) & ~pos.getPiecesBB(Me);
 
         if constexpr (InCheck) dest &= pos.checkMask();
-        if constexpr (MGType == NON_QUIET_MOVES) dest &= pos.getPiecesBB(~Me);
-        if constexpr (MGType == QUIET_MOVES) dest &= ~pos.getPiecesBB(~Me);
+        if constexpr (MGType == NON_QUIET_MOVES) dest &= oppPiecesBB;
+        if constexpr (MGType == QUIET_MOVES) dest &= ~oppPiecesBB;
 
         bitscan_loop(dest) {
-            if (!handler(makeMove(from, bitscan(dest)))) return false;
+            Square to = bitscan(dest);
+            MAKE_MOVE_HANDLER(NORMAL);
+            CALL_HANDLER(makeMove(from, to));
         }
     }
 
@@ -263,11 +318,13 @@ inline bool enumerateSliderMoves(const Position &pos, const Handler& handler) {
         Bitboard dest = attacks<ROOK>(from, pos.getPiecesBB()) & ~pos.getPiecesBB(Me) & pos.pinOrtho();
 
         if constexpr (InCheck) dest &= pos.checkMask();
-        if constexpr (MGType == NON_QUIET_MOVES) dest &= pos.getPiecesBB(~Me);
-        if constexpr (MGType == QUIET_MOVES) dest &= ~pos.getPiecesBB(~Me);
+        if constexpr (MGType == NON_QUIET_MOVES) dest &= oppPiecesBB;
+        if constexpr (MGType == QUIET_MOVES) dest &= ~oppPiecesBB;
 
         bitscan_loop(dest) {
-            if (!handler(makeMove(from, bitscan(dest)))) return false;
+            Square to = bitscan(dest);
+            MAKE_MOVE_HANDLER(NORMAL);
+            CALL_HANDLER(makeMove(from, to));
         }
     }
 
@@ -276,7 +333,7 @@ inline bool enumerateSliderMoves(const Position &pos, const Handler& handler) {
 
 template<Side Me, typename Handler, MoveGenType MGType = ALL_MOVES>
 inline bool enumerateLegalMoves(const Position &pos, const Handler& handler) {
-    static_assert( std::is_same_v<typename std::invoke_result_t<Handler, Move>, bool>, "Handler should have bool return type");
+    //static_assert( std::is_same_v<typename std::invoke_result_t<Handler, Move>, bool>, "Handler should have bool return type");
 
     switch(popcount(pos.checkers())) {
         case 0:
@@ -317,11 +374,16 @@ inline bool enumerateLegalMoves(const Position &pos, const Handler& handler) {
 }
 
 inline void generateLegalMoves(const Position &pos, MoveList &moves) {
-    enumerateLegalMoves(pos, [&](Move m) {
+    enumerateLegalMoves(pos, [&](Move m, auto doMH, auto undoMH) {
         moves.push_back(m); return true;
     });
 }
 
 } /* namespace BabChess */
+
+#undef CALL_HANDLER
+#undef MAKE_MOVE_HANDLER
+#undef MAKE_MOVE_HANDLER_PAWN
+#undef MAKE_MOVE_HANDLER_PROMOTION
 
 #endif /* MOVE_H_INCLUDED */

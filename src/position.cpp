@@ -97,7 +97,8 @@ void Position::setFromFEN(const std::string &fen) {
             f += c-'0';
         } else {
             Piece p = charToPiece(c);
-            setPiece(square(File(f), Rank(r)), p);
+            Square sq = square(File(f), Rank(r));
+            side(p) == WHITE ? setPiece<WHITE>(sq, p) : setPiece<BLACK>(sq, p);
             f++;
         }
     }
@@ -192,23 +193,26 @@ inline bool Position::givesCheck(Move m) {
     );
 }*/
 
+template<Side Me>
 inline void Position::setPiece(Square sq, Piece p) {
     Bitboard b = bb(sq);
     pieces[sq] = p;
     //typeBB[ALL_PIECES] |= b;
     //typeBB[pieceType(p)] |= b;
-    sideBB[side(p)] |= b;
+    sideBB[Me] |= b;
     piecesBB[p] |= b;
 }
+template<Side Me>
 inline void Position::unsetPiece(Square sq) {
     Bitboard b = bb(sq);
     Piece p = pieces[sq];
     pieces[sq] = NO_PIECE;
     //typeBB[ALL_PIECES] &= ~b;
     //typeBB[pieceType(p)] &= ~b;
-    sideBB[side(p)] &= ~b;
+    sideBB[Me] &= ~b;
     piecesBB[p] &= ~b;
 }
+template<Side Me>
 inline void Position::movePiece(Square from, Square to) {
     Bitboard fromTo = from | to;
     Piece p = pieces[from];
@@ -217,22 +221,39 @@ inline void Position::movePiece(Square from, Square to) {
     pieces[from] = NO_PIECE;
     //typeBB[ALL_PIECES] ^= fromTo;
     //typeBB[pieceType(p)] ^= fromTo;
-    sideBB[side(p)] ^= fromTo;
+    sideBB[Me] ^= fromTo;
     piecesBB[p] ^= fromTo;
 }
 
 template<Side Me>
 inline void Position::doMove(Move m) {
-    assert(getSideToMove() == Me);
     Square from = moveFrom(m);
     Square to = moveTo(m);
-    Piece pc = getPieceAt(from);
+
+    switch(moveType(m)) {
+        case NORMAL:      
+            if (getPieceAt(from) == piece(Me, PAWN)) {
+                (int(from) ^ int(to)) == int(UP+UP) ? doMove<Me, NORMAL, true, true>(from, to) : doMove<Me, NORMAL, true, false>(from, to);
+            } else {
+                doMove<Me, NORMAL, false, false>(from, to);
+            }
+
+            return;
+        case CASTLING:    doMove<Me, CASTLING, false, false>(from, to); return;
+        case PROMOTION:   doMove<Me, PROMOTION, true, false>(from, to, movePromotionType(m)); return;
+        case EN_PASSANT:  doMove<Me, EN_PASSANT, true, false>(from, to); return;
+    }
+}
+
+template<Side Me, MoveType Mt, bool IsPawn, bool IsDoublePush>
+inline void Position::doMove(Square from, Square to, PieceType promotionType) {
+    assert(getSideToMove() == Me);
     Piece capture = getPieceAt(to);
 
-    assert(side(pc) == Me);
+    assert(side(getPieceAt(from)) == Me);
     assert(capture == NO_PIECE || side(capture) == ~Me);
     assert(pieceType(capture) != KING);
-    assert(to == getEpSquare() || moveType(m) != EN_PASSANT);
+    assert(to == getEpSquare() || Mt != EN_PASSANT);
 
     State *oldState = state++;
     state->epSquare = SQ_NONE;
@@ -241,75 +262,63 @@ inline void Position::doMove(Move m) {
     state->halfMoves = oldState->halfMoves + 1;
     state->capture = capture;
 
-    switch(moveType(m)) {
-        case NORMAL:
-            {
-                if (capture != NO_PIECE) {
-                    unsetPiece(to);
-                    state->fiftyMoveRule = 0;
-                }
-                
-                movePiece(from, to);
+    if constexpr (Mt == NORMAL) {
+        if (capture != NO_PIECE) {
+            unsetPiece<~Me>(to);
+            state->fiftyMoveRule = 0;
+        }
+        
+        movePiece<Me>(from, to);
 
-                // Update castling right
-                state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
+        // Update castling right
+        state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
 
-                if (pieceType(pc) == PAWN) {
-                    state->fiftyMoveRule = 0;
+        if constexpr (IsPawn) {
+            state->fiftyMoveRule = 0;
 
-                    // Set epSquare
-                    if ((int(from) ^ int(to)) == int(UP+UP) // Double push
-                        && (pawnAttacks(Me, to - pawnDirection(Me)) & getPiecesBB(~Me, PAWN)) // Opponent pawn can enpassant
-                    ) {
-                        state->epSquare = to - pawnDirection(Me);
-                    }
+            // Set epSquare
+            if constexpr (IsDoublePush) {
+                if (pawnAttacks(Me, to - pawnDirection(Me)) & getPiecesBB(~Me, PAWN)) { // Opponent pawn can enpassant
+                    state->epSquare = to - pawnDirection(Me);
                 }
             }
-            break;
-        case CASTLING:
-            {
-                CastlingRight cr = Me & (to > from ? KING_SIDE : QUEEN_SIDE);
-                Square rookFrom = CastlingRookFrom[cr];
-                Square rookTo = CastlingRookTo[cr];
+        }
+    } else if constexpr (Mt == CASTLING) {
+        CastlingRight cr = Me & (to > from ? KING_SIDE : QUEEN_SIDE);
+        Square rookFrom = CastlingRookFrom[cr];
+        Square rookTo = CastlingRookTo[cr];
 
-                assert(pieceType(pc) == KING);
-                assert(getPieceAt(rookFrom) == piece(Me, ROOK));
-                assert(isEmpty(CastlingPath[cr]));
+        assert(pieceType(getPieceAt(from)) == KING);
+        assert(getPieceAt(rookFrom) == piece(Me, ROOK));
+        assert(isEmpty(CastlingPath[cr]));
 
-                movePiece(from, to);
-                movePiece(rookFrom, rookTo);
+        movePiece<Me>(from, to);
+        movePiece<Me>(rookFrom, rookTo);
 
-                // Update castling right
-                state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
-            }
-            break;
-        case PROMOTION:
-            {
-                assert(pieceType(pc) == PAWN);
+        // Update castling right
+        state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
+    } else if constexpr (Mt == PROMOTION) {
+        assert(pieceType(getPieceAt(from)) == PAWN);
+        assert(promotionType != NO_PIECE_TYPE && promotionType != PAWN);
 
-                if (capture != NO_PIECE) {
-                    unsetPiece(to);
-                }
+        if (capture != NO_PIECE) {
+            unsetPiece<~Me>(to);
+        }
 
-                unsetPiece(from);
-                setPiece(to, piece(Me, movePromotionType(m)));
-                state->fiftyMoveRule = 0;
+        unsetPiece<Me>(from);
+        setPiece<Me>(to, piece(Me, promotionType));
+        state->fiftyMoveRule = 0;
 
-                // Update castling right
-                state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
-            }
-            break;
-        case EN_PASSANT: 
-            {
-                assert(pieceType(pc) == PAWN);
+        // Update castling right
+        state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
+    } else if constexpr (Mt == EN_PASSANT) {
+        assert(pieceType(getPieceAt(from)) == PAWN);
 
-                Square epsq = to - pawnDirection(Me);
-                unsetPiece(epsq);
-                movePiece(from, to);
+        Square epsq = to - pawnDirection(Me);
+        unsetPiece<~Me>(epsq);
+        movePiece<Me>(from, to);
 
-                state->fiftyMoveRule = 0;
-            }
-            break;
+        state->fiftyMoveRule = 0;
     }
 
     sideToMove = ~Me;
@@ -319,52 +328,50 @@ inline void Position::doMove(Move m) {
 
 template<Side Me>
 inline void Position::undoMove(Move m) {
-    assert(getSideToMove() == ~Me);
     Square from = moveFrom(m);
     Square to = moveTo(m);
+
+    switch(moveType(m)) {
+        case NORMAL:      undoMove<Me, NORMAL>(from, to); return;
+        case CASTLING:    undoMove<Me, CASTLING>(from, to); return;
+        case PROMOTION:   undoMove<Me, PROMOTION>(from, to); return;
+        case EN_PASSANT:  undoMove<Me, EN_PASSANT>(from, to); return;
+    }
+}
+
+template<Side Me, MoveType Mt>
+inline void Position::undoMove(Square from, Square to) {
+    assert(getSideToMove() == ~Me);
     Piece capture = state->capture;
 
     state--;
     sideToMove = Me;
 
-    switch(moveType(m)) {
-        case NORMAL: 
-            {
-                movePiece(to, from);
+    if constexpr (Mt == NORMAL) {
+        movePiece<Me>(to, from);
 
-                if (capture != NO_PIECE) {
-                    setPiece(to, capture);
-                }
-            }   
-            break;
-        case CASTLING:
-            {
-                CastlingRight cr = Me & (to > from ? KING_SIDE : QUEEN_SIDE);
-                Square rookFrom = CastlingRookFrom[cr];
-                Square rookTo = CastlingRookTo[cr];
+        if (capture != NO_PIECE) {
+            setPiece<~Me>(to, capture);
+        }
+    } else if constexpr (Mt == CASTLING) {
+        CastlingRight cr = Me & (to > from ? KING_SIDE : QUEEN_SIDE);
+        Square rookFrom = CastlingRookFrom[cr];
+        Square rookTo = CastlingRookTo[cr];
 
-                movePiece(to, from);
-                movePiece(rookTo, rookFrom);
-            }
-            break;
-        case PROMOTION:
-            {
-                unsetPiece(to);
-                setPiece(from, piece(Me, PAWN));
+        movePiece<Me>(to, from);
+        movePiece<Me>(rookTo, rookFrom);
+    } else if constexpr (Mt == PROMOTION){
+        unsetPiece<Me>(to);
+        setPiece<Me>(from, piece(Me, PAWN));
 
-                if (capture != NO_PIECE) {
-                    setPiece(to, capture);
-                }
-            }
-            break;
-        case EN_PASSANT:
-            {
-                movePiece(to, from);
+        if (capture != NO_PIECE) {
+            setPiece<~Me>(to, capture);
+        }
+    } else if constexpr (Mt == EN_PASSANT) {
+        movePiece<Me>(to, from);
 
-                Square epsq = to - pawnDirection(Me);
-                setPiece(epsq, piece(~Me, PAWN));
-            }
-            break;
+        Square epsq = to - pawnDirection(Me);
+        setPiece<~Me>(epsq, piece(~Me, PAWN));
     }
 }
 

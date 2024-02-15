@@ -13,7 +13,7 @@ size_t perft(Position &pos, int depth) {
     MoveList moves;
     
     if (!Div && depth <= 1) {
-        enumerateLegalMoves<Me>(pos, [&](Move m) {
+        enumerateLegalMoves<Me>(pos, [&](Move m, auto doMH, auto undoMH) {
             total += 1;
             return true;
         });
@@ -22,15 +22,17 @@ size_t perft(Position &pos, int depth) {
     }
 
     
-    enumerateLegalMoves<Me>(pos, [&](Move m) {
+    enumerateLegalMoves<Me>(pos, [&](Move m, auto doMoveHandler, auto undoMoveHandler) {
         size_t n = 0;
 
         if (Div && depth == 1) {
             n = 1;
         } else {
-            pos.doMove<Me>(m);
+            //pos.doMove<Me>(m);
+            doMoveHandler(pos);
             n = perft<false, ~Me>(pos, depth - 1);
-            pos.undoMove<Me>(m);
+            //pos.undoMove<Me>(m);
+            undoMoveHandler(pos);
         }
 
         total += n;

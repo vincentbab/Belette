@@ -80,8 +80,9 @@ inline Bitboard pawnAttacks(Bitboard b) {
 }
 
 template<PieceType Pt>
-inline Bitboard sliderAttacks(Square sq, Bitboard occupied) 
-{
+inline Bitboard sliderAttacks(Square sq, Bitboard occupied) {
+    static_assert(Pt == ROOK || Pt == BISHOP);
+
     if constexpr (Pt == ROOK)
         return ROOK_MOVE[sq].attacks(occupied);
     else
