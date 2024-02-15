@@ -33,7 +33,7 @@ enum MoveGenType {
 template<Side Me, PieceType PromotionType, typename Handler>
 inline bool enumeratePromotion(Square from, Square to, const Handler& handler) {
     MAKE_MOVE_HANDLER_PROMOTION(PROMOTION, PromotionType);
-    CALL_HANDLER(makeMove<PROMOTION>(from, to, QUEEN));
+    CALL_HANDLER(makeMove<PROMOTION>(from, to, PromotionType));
 
     return true;
 }
