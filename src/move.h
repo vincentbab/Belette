@@ -27,7 +27,9 @@ enum MoveGenType {
     auto doMoveHandler = [from, to](Position &p) { p.doMove<Me, type, true, false>(from, to, promotionType); }; \
     auto undoMoveHandler = [from, to](Position &p) { p.undoMove<Me, type>(from, to); }
 
-#define CALL_HANDLER(move) if (!handler(move, doMoveHandler, undoMoveHandler)) return false
+#define CALL_HANDLER(...) if (!handler(__VA_ARGS__, doMoveHandler, undoMoveHandler)) return false
+
+#define CALL_ENUMERATOR(...) if (!__VA_ARGS__) return false
 
 
 template<Side Me, PieceType PromotionType, typename Handler>
@@ -40,10 +42,10 @@ inline bool enumeratePromotion(Square from, Square to, const Handler& handler) {
 
 template<Side Me, typename Handler>
 inline bool enumeratePromotions(Square from, Square to, const Handler& handler) {
-    if (!enumeratePromotion<Me, QUEEN>(from, to, handler)) return false;
-    if (!enumeratePromotion<Me, KNIGHT>(from, to, handler)) return false;
-    if (!enumeratePromotion<Me, ROOK>(from, to, handler)) return false;
-    if (!enumeratePromotion<Me, BISHOP>(from, to, handler)) return false;
+    CALL_ENUMERATOR(enumeratePromotion<Me, QUEEN>(from, to, handler));
+    CALL_ENUMERATOR(enumeratePromotion<Me, KNIGHT>(from, to, handler));
+    CALL_ENUMERATOR(enumeratePromotion<Me, ROOK>(from, to, handler));
+    CALL_ENUMERATOR(enumeratePromotion<Me, BISHOP>(from, to, handler));
 
     return true;
 }
@@ -80,6 +82,7 @@ inline bool enumeratePawnMoves(const Position &pos, const Handler& handler) {
             MAKE_MOVE_HANDLER_PAWN(NORMAL, false);
             CALL_HANDLER(makeMove(from, to));
         }
+
         bitscan_loop(doublePushes) {
             Square to = bitscan(doublePushes);
             Square from = to - Up - Up;
@@ -130,12 +133,12 @@ inline bool enumeratePawnMoves(const Position &pos, const Handler& handler) {
                 bitscan_loop(capLPromotions) {
                     Square to = bitscan(capLPromotions);
                     Square from = to - UpLeft;
-                    if (!enumeratePromotions<Me>(from, to, handler)) return false;
+                    CALL_ENUMERATOR(enumeratePromotions<Me>(from, to, handler));
                 }
                 bitscan_loop(capRPromotions) {
                     Square to = bitscan(capRPromotions);
                     Square from = to - UpRight;
-                    if (!enumeratePromotions<Me>(from, to, handler)) return false;
+                    CALL_ENUMERATOR(enumeratePromotions<Me>(from, to, handler));
                 }
             }
 
@@ -149,7 +152,7 @@ inline bool enumeratePawnMoves(const Position &pos, const Handler& handler) {
                 bitscan_loop(quietPromotions) {
                     Square to = bitscan(quietPromotions);
                     Square from = to - Up;
-                    if (!enumeratePromotions<Me>(from, to, handler)) return false;
+                    CALL_ENUMERATOR(enumeratePromotions<Me>(from, to, handler));
                 }
             }
         }
@@ -195,8 +198,6 @@ inline bool enumeratePawnMoves(const Position &pos, const Handler& handler) {
 
         return true;
     }
-
-    
 }
 
 template<Side Me, typename Handler>
@@ -337,32 +338,25 @@ inline bool enumerateLegalMoves(const Position &pos, const Handler& handler) {
 
     switch(popcount(pos.checkers())) {
         case 0:
-            {
-                if (!enumeratePawnMoves<Me, false, Handler, MGType>(pos, handler)) return false;
-                if (!enumerateKnightMoves<Me, false, Handler, MGType>(pos, handler)) return false;
-                if (!enumerateSliderMoves<Me, false, Handler, MGType>(pos, handler)) return false;
-                if constexpr (MGType & QUIET_MOVES) if (!enumerateCastlingMoves<Me, Handler>(pos, handler)) return false;
-                if (!enumerateKingMoves<Me, Handler, MGType>(pos, handler)) return false;
+            CALL_ENUMERATOR(enumeratePawnMoves<Me, false, Handler, MGType>(pos, handler));
+            CALL_ENUMERATOR(enumerateKnightMoves<Me, false, Handler, MGType>(pos, handler));
+            CALL_ENUMERATOR(enumerateSliderMoves<Me, false, Handler, MGType>(pos, handler));
+            if constexpr (MGType & QUIET_MOVES) CALL_ENUMERATOR(enumerateCastlingMoves<Me, Handler>(pos, handler));
+            CALL_ENUMERATOR(enumerateKingMoves<Me, Handler, MGType>(pos, handler));
 
-                return true;
-            }
+            return true;
         case 1:
-            {
-                if (!enumeratePawnMoves<Me, true, Handler, MGType>(pos, handler)) return false;
-                if (!enumerateKnightMoves<Me, true, Handler, MGType>(pos, handler)) return false;
-                if (!enumerateSliderMoves<Me, true, Handler, MGType>(pos, handler)) return false;
-                if (!enumerateKingMoves<Me, Handler, MGType>(pos, handler)) return false;
+            CALL_ENUMERATOR(enumeratePawnMoves<Me, true, Handler, MGType>(pos, handler));
+            CALL_ENUMERATOR(enumerateKnightMoves<Me, true, Handler, MGType>(pos, handler));
+            CALL_ENUMERATOR(enumerateSliderMoves<Me, true, Handler, MGType>(pos, handler));
+            CALL_ENUMERATOR(enumerateKingMoves<Me, Handler, MGType>(pos, handler));
 
-                return true;
-            }
-        case 2:
-        default:
-            {
-                // If we are in double check only king moves are allowed
-                if (!enumerateKingMoves<Me, Handler, MGType>(pos, handler)) return false;
+            return true;
+        default: //case 2:
+            // If we are in double check only king moves are allowed
+            CALL_ENUMERATOR(enumerateKingMoves<Me, Handler, MGType>(pos, handler));
 
-                return true;
-            }
+            return true;
     }
 }
 
@@ -382,6 +376,7 @@ inline void generateLegalMoves(const Position &pos, MoveList &moves) {
 } /* namespace BabChess */
 
 #undef CALL_HANDLER
+#undef CALL_ENUMERATOR
 #undef MAKE_MOVE_HANDLER
 #undef MAKE_MOVE_HANDLER_PAWN
 #undef MAKE_MOVE_HANDLER_PROMOTION
