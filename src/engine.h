@@ -43,16 +43,19 @@ public:
 
     void search(const SearchLimits &limits);
     void stop();
+    inline bool isSearching() { return searching; }
+    inline bool searchAborted() { return aborted; }
 
     virtual void onSearchProgress(const SearchEvent &event) = 0;
     virtual void onSearchFinish(const SearchEvent &event) = 0;
 
 private:
     Position rootPosition;
-    bool stopSearch;
+    bool aborted = true;
+    bool searching = false;
 
-    inline void idSearch(SearchData &sd) { rootPosition.getSideToMove() == WHITE ? idSearch<WHITE>(sd) : idSearch<BLACK>(sd); }
-    template<Side Me> void idSearch(SearchData &sd);
+    inline void idSearch(SearchData sd) { rootPosition.getSideToMove() == WHITE ? idSearch<WHITE>(sd) : idSearch<BLACK>(sd); }
+    template<Side Me> void idSearch(SearchData sd);
 
     template<Side Me> Score pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv);
 

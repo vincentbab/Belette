@@ -269,7 +269,7 @@ bool Uci::cmdPerft(istringstream& is) {
 }
 
 bool Uci::cmdStop(istringstream& is) {
-    //Engine.stop();
+    engine.stop();
     return true;
 }
 

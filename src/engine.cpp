@@ -1,4 +1,5 @@
 #include <iostream>
+#include <thread>
 #include "engine.h"
 #include "move.h"
 #include "evaluate.h"
@@ -9,20 +10,25 @@ namespace BabChess {
 
 // Search entry point
 void Engine::search(const SearchLimits &limits) {
+    if (searching) return;
+
     SearchData data(position(), limits);
+    aborted = false;
+    searching = true;
 
-    // TODO: setup threads
-
-    idSearch(data);
+    std::thread th([this, data] { 
+        this->idSearch(data); 
+    });
+    th.detach();
 }
 
 void Engine::stop() {
-    stopSearch = true;
+    aborted = true;
 }
 
 // Iterative deepening loop
 template<Side Me>
-void Engine::idSearch(SearchData &sd) {
+void Engine::idSearch(SearchData sd) {
 
     const int MaxDepth = sd.limits.maxDepth > 0 ? std::min(MAX_PLY, sd.limits.maxDepth) : MAX_PLY;
 
@@ -36,6 +42,8 @@ void Engine::idSearch(SearchData &sd) {
 
         Score score = pvSearch<Me>(sd, alpha, beta, depth, 0, pv);
 
+        if (searchAborted()) break;
+
         completedDepth = depth;
         bestPv = pv;
         bestScore = score;
@@ -44,6 +52,7 @@ void Engine::idSearch(SearchData &sd) {
     }
 
     onSearchFinish(SearchEvent(completedDepth, bestPv, bestScore));
+    searching = false;
 }
 
 void updatePv(MoveList &pv, Move move, const MoveList &childPv) {
@@ -62,6 +71,10 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
         return qSearch<Me>(sd, alpha, beta, depth, ply, pv);
     }
 
+    if (searchAborted()) {
+        return -SCORE_INFINITE;
+    }
+
     // TODO: check draw with : 50move, 3-fold, insufficient material
 
     Score bestScore = -SCORE_INFINITE;
@@ -75,6 +88,9 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
 
         (pos.*doMove)(move);
         Score score = -pvSearch<~Me>(sd, -beta, -alpha, depth-1, ply+1, childPv);
+
+        if (searchAborted()) return false;
+
         (pos.*undoMove)(move);
 
         if (score > bestScore) {
@@ -92,6 +108,8 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
 
         return true;
     });
+
+    if (searchAborted()) return -SCORE_INFINITE;
 
     // Checkmate / Stalemate detection
     if (nbMove == 0) {
