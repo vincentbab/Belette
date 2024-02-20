@@ -11,8 +11,8 @@ namespace BabChess {
 
 class UciEngine : public Engine {
 
-    virtual void onThinkProgress();
-    virtual void onThinkFinish();
+    virtual void onSearchProgress(const SearchEvent &event);
+    virtual void onSearchFinish(const SearchEvent &event);
 };
 
 class Uci {
@@ -25,6 +25,7 @@ public:
     static Square parseSquare(std::string str);
     static std::string formatSquare(Square sq);
     static std::string formatMove(Move m);
+    static std::string formatScore(Score s);
     
 private:
     typedef bool (Uci::*UciCommandHandler)(std::istringstream& is);
@@ -49,6 +50,7 @@ private:
     bool cmdQuit(std::istringstream& is);
 
     bool cmdDebug(std::istringstream& is);
+    bool cmdEval(std::istringstream& is);
     bool cmdPerft(std::istringstream& is);
     bool cmdTest(std::istringstream& is);
 

@@ -25,6 +25,7 @@ Uci::Uci()  {
 
     commands["debug"] = &Uci::cmdDebug;
     commands["d"] = &Uci::cmdDebug;
+    commands["eval"] = &Uci::cmdEval;
     commands["perft"] = &Uci::cmdPerft;
     commands["test"] = &Uci::cmdTest;
 }
@@ -47,9 +48,27 @@ std::string Uci::formatSquare(Square sq) {
     return str;
 }
 
-std::string Uci::formatMove(Move m) {
-    std::string str = formatSquare(moveFrom(m)) + formatSquare(moveTo(m));
+std::string Uci::formatScore(Score score) {
+    stringstream ss;
 
+    if (abs(score) >= (SCORE_MATE - MAX_PLY)) {
+        ss << "mate " << (score > 0 ? SCORE_MATE - score + 1 : -SCORE_MATE - score) / 2;
+    } else {
+        ss << "cp " << score;
+    }
+    
+    return ss.str();
+}
+
+std::string Uci::formatMove(Move m) {
+    if (m == MOVE_NONE) {
+        return "(none)";
+    } else if (m == MOVE_NULL) {
+        return "(null)";
+    }
+    
+    std::string str = formatSquare(moveFrom(m)) + formatSquare(moveTo(m));
+    
     if (moveType(m) == PROMOTION) {
         str += " pnbrqk"[movePromotionType(m)];
     }
@@ -186,7 +205,7 @@ bool Uci::cmdPosition(istringstream& is) {
 
 bool Uci::cmdGo(istringstream& is) {
     string token;
-    ThinkParams params;
+    SearchLimits params;
 
     while (is >> token) {
         if (token == "perft") {
@@ -226,7 +245,7 @@ bool Uci::cmdGo(istringstream& is) {
         }
     }
 
-    engine.think(params);
+    engine.search(params);
     return true;
 }
 
@@ -235,20 +254,16 @@ bool Uci::cmdDebug(istringstream& is) {
     return true;
 }
 
+bool Uci::cmdEval(istringstream& is) {
+    cout << "Static eval: " << evaluate(engine.position()) << endl;
+    return true;
+}
+
 bool Uci::cmdPerft(istringstream& is) {
     int depth;
     is >> depth;
 
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    size_t n = perft<true>(engine.position(), depth);
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-
-    auto elapsed = end - begin;
-    std::cout << endl << "Nodes: " << n << endl;
-	std::cout << "NPS: "
-		<< int(n * 1000000.0 / std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count()) << endl;
-	std::cout << "Time: "
-		<< std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count() << " us" << endl;
+    perft(engine.position(), depth);
 
     return true;
 }
@@ -268,12 +283,24 @@ bool Uci::cmdTest(istringstream& is) {
     return true;
 }
 
-void UciEngine::onThinkProgress() {
-    cout << "onThinkProgress()" << endl;
+void UciEngine::onSearchProgress(const SearchEvent &event) {
+    cout << "info"
+        << " depth " << event.depth 
+        << " score " << Uci::formatScore(event.bestScore);
+
+    if (!event.pv.empty()) 
+        cout << " pv " << event.pv;
+    
+    cout << endl;
 }
 
-void UciEngine::onThinkFinish() {
-    cout << "onThinkFinish()" << endl;
+void UciEngine::onSearchFinish(const SearchEvent &event) {
+    Move bestMove = MOVE_NONE;
+    if (!event.pv.empty()) bestMove = event.pv.front();
+
+    cout << "bestmove " << Uci::formatMove(bestMove) << endl;
 }
+
+
 
 } /* namespace BabChess */

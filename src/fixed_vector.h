@@ -3,6 +3,7 @@
 
 #include <initializer_list>
 #include <cassert>
+#include <cstdint>
 
 namespace BabChess {
 
@@ -18,7 +19,7 @@ public:
     inline iterator end() { return &elements[count]; }
     inline const_iterator end() const { return &elements[count]; }
 
-    fixed_vector() : count(0) {}
+    fixed_vector() noexcept : count(0) {}
     inline fixed_vector(std::initializer_list<T> il) {copy(il.begin(), il.end(), begin());count = il.end() - il.begin();}
     inline fixed_vector(fixed_vector const &ml) = default;
     inline fixed_vector(fixed_vector&&)=default;
@@ -39,6 +40,7 @@ public:
     inline SizeT capacity() const {return N;}
     inline iterator erase (const_iterator _pos) {iterator pos = begin() + (_pos - begin());copy(pos+1, end(), pos);count--;return pos;}
     inline iterator erase (const_iterator _first, const_iterator _last) {iterator first = begin() + (_first - begin());iterator last = begin() + (_last - begin());copy(last, end(), first);this->count -= last-first;return first;}
+    // TODO: insert()
 };
 
 } /* namespace BabChess */

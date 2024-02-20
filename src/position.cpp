@@ -1,4 +1,5 @@
 #include <sstream>
+#include <cstring>
 #include "position.h"
 #include "uci.h"
 
@@ -20,14 +21,26 @@ Position::Position() {
     setFromFEN(STARTPOS_FEN);
 }
 
+Position::Position(const Position &other) {
+    std::memcpy(this, &other, sizeof(Position));
+    this->state = this->history + (other.state - other.history);
+}
+
+Position& Position::operator=(const Position &other) {
+    std::memcpy(this, &other, sizeof(Position));
+    this->state = this->history + (other.state - other.history);
+
+    return *this;
+}
+
 void Position::reset() {
-    state = history.data();
+    state = &history[0];
 
     state->fiftyMoveRule = 0;
     state->halfMoves = 0;
     state->epSquare = SQ_NONE;
     state->castlingRights = NO_CASTLING;
-    //state->move = MOVE_NONE;
+    state->move = MOVE_NONE;
 
 
     for(int i=0; i<NB_SQUARE; i++) pieces[i] = NO_PIECE;
@@ -162,6 +175,18 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
     return os;
 }
 
+std::string Position::debugHistory() {
+    stringstream ss;
+
+    assert(this->state - this->history < MAX_HISTORY && this->state - this->history >= 0);
+
+    for(State *s = this->state; s > this->history; s--) {
+        ss << Uci::formatMove(s->move) << " ";
+    }
+
+    return ss.str();
+}
+
 /*
 WIP:
 inline bool Position::givesCheck(Move m) {
@@ -227,28 +252,33 @@ inline void Position::movePiece(Square from, Square to) {
 
 template<Side Me>
 inline void Position::doMove(Move m) {
-    Square from = moveFrom(m);
-    Square to = moveTo(m);
-
     switch(moveType(m)) {
-        case NORMAL:      
-            if (getPieceAt(from) == piece(Me, PAWN)) {
-                (int(from) ^ int(to)) == int(UP+UP) ? doMove<Me, NORMAL, true, true>(from, to) : doMove<Me, NORMAL, true, false>(from, to);
-            } else {
-                doMove<Me, NORMAL, false, false>(from, to);
-            }
+        case NORMAL:
+            {
+                const Square from = moveFrom(m);
 
-            return;
-        case CASTLING:    doMove<Me, CASTLING, false, false>(from, to); return;
-        case PROMOTION:   doMove<Me, PROMOTION, true, false>(from, to, movePromotionType(m)); return;
-        case EN_PASSANT:  doMove<Me, EN_PASSANT, true, false>(from, to); return;
+                if (getPieceAt(from) == piece(Me, PAWN)) {
+                    const Square to = moveTo(m);
+                    (int(from) ^ int(to)) == int(UP+UP) ? doMove<Me, NORMAL, true, true>(m) : doMove<Me, NORMAL, true, false>(m);
+                } else {
+                    doMove<Me, NORMAL, false, false>(m);
+                }
+
+                return;
+            }
+        case CASTLING:    doMove<Me, CASTLING, false, false>(m); return;
+        case PROMOTION:   doMove<Me, PROMOTION, true, false>(m); return;
+        case EN_PASSANT:  doMove<Me, EN_PASSANT, true, false>(m); return;
     }
 }
 
 template<Side Me, MoveType Mt, bool IsPawn, bool IsDoublePush>
-inline void Position::doMove(Square from, Square to, PieceType promotionType) {
+inline void Position::doMove(Move m) {
+    assert(m != MOVE_NONE);
     assert(getSideToMove() == Me);
-    Piece capture = getPieceAt(to);
+    const Square from = moveFrom(m); 
+    const Square to = moveTo(m);
+    const Piece capture = getPieceAt(to);
 
     assert(side(getPieceAt(from)) == Me);
     assert(capture == NO_PIECE || side(capture) == ~Me);
@@ -261,6 +291,7 @@ inline void Position::doMove(Square from, Square to, PieceType promotionType) {
     state->fiftyMoveRule = oldState->fiftyMoveRule + 1;
     state->halfMoves = oldState->halfMoves + 1;
     state->capture = capture;
+    state->move = m;
 
     if constexpr (Mt == NORMAL) {
         if (capture != NO_PIECE) {
@@ -285,8 +316,8 @@ inline void Position::doMove(Square from, Square to, PieceType promotionType) {
         }
     } else if constexpr (Mt == CASTLING) {
         CastlingRight cr = Me & (to > from ? KING_SIDE : QUEEN_SIDE);
-        Square rookFrom = CastlingRookFrom[cr];
-        Square rookTo = CastlingRookTo[cr];
+        const Square rookFrom = CastlingRookFrom[cr];
+        const Square rookTo = CastlingRookTo[cr];
 
         assert(pieceType(getPieceAt(from)) == KING);
         assert(getPieceAt(rookFrom) == piece(Me, ROOK));
@@ -298,6 +329,7 @@ inline void Position::doMove(Square from, Square to, PieceType promotionType) {
         // Update castling right
         state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
     } else if constexpr (Mt == PROMOTION) {
+        const PieceType promotionType = movePromotionType(m);
         assert(pieceType(getPieceAt(from)) == PAWN);
         assert(promotionType != NO_PIECE_TYPE && promotionType != PAWN);
 
@@ -314,7 +346,7 @@ inline void Position::doMove(Square from, Square to, PieceType promotionType) {
     } else if constexpr (Mt == EN_PASSANT) {
         assert(pieceType(getPieceAt(from)) == PAWN);
 
-        Square epsq = to - pawnDirection(Me);
+        const Square epsq = to - pawnDirection(Me);
         unsetPiece<~Me>(epsq);
         movePiece<Me>(from, to);
 
@@ -328,21 +360,21 @@ inline void Position::doMove(Square from, Square to, PieceType promotionType) {
 
 template<Side Me>
 inline void Position::undoMove(Move m) {
-    Square from = moveFrom(m);
-    Square to = moveTo(m);
-
     switch(moveType(m)) {
-        case NORMAL:      undoMove<Me, NORMAL>(from, to); return;
-        case CASTLING:    undoMove<Me, CASTLING>(from, to); return;
-        case PROMOTION:   undoMove<Me, PROMOTION>(from, to); return;
-        case EN_PASSANT:  undoMove<Me, EN_PASSANT>(from, to); return;
+        case NORMAL:      undoMove<Me, NORMAL>(m); return;
+        case CASTLING:    undoMove<Me, CASTLING>(m); return;
+        case PROMOTION:   undoMove<Me, PROMOTION>(m); return;
+        case EN_PASSANT:  undoMove<Me, EN_PASSANT>(m); return;
     }
 }
 
 template<Side Me, MoveType Mt>
-inline void Position::undoMove(Square from, Square to) {
+inline void Position::undoMove(Move m) {
     assert(getSideToMove() == ~Me);
-    Piece capture = state->capture;
+
+    const Square from = moveFrom(m);
+    const Square to = moveTo(m);
+    const Piece capture = state->capture;
 
     state--;
     sideToMove = Me;
@@ -354,9 +386,9 @@ inline void Position::undoMove(Square from, Square to) {
             setPiece<~Me>(to, capture);
         }
     } else if constexpr (Mt == CASTLING) {
-        CastlingRight cr = Me & (to > from ? KING_SIDE : QUEEN_SIDE);
-        Square rookFrom = CastlingRookFrom[cr];
-        Square rookTo = CastlingRookTo[cr];
+        const CastlingRight cr = Me & (to > from ? KING_SIDE : QUEEN_SIDE);
+        const Square rookFrom = CastlingRookFrom[cr];
+        const Square rookTo = CastlingRookTo[cr];
 
         movePiece<Me>(to, from);
         movePiece<Me>(rookTo, rookFrom);
@@ -370,7 +402,7 @@ inline void Position::undoMove(Square from, Square to) {
     } else if constexpr (Mt == EN_PASSANT) {
         movePiece<Me>(to, from);
 
-        Square epsq = to - pawnDirection(Me);
+        const Square epsq = to - pawnDirection(Me);
         setPiece<~Me>(epsq, piece(~Me, PAWN));
     }
 }

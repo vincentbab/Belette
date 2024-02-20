@@ -11,13 +11,12 @@
 
 namespace BabChess {
 
-class State {
-public:
+struct State {
     CastlingRight castlingRights;
     Square epSquare;
     int fiftyMoveRule;
     int halfMoves;
-    //Move move;
+    Move move;
 
     Piece capture;
 
@@ -28,21 +27,24 @@ public:
     Bitboard pinOrtho;
 };
 
-typedef std::array<State, MAX_HISTORY> StateList;
-
 class Position {
 public:
     Position();
+    Position(const Position &other);
+    Position& operator=(const Position &other);
+
     void reset();
     void setFromFEN(const std::string &fen);
     std::string fen() const;
     
     inline void doMove(Move m) { getSideToMove() == WHITE ? doMove<WHITE>(m) : doMove<BLACK>(m); }
     template<Side Me> void doMove(Move m);
-    template<Side Me, MoveType Mt, bool IsPawn, bool IsDoublePush> void doMove(Square from, Square to, PieceType promotionType = NO_PIECE_TYPE);
+    //template<Side Me, MoveType Mt, bool IsPawn, bool IsDoublePush> void doMove(Square from, Square to, PieceType promotionType = NO_PIECE_TYPE);
+    template<Side Me, MoveType Mt, bool IsPawn, bool IsDoublePush> void doMove(Move m);
 
     template<Side Me> void undoMove(Move m);
-    template<Side Me, MoveType Mt> void undoMove(Square from, Square to);
+    //template<Side Me, MoveType Mt> void undoMove(Square from, Square to);
+    template<Side Me, MoveType Mt> void undoMove(Move m);
 
     //bool givesCheck(Move m);
 
@@ -72,15 +74,24 @@ public:
     inline Square getKingSquare(Side side) const { return Square(bitscan(piecesBB[side == WHITE ? W_KING : B_KING])); }
     //template<Side Me> inline Square getKingSquare() const { return Square(bitscan(piecesBB[Me == WHITE ? W_KING : B_KING])); }
 
+    inline Bitboard nbPieces(Side side) const { return popcount(getPiecesBB(side)); }
+    inline Bitboard nbPieces() const { return popcount(getPiecesBB(WHITE) | getPiecesBB(BLACK)); }
+    inline Bitboard nbPieces(Side side, PieceType pt) const { return popcount(getPiecesBB(side, pt)); }
+    inline Bitboard nbPieces(Side side, PieceType pt1, PieceType pt2) const { return popcount(getPiecesBB(side, pt1, pt2)); }
+
     inline Bitboard getEmptyBB() const { return ~getPiecesBB(); }
 
     inline Bitboard getAttackers(Side side, Square sq, Bitboard occupied) const;
 
     inline Bitboard checkedSquares() const { return state->checkedSquares; }
     inline Bitboard checkers() const { return state->checkers; }
+    inline bool inCheck() const { return !!state->checkers; }
+
     inline Bitboard checkMask() const { return state->checkMask; }
     inline Bitboard pinDiag() const { return state->pinDiag; }
     inline Bitboard pinOrtho() const { return state->pinOrtho; }
+
+    std::string debugHistory();
 
 private:
     void setCastlingRights(CastlingRight cr);
@@ -104,7 +115,7 @@ private:
     Side sideToMove;
 
     State *state;
-    StateList history;
+    State history[MAX_HISTORY];
 };
 
 std::ostream& operator<<(std::ostream& os, const Position& pos);

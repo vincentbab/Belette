@@ -7,7 +7,9 @@
 
 namespace BabChess {
 
-typedef fixed_vector<Move, MAX_MOVE, uint8_t> MoveList;
+using MoveList = fixed_vector<Move, MAX_MOVE, uint8_t>;
+
+std::ostream& operator<<(std::ostream& os, const MoveList& pos);
 
 enum MoveGenType {
     QUIET_MOVES = 1,
@@ -15,7 +17,7 @@ enum MoveGenType {
     ALL_MOVES = QUIET_MOVES | NON_QUIET_MOVES,
 };
 
-#define MAKE_MOVE_HANDLER(type) \
+/*#define MAKE_MOVE_HANDLER(type) \
     auto doMoveHandler = [from, to](Position &p) { p.doMove<Me, type, false, false>(from, to); }; \
     auto undoMoveHandler = [from, to](Position &p) { p.undoMove<Me, type>(from, to); }
 
@@ -25,7 +27,19 @@ enum MoveGenType {
 
 #define MAKE_MOVE_HANDLER_PROMOTION(type, promotionType) \
     auto doMoveHandler = [from, to](Position &p) { p.doMove<Me, type, true, false>(from, to, promotionType); }; \
-    auto undoMoveHandler = [from, to](Position &p) { p.undoMove<Me, type>(from, to); }
+    auto undoMoveHandler = [from, to](Position &p) { p.undoMove<Me, type>(from, to); }*/
+
+#define MAKE_MOVE_HANDLER(type) \
+    auto doMoveHandler = &Position::doMove<Me, type, false, false>; \
+    auto undoMoveHandler = &Position::undoMove<Me, type>
+
+#define MAKE_MOVE_HANDLER_PAWN(type, isDoublePush) \
+    auto doMoveHandler = &Position::doMove<Me, type, true, isDoublePush>; \
+    auto undoMoveHandler = &Position::undoMove<Me, type>
+
+#define MAKE_MOVE_HANDLER_PROMOTION(type, promotionType) \
+    auto doMoveHandler = &Position::doMove<Me, type, true, false>; \
+    auto undoMoveHandler = &Position::undoMove<Me, type>
 
 #define CALL_HANDLER(...) if (!handler(__VA_ARGS__, doMoveHandler, undoMoveHandler)) return false
 
@@ -49,7 +63,6 @@ inline bool enumeratePromotions(Square from, Square to, const Handler& handler) 
 
     return true;
 }
-
 
 template<Side Me, bool InCheck, typename Handler, MoveGenType MGType = ALL_MOVES>
 inline bool enumeratePawnMoves(const Position &pos, const Handler& handler) {
@@ -332,7 +345,7 @@ inline bool enumerateSliderMoves(const Position &pos, const Handler& handler) {
     return true;
 }
 
-template<Side Me, typename Handler, MoveGenType MGType = ALL_MOVES>
+template<Side Me, MoveGenType MGType = ALL_MOVES, typename Handler>
 inline bool enumerateLegalMoves(const Position &pos, const Handler& handler) {
     //static_assert( std::is_same_v<typename std::invoke_result_t<Handler, Move>, bool>, "Handler should have bool return type");
 
@@ -346,15 +359,15 @@ inline bool enumerateLegalMoves(const Position &pos, const Handler& handler) {
 
             return true;
         case 1:
-            CALL_ENUMERATOR(enumeratePawnMoves<Me, true, Handler, MGType>(pos, handler));
-            CALL_ENUMERATOR(enumerateKnightMoves<Me, true, Handler, MGType>(pos, handler));
-            CALL_ENUMERATOR(enumerateSliderMoves<Me, true, Handler, MGType>(pos, handler));
-            CALL_ENUMERATOR(enumerateKingMoves<Me, Handler, MGType>(pos, handler));
+            CALL_ENUMERATOR(enumeratePawnMoves<Me, true, Handler, ALL_MOVES>(pos, handler));
+            CALL_ENUMERATOR(enumerateKnightMoves<Me, true, Handler, ALL_MOVES>(pos, handler));
+            CALL_ENUMERATOR(enumerateSliderMoves<Me, true, Handler, ALL_MOVES>(pos, handler));
+            CALL_ENUMERATOR(enumerateKingMoves<Me, Handler, ALL_MOVES>(pos, handler));
 
             return true;
         default: //case 2:
             // If we are in double check only king moves are allowed
-            CALL_ENUMERATOR(enumerateKingMoves<Me, Handler, MGType>(pos, handler));
+            CALL_ENUMERATOR(enumerateKingMoves<Me, Handler, ALL_MOVES>(pos, handler));
 
             return true;
     }
@@ -363,8 +376,8 @@ inline bool enumerateLegalMoves(const Position &pos, const Handler& handler) {
 template<typename Handler, MoveGenType MGType = ALL_MOVES>
 inline bool enumerateLegalMoves(const Position &pos, const Handler& handler) {
     return pos.getSideToMove() == WHITE 
-            ? enumerateLegalMoves<WHITE, Handler, MGType>(pos, handler)
-            : enumerateLegalMoves<BLACK, Handler, MGType>(pos, handler);
+            ? enumerateLegalMoves<WHITE, MGType, Handler>(pos, handler)
+            : enumerateLegalMoves<BLACK, MGType, Handler>(pos, handler);
 }
 
 inline void generateLegalMoves(const Position &pos, MoveList &moves) {
