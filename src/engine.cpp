@@ -81,6 +81,7 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
     Position &pos = sd.position;
 
     MoveList childPv;
+    pv.clear();
 
     int nbMove = 0;
     enumerateLegalMoves<Me>(pos, [&](Move move, auto doMove, auto undoMove) -> bool {
@@ -139,12 +140,9 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
 
         bestScore = eval;
     }
-
-
-    /*if (depth < 0)
-        cout << "d=" << depth << " " << pos.debugHistory() << endl;*/
     
     MoveList childPv;
+    pv.clear();
 
     int nbMove = 0;
     enumerateLegalMoves<Me, NON_QUIET_MOVES>(pos, [&](Move move, auto doMove, auto undoMove) -> bool {
