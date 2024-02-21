@@ -4,13 +4,35 @@
 #include <map>
 #include <string>
 #include <sstream>
+#include <istream>
 #include "uci_option.h"
 #include "engine.h"
 
 namespace BabChess {
 
-class UciEngine : public Engine {
+typedef std::ostream& (*Manipulator) (std::ostream&);
 
+// Used to log stdin & stdout to a file for debugging
+class Console {
+public:
+    Console();
+    Console(const Console &) = delete;
+    ~Console();
+    Console &operator=(const Console &) = delete;
+
+    void setLogFile(const std::string &filename);
+    std::istream& getline(std::string& str);
+
+    template <class T> friend Console& operator<<(Console& console, const T& x);
+    friend Console& operator<<(Console& console, Manipulator manip);
+private:
+    template <class T> Console &log(const T& x, bool isInput = false);
+
+    std::stringstream buffer;
+    std::ofstream *file;
+};
+
+class UciEngine : public Engine {
     virtual void onSearchProgress(const SearchEvent &event);
     virtual void onSearchFinish(const SearchEvent &event);
 };
@@ -18,6 +40,7 @@ class UciEngine : public Engine {
 class Uci {
 public:
     Uci();
+    ~Uci() = default;
     void loop();
 
     Move parseMove(std::string str) const;
@@ -39,6 +62,7 @@ private:
 
     std::map<std::string, UciOption, CaseInsensitiveComparator> options;
     std::map<std::string, UciCommandHandler> commands;
+    UciEngine engine;
 
     bool cmdUci(std::istringstream& is);
     bool cmdIsReady(std::istringstream& is);
@@ -53,8 +77,6 @@ private:
     bool cmdEval(std::istringstream& is);
     bool cmdPerft(std::istringstream& is);
     bool cmdTest(std::istringstream& is);
-
-    UciEngine engine;
 };
 
 } /* namespace BabChess */

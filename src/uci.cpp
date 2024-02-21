@@ -1,7 +1,9 @@
 #include <iostream>
+#include <fstream>
 #include <cassert>
 #include <algorithm>
 #include <chrono>
+#include <format>
 #include "uci.h"
 #include "move.h"
 #include "test.h"
@@ -11,8 +13,62 @@ using namespace std;
 
 namespace BabChess {
 
+static Console console;
+
+Console::Console() {
+    setLogFile("babchess.log");
+}
+
+Console::~Console() {
+    if (file != nullptr) delete file;
+}
+
+template <class T> Console& Console::log(const T& x, bool isInput) {
+    if (file != nullptr) {
+        if (buffer.rdbuf()->in_avail() == 0) {
+            auto now = std::chrono::system_clock::now();
+            buffer << "[" << std::format("{0:%F_%T}", now) << "]:" << (isInput ? "<<" : ">>");
+        }
+        buffer << x;
+
+        if (buffer.str().ends_with('\n')) {
+            (*file) << buffer.str();
+            file->flush();
+            buffer.str(std::string()); // clear buffer
+        }
+        
+    }
+
+    return *this;
+}
+
+Console& operator<<(Console& console, Manipulator x){
+    std::cout << x;
+    console.log(x);
+    return console;
+}
+
+template <class T>
+Console& operator<<(Console& console, const T& x) { 
+    std::cout << x;
+    console.log(x);
+    return console;
+}
+istream& Console::getline(string& x) {
+    std::getline(std::cin, x);
+    console.log(x, true).log('\n');
+    return std::cin;
+}
+
+void Console::setLogFile(const std::string &filename) {
+    if (file != nullptr) delete file;
+    file = new std::ofstream(filename);
+}
+
+
+
 Uci::Uci()  {
-    options["Debug"] = UciOption(false);
+    options["Debug Log File"] = UciOption(false);
 
     commands["uci"] = &Uci::cmdUci;
     commands["isready"] = &Uci::cmdIsReady;
@@ -95,7 +151,7 @@ Move Uci::parseMove(std::string str) const {
 void Uci::loop() {
     string line, token;
 
-    while(getline(cin, line)) {
+    while(console.getline(line)) {
         istringstream parser(line);
 
         if (line.empty()) continue;
@@ -117,7 +173,7 @@ void Uci::loop() {
         }
 
         if (unknowCommand) {
-            cout << "Unknow command '" << token << "'" << endl;
+            console << "Unknow command '" << token << "'" << endl;
         }
 
         if (exit) {
@@ -126,26 +182,26 @@ void Uci::loop() {
     }
 
     // cleanup
-    cout << "Exiting UCI loop" << endl;
+    console << "Exiting UCI loop" << endl;
 }
 
 bool Uci::cmdUci(istringstream &is) {
-    cout << "id name BabChess engine v0.1" << endl;
-    cout << "id author Vincent Bab" << endl;
+    console << "id name BabChess engine v0.1" << endl;
+    console << "id author Vincent Bab" << endl;
 
-    cout << endl;
+    console << endl;
 
     for (auto const& [name, option] : options) {
-        cout << "option name " << name << " " << option << endl;
+        console << "option name " << name << " " << option << endl;
     }
 
-    cout << "uciok" << endl;
+    console << "uciok" << endl;
 
     return true;
 }
 
 bool Uci::cmdIsReady(istringstream& is) {
-    cout << "readyok" << endl;
+    console << "readyok" << endl;
 
     return true;
 }
@@ -168,7 +224,7 @@ bool Uci::cmdSetOption(istringstream& is) {
     }
 
     if (!options.count(name))
-        cout << "Unknow option '" << name << "'" << endl;
+        console << "Unknow option '" << name << "'" << endl;
         
     options[name] = value;
 
@@ -190,7 +246,9 @@ bool Uci::cmdPosition(istringstream& is) {
         return true;
     }
 
-    engine.position().setFromFEN(fen);
+    if (!engine.position().setFromFEN(fen)) {
+        console << "Invalid FEN position" << endl;
+    }
 
     while (is >> token) {
         Move m = parseMove(token);
@@ -250,12 +308,12 @@ bool Uci::cmdGo(istringstream& is) {
 }
 
 bool Uci::cmdDebug(istringstream& is) {
-    cout << engine.position() << endl;
+    console << engine.position() << endl;
     return true;
 }
 
 bool Uci::cmdEval(istringstream& is) {
-    cout << "Static eval: " << evaluate(engine.position()) << endl;
+    console << "Static eval: " << evaluate(engine.position()) << endl;
     return true;
 }
 
@@ -284,21 +342,28 @@ bool Uci::cmdTest(istringstream& is) {
 }
 
 void UciEngine::onSearchProgress(const SearchEvent &event) {
-    cout << "info"
+    console << "info"
         << " depth " << event.depth 
-        << " score " << Uci::formatScore(event.bestScore);
+        << " seldepth " << event.depth 
+        << " multipv " << 1
+        << " score " << Uci::formatScore(event.bestScore)
+        << " nodes " << 0
+        << " nps " << 0
+        << " time " << 0
+        << " hashfull " << 0
+        << " tbhits " << 0;
 
     if (!event.pv.empty()) 
-        cout << " pv " << event.pv;
+        console << " pv " << event.pv;
     
-    cout << endl;
+    console << endl;
 }
 
 void UciEngine::onSearchFinish(const SearchEvent &event) {
     Move bestMove = MOVE_NONE;
     if (!event.pv.empty()) bestMove = event.pv.front();
 
-    cout << "bestmove " << Uci::formatMove(bestMove) << endl;
+    console << "bestmove " << Uci::formatMove(bestMove) << endl;
 }
 
 

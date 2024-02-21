@@ -37,6 +37,7 @@ struct SearchEvent {
 class Engine {
 public:
     Engine() = default;
+    virtual ~Engine() = default;
 
     inline Position &position() { return rootPosition; }
     inline const Position &position() const { return rootPosition; }

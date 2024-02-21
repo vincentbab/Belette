@@ -94,7 +94,7 @@ std::string Position::fen() const {
     return ss.str();
 }
 
-void Position::setFromFEN(const std::string &fen) {
+bool Position::setFromFEN(const std::string &fen) {
     reset();
 
     istringstream parser(fen);
@@ -111,6 +111,12 @@ void Position::setFromFEN(const std::string &fen) {
         } else {
             Piece p = charToPiece(c);
             Square sq = square(File(f), Rank(r));
+
+            if (!isValidPiece(p) || !isValidSq(sq)) {
+                reset();
+                return false;
+            }
+
             side(p) == WHITE ? setPiece<WHITE>(sq, p) : setPiece<BLACK>(sq, p);
             f++;
         }
@@ -118,6 +124,10 @@ void Position::setFromFEN(const std::string &fen) {
 
     // Side to Move
     parser >> skipws >> token;
+    if (token[0] != 'w' && token[0] != 'b') {
+        reset();
+        return false;
+    }
     sideToMove = ((token[0] == 'w') ? WHITE : BLACK);
 
     // Casteling
@@ -127,28 +137,45 @@ void Position::setFromFEN(const std::string &fen) {
         else if (c == 'Q') setCastlingRights(WHITE_QUEEN_SIDE);
         else if (c == 'k') setCastlingRights(BLACK_KING_SIDE);
         else if (c == 'q') setCastlingRights(BLACK_QUEEN_SIDE);
+        else {
+            reset();
+            return false;
+        }
     }
 
     // En passant
     parser >> skipws >> token;
     state->epSquare = Uci::parseSquare(token);
+    if (state->epSquare != SQ_NONE && !isValidSq(state->epSquare)) {
+        reset();
+        return false;
+    }
     if (state->epSquare != SQ_NONE && !(
         pawnAttacks(~sideToMove, state->epSquare) && getPiecesBB(sideToMove, PAWN)
         && (getPiecesBB(~sideToMove, PAWN) & (state->epSquare + pawnDirection(~sideToMove)))
         && !(getPiecesBB() & (state->epSquare | (state->epSquare + pawnDirection(sideToMove))))
     )) {
-        
         state->epSquare = SQ_NONE;
     }
 
     // Rule 50 half move
     parser >> skipws >> state->fiftyMoveRule;
+    if (state->fiftyMoveRule < 0) {
+        reset();
+        return false;
+    }
 
     // Full move
     parser >> skipws >> state->halfMoves;
     state->halfMoves = std::max(2 * (state->halfMoves - 1), 0) + (sideToMove == BLACK);
+    if (state->halfMoves < 0) {
+        reset();
+        return false;
+    }
 
     updateBitboards();
+
+    return true;
 }
 
 std::ostream& operator<<(std::ostream& os, const Position& pos) {

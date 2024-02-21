@@ -34,7 +34,7 @@ public:
     Position& operator=(const Position &other);
 
     void reset();
-    void setFromFEN(const std::string &fen);
+    bool setFromFEN(const std::string &fen);
     std::string fen() const;
     
     inline void doMove(Move m) { getSideToMove() == WHITE ? doMove<WHITE>(m) : doMove<BLACK>(m); }

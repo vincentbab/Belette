@@ -232,6 +232,16 @@ constexpr bool isValidSq(Square s) {
     return s >= SQ_A1 && s <= SQ_H8;
 }
 
+constexpr bool isValidPiece(Piece p) {
+    switch(p) {
+        case W_PAWN: case W_KNIGHT: case W_BISHOP: case W_ROOK: case W_QUEEN: case W_KING:
+        case B_PAWN: case B_KNIGHT: case B_BISHOP: case B_ROOK: case B_QUEEN: case B_KING:
+            return true;
+        default:
+            return false;
+    }
+}
+
 constexpr Square square(File f, Rank r) {
     return Square((r << 3) + f);
 }
