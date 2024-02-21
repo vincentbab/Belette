@@ -137,6 +137,7 @@ bool Position::setFromFEN(const std::string &fen) {
         else if (c == 'Q') setCastlingRights(WHITE_QUEEN_SIDE);
         else if (c == 'k') setCastlingRights(BLACK_KING_SIDE);
         else if (c == 'q') setCastlingRights(BLACK_QUEEN_SIDE);
+        else if (c == '-') continue;
         else {
             reset();
             return false;
