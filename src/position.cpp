@@ -2,6 +2,7 @@
 #include <cstring>
 #include "position.h"
 #include "uci.h"
+#include "zobrist.h"
 
 using namespace std;
 
@@ -175,6 +176,7 @@ bool Position::setFromFEN(const std::string &fen) {
     }
 
     updateBitboards();
+    this->state->hash = computeHash();
 
     return true;
 }
@@ -193,12 +195,21 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
     os << "   a   b   c   d   e   f   g   h" << std::endl << std::endl;
     os << "Side to move: " << (pos.getSideToMove() == WHITE ? "White" : "Black") << std::endl;
     os << "FEN: " << pos.fen() << endl;
+    os << "Hash: " << pos.computeHash() << endl;
     os << "Checkers:";
-    Bitboard checkers = pos.checkers(); bitscan_loop(checkers) {
+    Bitboard checkers = pos.checkers(); 
+    bitscan_loop(checkers) {
         Square sq = bitscan(checkers);
         os << " " << Uci::formatSquare(sq);
     }
     os << endl;
+
+    if (pos.isFiftyMoveDraw())
+        os << "[Draw by fifty move rule]" << std::endl;
+    if (pos.isRepetitionDraw())
+        os << "[Draw by 3-fold repetition]" << std::endl;
+    if (pos.isMaterialDraw())
+        os << "[Draw by insufficient material]" << std::endl;
 
     return os;
 }
@@ -244,7 +255,18 @@ inline bool Position::givesCheck(Move m) {
         || (attacks<BISHOP>(ksq, bb[ALL_PIECES]) & (bb[BISHOP] | bb[QUEEN]))
         || (attacks<ROOK>(ksq, bb[ALL_PIECES]) & (bb[ROOK] | bb[QUEEN]))
     );
-}*/
+}
+
+inline bool Position::isLegal(Move m) {
+    switch(moveType(m)) {
+        case NORMAL:
+        case CASTLING:
+        case PROMOTION:
+        case EN_PASSANT:
+        break;
+    }
+}
+*/
 
 template<Side Me>
 inline void Position::setPiece(Square sq, Piece p) {
@@ -306,12 +328,21 @@ inline void Position::doMove(Move m) {
     assert(getSideToMove() == Me);
     const Square from = moveFrom(m); 
     const Square to = moveTo(m);
+    const Piece p = getPieceAt(from);
     const Piece capture = getPieceAt(to);
 
     assert(side(getPieceAt(from)) == Me);
     assert(capture == NO_PIECE || side(capture) == ~Me);
     assert(pieceType(capture) != KING);
     assert(to == getEpSquare() || Mt != EN_PASSANT);
+
+    uint64_t h = state->hash;
+
+    // Reset epSquare (branchless)
+    h ^= Zobrist::enpassantKeys[fileOf(state->epSquare) + NB_FILE*(state->epSquare == SQ_NONE)];
+    /*if (state->epSquare != SQ_NONE) {
+        h ^= Zobrist::enpassantKeys[fileOf(state->epSquare)];
+    }*/
 
     State *oldState = state++;
     state->epSquare = SQ_NONE;
@@ -322,23 +353,32 @@ inline void Position::doMove(Move m) {
     state->move = m;
 
     if constexpr (Mt == NORMAL) {
+        // TODO: Try to remove branching using xor
         if (capture != NO_PIECE) {
+            h ^= Zobrist::keys[capture][to];
             unsetPiece<~Me>(to);
             state->fiftyMoveRule = 0;
         }
         
+        h ^= Zobrist::keys[p][from] ^ Zobrist::keys[p][to];
         movePiece<Me>(from, to);
 
-        // Update castling right
+        // Update castling right (no branching)
+        h ^= Zobrist::castlingKeys[state->castlingRights];
         state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
+        h ^= Zobrist::castlingKeys[state->castlingRights];
 
         if constexpr (IsPawn) {
             state->fiftyMoveRule = 0;
 
-            // Set epSquare
+            // Set epSquare on double push
             if constexpr (IsDoublePush) {
-                if (pawnAttacks(Me, to - pawnDirection(Me)) & getPiecesBB(~Me, PAWN)) { // Opponent pawn can enpassant
-                    state->epSquare = to - pawnDirection(Me);
+                const Square epsq = to - pawnDirection(Me);
+
+                // Only if opponent pawn can do enpassant
+                if (pawnAttacks(Me, epsq) & getPiecesBB(~Me, PAWN)) {
+                    h ^= Zobrist::enpassantKeys[fileOf(epsq)];
+                    state->epSquare = epsq;
                 }
             }
         }
@@ -351,30 +391,42 @@ inline void Position::doMove(Move m) {
         assert(getPieceAt(rookFrom) == piece(Me, ROOK));
         assert(isEmpty(CastlingPath[cr]));
 
+        h ^= Zobrist::keys[piece(Me, KING)][from] ^ Zobrist::keys[piece(Me, KING)][to];
+        h ^= Zobrist::keys[piece(Me, ROOK)][rookFrom] ^ Zobrist::keys[piece(Me, ROOK)][rookTo];
         movePiece<Me>(from, to);
         movePiece<Me>(rookFrom, rookTo);
 
         // Update castling right
+        h ^= Zobrist::castlingKeys[state->castlingRights];
         state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
+        h ^= Zobrist::castlingKeys[state->castlingRights];
     } else if constexpr (Mt == PROMOTION) {
         const PieceType promotionType = movePromotionType(m);
         assert(pieceType(getPieceAt(from)) == PAWN);
         assert(promotionType != NO_PIECE_TYPE && promotionType != PAWN);
 
+        // TODO: Try to remove branching using xor
         if (capture != NO_PIECE) {
+            h ^= Zobrist::keys[capture][to];
             unsetPiece<~Me>(to);
         }
 
+        h ^= Zobrist::keys[piece(Me, PAWN)][from] ^ Zobrist::keys[piece(Me, promotionType)][to];
         unsetPiece<Me>(from);
         setPiece<Me>(to, piece(Me, promotionType));
         state->fiftyMoveRule = 0;
 
         // Update castling right
+        h ^= Zobrist::castlingKeys[state->castlingRights];
         state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
+        h ^= Zobrist::castlingKeys[state->castlingRights];
     } else if constexpr (Mt == EN_PASSANT) {
         assert(pieceType(getPieceAt(from)) == PAWN);
 
         const Square epsq = to - pawnDirection(Me);
+
+        h ^= Zobrist::keys[piece(~Me, PAWN)][epsq];
+        h ^= Zobrist::keys[piece(Me, PAWN)][from] ^ Zobrist::keys[piece(Me, PAWN)][to];
         unsetPiece<~Me>(epsq);
         movePiece<Me>(from, to);
 
@@ -382,6 +434,10 @@ inline void Position::doMove(Move m) {
     }
 
     sideToMove = ~Me;
+    h ^= Zobrist::sideToMoveKey;
+
+    state->hash = h;
+    assert(computeHash() == hash());
     
     updateBitboards<~Me>();
 }
@@ -526,6 +582,23 @@ inline void Position::updateCheckers() {
         | (attacks<BISHOP>(ksq, getPiecesBB()) & getPiecesBB(Opp, BISHOP, QUEEN))
         | (attacks<ROOK>(ksq, getPiecesBB()) & getPiecesBB(Opp, ROOK, QUEEN))
     );
+}
+
+uint64_t Position::computeHash() const {
+    uint64_t h = 0;
+
+    for (Square sq=SQ_FIRST; sq<NB_SQUARE; ++sq) {
+        Piece p = getPieceAt(sq);
+        if (p == NO_PIECE) continue;
+
+        h ^= Zobrist::keys[p][sq];
+    }
+
+    h ^= Zobrist::castlingKeys[getCastlingRights()];
+    if (getEpSquare() != SQ_NONE) h ^= Zobrist::enpassantKeys[fileOf(getEpSquare())];
+    if (getSideToMove() == BLACK) h ^= Zobrist::sideToMoveKey;
+
+    return h;
 }
 
 } /* namespace BabChess */

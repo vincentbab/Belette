@@ -60,16 +60,18 @@ enum Square : int {
     SQ_A8, SQ_B8, SQ_C8, SQ_D8, SQ_E8, SQ_F8, SQ_G8, SQ_H8,
     SQ_NONE,
 
-    //SQUARE_ZERO = 0,
-    NB_SQUARE   = 64
+    SQ_FIRST = SQ_A1,
+    NB_SQUARE = 64
 };
 
 enum File : int {
-    FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, FILE_NB
+    FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, 
+    NB_FILE
 };
 
 enum Rank : int {
-    RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, RANK_NB
+    RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, 
+    NB_RANK
 };
 
 enum Direction : int {

@@ -18,20 +18,21 @@ struct SearchLimits {
 };
 
 struct SearchData {
-    SearchData(const Position& pos_, const SearchLimits& limits_): position(pos_), limits(limits_), nodes(0) { }
+    SearchData(const Position& pos_, const SearchLimits& limits_): position(pos_), limits(limits_), nbNode(0) { }
 
     Position position;
     SearchLimits limits;
-    size_t nodes;
+    size_t nbNode;
 };
 
 struct SearchEvent {
-    SearchEvent(int depth_, const MoveList &pv_, Score bestScore_): 
-        depth(depth_), pv(pv_), bestScore(bestScore_) { }
+    SearchEvent(int depth_, const MoveList &pv_, Score bestScore_, size_t nbNode_): 
+        depth(depth_), pv(pv_), bestScore(bestScore_), nbNode(nbNode_) { }
 
     int depth;
     const MoveList &pv;
     Score bestScore;
+    size_t nbNode;
 };
 
 class Engine {

@@ -308,7 +308,18 @@ bool Uci::cmdGo(istringstream& is) {
 }
 
 bool Uci::cmdDebug(istringstream& is) {
-    console << engine.position() << endl;
+    string token;
+    is >> token;
+
+    if (token == "moves") {
+        enumerateLegalMoves(engine.position(), [&] (Move m, auto doMove, auto undoMove) {
+            console << Uci::formatMove(m) << endl;
+            return true;
+        });
+    } else {
+        console << engine.position() << endl;
+    }
+    
     return true;
 }
 
@@ -347,7 +358,7 @@ void UciEngine::onSearchProgress(const SearchEvent &event) {
         << " seldepth " << event.depth 
         << " multipv " << 1
         << " score " << Uci::formatScore(event.bestScore)
-        << " nodes " << 0
+        << " nodes " << event.nbNode
         << " nps " << 0
         << " time " << 0
         << " hashfull " << 0

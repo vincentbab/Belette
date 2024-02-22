@@ -20,6 +20,7 @@ struct State {
 
     Piece capture;
 
+    uint64_t hash;
     Bitboard checkedSquares;
     Bitboard checkers;
     Bitboard checkMask;
@@ -57,6 +58,7 @@ public:
     inline bool isEmpty(Square sq) const { return getPieceAt(sq) == NO_PIECE; }
     inline bool isEmpty(Bitboard b) const { return !(b & getPiecesBB()); }
     inline bool canCastle(CastlingRight cr) const { return state->castlingRights & cr; }
+    inline CastlingRight getCastlingRights() const { return state->castlingRights; }
     
     /*inline Bitboard getPiecesBB() const { return typeBB[ALL_PIECES]; }
     inline Bitboard getPiecesBB(Side side) const { return sideBB[side]; }
@@ -74,6 +76,8 @@ public:
     inline Square getKingSquare(Side side) const { return Square(bitscan(piecesBB[side == WHITE ? W_KING : B_KING])); }
     //template<Side Me> inline Square getKingSquare() const { return Square(bitscan(piecesBB[Me == WHITE ? W_KING : B_KING])); }
 
+    inline Bitboard getPiecesTypeBB(PieceType pt) const { return getPiecesBB(WHITE, pt) | getPiecesBB(BLACK, pt); }
+
     inline Bitboard nbPieces(Side side) const { return popcount(getPiecesBB(side)); }
     inline Bitboard nbPieces() const { return popcount(getPiecesBB(WHITE) | getPiecesBB(BLACK)); }
     inline Bitboard nbPieces(Side side, PieceType pt) const { return popcount(getPiecesBB(side, pt)); }
@@ -87,9 +91,39 @@ public:
     inline Bitboard checkers() const { return state->checkers; }
     inline bool inCheck() const { return !!state->checkers; }
 
+    inline uint64_t hash() const { return state->hash; }
+    uint64_t computeHash() const;
+
     inline Bitboard checkMask() const { return state->checkMask; }
     inline Bitboard pinDiag() const { return state->pinDiag; }
     inline Bitboard pinOrtho() const { return state->pinOrtho; }
+
+    inline bool isRepetitionDraw() const {
+        return false;
+    }
+
+    inline bool isFiftyMoveDraw() const { return state->fiftyMoveRule > 99; }
+    inline bool isMaterialDraw() const {
+        if ((getPiecesTypeBB(PAWN) | getPiecesTypeBB(ROOK) | getPiecesTypeBB(QUEEN)) != 0)
+            return false;
+
+        // Not accurate for KBxKB which should be insufficient materiel if bishops are opposite colors, 
+        // but it's too expensive to compute ^^
+        if (popcount(getPiecesBB(WHITE)) > 1 && popcount(getPiecesBB(BLACK)) > 1)
+            return false;
+
+        // Not accurate for KBBxK where the bishops are same color, which is extremly rare
+        if (popcount(getPiecesTypeBB(KNIGHT) | getPiecesTypeBB(BISHOP)) > 1)
+            return false;
+
+        if (!getPiecesTypeBB(BISHOP))
+            return false;
+
+        if (popcount(getPiecesTypeBB(KNIGHT)) < 3)
+            return false;
+
+        return true;
+    }
 
     std::string debugHistory();
 

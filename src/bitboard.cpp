@@ -92,7 +92,7 @@ void debug(Bitboard bb)
 
 void init()
 {
-    for(Square s=SQ_A1; s<NB_SQUARE; ++s) {
+    for (Square s=SQ_A1; s<NB_SQUARE; ++s) {
         Bitboard b = bb(s);
 
         PAWN_ATTACK[WHITE][s] = shift<UP_LEFT>(b) | shift<UP_RIGHT>(b);

@@ -48,10 +48,10 @@ void Engine::idSearch(SearchData sd) {
         bestPv = pv;
         bestScore = score;
 
-        onSearchProgress(SearchEvent(depth, pv, bestScore));
+        onSearchProgress(SearchEvent(depth, pv, bestScore, sd.nbNode));
     }
 
-    onSearchFinish(SearchEvent(completedDepth, bestPv, bestScore));
+    onSearchFinish(SearchEvent(completedDepth, bestPv, bestScore, sd.nbNode));
     searching = false;
 }
 
@@ -86,13 +86,13 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
     int nbMove = 0;
     enumerateLegalMoves<Me>(pos, [&](Move move, auto doMove, auto undoMove) -> bool {
         nbMove++;
+        sd.nbNode++;
 
         (pos.*doMove)(move);
         Score score = -pvSearch<~Me>(sd, -beta, -alpha, depth-1, ply+1, childPv);
+        (pos.*undoMove)(move);
 
         if (searchAborted()) return false;
-
-        (pos.*undoMove)(move);
 
         if (score > bestScore) {
             bestScore = score;
@@ -126,6 +126,10 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
     Score bestScore = -SCORE_MATE + ply;
     Position &pos = sd.position;
     
+    if (searchAborted()) {
+        return -SCORE_INFINITE;
+    }
+
     // TODO: check draw with : 50move, 3-fold, insufficient material
 
     Score eval = evaluate<Me>(pos);
@@ -147,10 +151,13 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
     int nbMove = 0;
     enumerateLegalMoves<Me, NON_QUIET_MOVES>(pos, [&](Move move, auto doMove, auto undoMove) -> bool {
         nbMove++;
+        sd.nbNode++;
 
         (pos.*doMove)(move);
         Score score = -qSearch<~Me>(sd, -beta, -alpha, depth-1, ply+1, childPv);
         (pos.*undoMove)(move);
+
+        if (searchAborted()) return false;
 
         if (score > bestScore) {
             bestScore = score;
@@ -167,6 +174,8 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
 
         return true;
     });
+
+    if (searchAborted()) return -SCORE_INFINITE;
 
     return bestScore;
 }
