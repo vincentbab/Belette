@@ -2,22 +2,20 @@
 #include <fstream>
 #include <cassert>
 #include <algorithm>
-#include <chrono>
-#include <format>
+#include <ctime>
+#include <iomanip>
+#include <filesystem>
 #include "uci.h"
 #include "move.h"
 #include "test.h"
 #include "perft.h"
+#include "utils.h"
 
 using namespace std;
 
 namespace BabChess {
 
 static Console console;
-
-Console::Console() {
-    setLogFile("babchess.log");
-}
 
 Console::~Console() {
     if (file != nullptr) delete file;
@@ -26,8 +24,8 @@ Console::~Console() {
 template <class T> Console& Console::log(const T& x, bool isInput) {
     if (file != nullptr) {
         if (buffer.rdbuf()->in_avail() == 0) {
-            auto now = std::chrono::system_clock::now();
-            buffer << "[" << std::format("{0:%F_%T}", now) << "]:" << (isInput ? "<<" : ">>");
+            auto now = time(nullptr);
+            buffer << "[" << std::put_time(std::localtime(&now), "%F %T") << "] " << (isInput ? "<< " : ">> ");
         }
         buffer << x;
 
@@ -62,12 +60,15 @@ istream& Console::getline(string& x) {
 
 void Console::setLogFile(const std::string &filename) {
     if (file != nullptr) delete file;
-    file = new std::ofstream(filename);
+    file = new std::ofstream(filename, std::ios::app);
 }
 
+Uci::Uci(int argc, char* argv[])  {
+    std::filesystem::path path(argv[0]);
+    console.setLogFile(path.stem().string() + ".log");
 
-
-Uci::Uci()  {
+    cout << "BabChess v0.1 by Vincent Bab" << endl;
+    
     options["Debug Log File"] = UciOption(false);
 
     commands["uci"] = &Uci::cmdUci;
@@ -269,35 +270,38 @@ bool Uci::cmdGo(istringstream& is) {
         if (token == "perft") {
             return cmdPerft(is);
         } else if (token == "searchmoves") {
-            // unsupported
+            while (is >> token) {
+                Move m = Uci::parseMove(token);
+                params.searchMoves.push_back(m);
+            }
         } else if (token == "ponder") {
             // unsupported
         } else if (token == "wtime") {
             is >> token;
-            params.timeLeft[WHITE] = stoi(token);
+            params.timeLeft[WHITE] = parseInt(token);
         } else if (token == "btime") {
             is >> token;
-            params.timeLeft[BLACK] = stoi(token);
+            params.timeLeft[BLACK] = parseInt(token);
         } else if (token == "winc") {
             is >> token;
-            params.increment[WHITE] = stoi(token);
+            params.increment[WHITE] = parseInt(token);
         } else if (token == "binc") {
             is >> token;
-            params.increment[BLACK] = stoi(token);
+            params.increment[BLACK] = parseInt(token);
         } else if (token == "movestogo") {
             is >> token;
-            params.movesToGo = stoi(token);
+            params.movesToGo = parseInt(token);
         } else if (token == "depth") {
             is >> token;
-            params.maxDepth = stoi(token);
+            params.maxDepth = parseInt(token);
         } else if (token == "nodes") {
             is >> token;
-            params.maxNodes = stoi(token);
+            params.maxNodes = parseInt(token);
         } else if (token == "mate") {
             // unsupported
         } else if (token == "movetime") {
             is >> token;
-            params.maxTime = stoi(token);
+            params.maxTime = parseInt(token);
         } else if (token == "infinite") {
              
         }
@@ -359,8 +363,8 @@ void UciEngine::onSearchProgress(const SearchEvent &event) {
         << " multipv " << 1
         << " score " << Uci::formatScore(event.bestScore)
         << " nodes " << event.nbNode
-        << " nps " << 0
-        << " time " << 0
+        << " nps " << (int)((float)event.nbNode / std::max<std::common_type_t<int, TimeMs>>(1, event.elapsed) * 1000.0f)
+        << " time " << event.elapsed
         << " hashfull " << 0
         << " tbhits " << 0;
 

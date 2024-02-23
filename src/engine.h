@@ -5,34 +5,65 @@
 #include "position.h"
 #include "evaluate.h"
 #include "move.h"
+#include "utils.h"
 
 namespace BabChess {
 
 struct SearchLimits {
-    int timeLeft[NB_SIDE] = {0};
-    int increment[NB_SIDE] = {0};
+    TimeMs timeLeft[NB_SIDE] = {0};
+    TimeMs increment[NB_SIDE] = {0};
     int movesToGo = 0;
     int maxDepth = 0;
-    int maxNodes = 0;
-    int maxTime = 0;
+    size_t maxNodes = 0;
+    TimeMs maxTime = 0;
+    MoveList searchMoves;
 };
 
 struct SearchData {
-    SearchData(const Position& pos_, const SearchLimits& limits_): position(pos_), limits(limits_), nbNode(0) { }
+    SearchData(const Position& pos_, const SearchLimits& limits_);
+    inline void initAllocatedTime();
+
+    inline TimeMs getElapsed() { return now() - startTime; }
+    
+    inline bool useTournamentTime() { return !!(limits.timeLeft[WHITE] | limits.timeLeft[WHITE]); }
+    inline bool useFixedTime() { return limits.maxTime > 0; }
+    inline bool useTimeLimit() { return useTournamentTime() || useTimeLimit(); }
+    inline bool useNodeCountLimit() { return limits.maxNodes > 0; }
+
+    inline bool shouldStop() {
+        // Check time every 1024 nodes for performance reason
+        if (nbNode % 1024 != 0)  return false;
+        
+        TimeMs elapsed = now() - startTime;
+
+        if (useTournamentTime() && elapsed >= allocatedTime)
+            return true;
+        if (useFixedTime() && (elapsed > limits.maxTime))
+            return true;
+        if (useNodeCountLimit() && nbNode >= limits.maxNodes)
+            return true;
+        
+        return false;
+    }
 
     Position position;
     SearchLimits limits;
     size_t nbNode;
+
+    TimeMs startTime;
+    TimeMs lastCheck;
+    TimeMs allocatedTime;
 };
 
 struct SearchEvent {
-    SearchEvent(int depth_, const MoveList &pv_, Score bestScore_, size_t nbNode_): 
-        depth(depth_), pv(pv_), bestScore(bestScore_), nbNode(nbNode_) { }
+    SearchEvent(int depth_, const MoveList &pv_, Score bestScore_, size_t nbNode_, TimeMs elapsed_): 
+        depth(depth_), pv(pv_), bestScore(bestScore_), nbNode(nbNode_), elapsed(elapsed_) { }
 
     int depth;
     const MoveList &pv;
     Score bestScore;
     size_t nbNode;
+    TimeMs elapsed;
 };
 
 class Engine {
@@ -59,7 +90,7 @@ private:
     inline void idSearch(SearchData sd) { rootPosition.getSideToMove() == WHITE ? idSearch<WHITE>(sd) : idSearch<BLACK>(sd); }
     template<Side Me> void idSearch(SearchData sd);
 
-    template<Side Me> Score pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv);
+    template<Side Me, bool RootNode> Score pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv);
 
     template<Side Me> Score qSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv);
 };

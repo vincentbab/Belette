@@ -15,7 +15,7 @@ typedef std::ostream& (*Manipulator) (std::ostream&);
 // Used to log stdin & stdout to a file for debugging
 class Console {
 public:
-    Console();
+    Console() = default;
     Console(const Console &) = delete;
     ~Console();
     Console &operator=(const Console &) = delete;
@@ -39,7 +39,7 @@ class UciEngine : public Engine {
 
 class Uci {
 public:
-    Uci();
+    Uci(int argc, char* argv[]);
     ~Uci() = default;
     void loop();
 

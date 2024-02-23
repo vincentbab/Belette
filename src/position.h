@@ -82,6 +82,7 @@ public:
     inline Bitboard nbPieces() const { return popcount(getPiecesBB(WHITE) | getPiecesBB(BLACK)); }
     inline Bitboard nbPieces(Side side, PieceType pt) const { return popcount(getPiecesBB(side, pt)); }
     inline Bitboard nbPieces(Side side, PieceType pt1, PieceType pt2) const { return popcount(getPiecesBB(side, pt1, pt2)); }
+    inline Bitboard nbPieceTypes(PieceType pt) const { return popcount(getPiecesBB(WHITE, pt) | getPiecesBB(BLACK, pt)); }
 
     inline Bitboard getEmptyBB() const { return ~getPiecesBB(); }
 
@@ -97,6 +98,8 @@ public:
     inline Bitboard checkMask() const { return state->checkMask; }
     inline Bitboard pinDiag() const { return state->pinDiag; }
     inline Bitboard pinOrtho() const { return state->pinOrtho; }
+
+    inline size_t historySize() const { return state - history; }
 
     inline bool isRepetitionDraw() const {
         return false;

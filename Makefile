@@ -3,12 +3,12 @@ export TARGET_EXEC := babchess
 export BUILD_DIR := ./build
 export SRC_DIR := ./src
 
-CPPFLAGS := -Wall -std=c++20 -fno-exceptions -fno-rtti -mbmi -mbmi2 -mpopcnt -msse2 -msse3 -msse4.1 -mavx2
+CPPFLAGS := -Wall -std=c++20 -fno-rtti -mbmi -mbmi2 -mpopcnt -msse2 -msse3 -msse4.1 -mavx2
 DEBUG_CPPFLAGS := $(CPPFLAGS) -g -O0 -DDEBUG
 RELEASE_CPPFLAGS := $(CPPFLAGS) -O3 -funroll-loops -finline -fomit-frame-pointer -flto -DNDEBUG
 PROFILE_CPPFLAGS := $(CPPFLAGS) -O3 -funroll-loops -finline -fomit-frame-pointer -flto -DNDEBUG -g -DPROFILING
 
-LDFLAGS := -Wall -std=c++20 -fno-exceptions -fno-rtti -mbmi -mbmi2 -mpopcnt -msse2 -msse3 -msse4.1 -mavx2
+LDFLAGS := -Wall -std=c++20 -fno-rtti -mbmi -mbmi2 -mpopcnt -msse2 -msse3 -msse4.1 -mavx2
 DEBUG_LDFLAGS := $(LDFLAGS)
 RELEASE_LDFLAGS := $(LDFLAGS) -flto
 PROFILE_LDFLAGS := $(LDFLAGS) -flto -g

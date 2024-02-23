@@ -280,11 +280,11 @@ constexpr Piece piece(Side side, PieceType p) {
     return Piece((side << 3) + p);
 }
 
-inline PieceType pieceType(Piece p) {
+constexpr PieceType pieceType(Piece p) {
     return PieceType(p & 7);
 }
 
-inline Side side(Piece p) {
+constexpr Side side(Piece p) {
     assert(p != NO_PIECE);
     return Side(p >> 3);
 }
@@ -293,9 +293,9 @@ constexpr Move makeMove(Square from, Square to) {
     return Move((from << 6) + to);
 }
 
-template<MoveType T>
+template<MoveType Type>
 constexpr Move makeMove(Square from, Square to, PieceType pt = KNIGHT) {
-    return Move(T + ((pt - KNIGHT) << 12) + (from << 6) + to);
+    return Move(Type + ((pt - KNIGHT) << 12) + (from << 6) + to);
 }
 
 constexpr Square moveTo(Move m) {

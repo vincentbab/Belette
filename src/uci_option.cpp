@@ -46,7 +46,7 @@ UciOption& UciOption::operator=(const string& newValue)
 {
     if (!isButton() && newValue.empty()) return *this;
     if (isCheck() && newValue != "true" && newValue != "false") return *this;
-    if (isSpin() && stoi(newValue) < min && stoi(newValue) > max) return *this;
+    if (isSpin() && parseInt(newValue) < min && parseInt(newValue) > max) return *this;
     if (isCombo() && this->allowedValues.count(newValue) != 1) return *this;
 
     if (!isButton())

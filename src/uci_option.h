@@ -6,6 +6,7 @@
 #include <set>
 #include <cassert>
 #include <sstream>
+#include "utils.h"
 
 namespace BabChess {
 
@@ -36,7 +37,7 @@ public:
 
     inline operator int() const {
         assert(type == "spin");
-        return stoi(value);
+        return parseInt(value);
     }
     inline operator std::string() const {
         assert(type != "button");
@@ -44,7 +45,7 @@ public:
     }
     inline operator bool() const {
         if (isCheck()) return value == "true";
-        if (isSpin()) return stoi(value) != 0;
+        if (isSpin()) return parseInt(value) != 0;
         
         return !value.empty();
     }

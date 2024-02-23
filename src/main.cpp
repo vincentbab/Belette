@@ -13,8 +13,6 @@ using namespace BabChess;
 
 int main(int argc, char* argv[])
 {
-    cout << "BabChess v0.1 by Vincent Bab" << endl;
-
     BB::init();
     Zobrist::init();
 
@@ -23,7 +21,7 @@ int main(int argc, char* argv[])
     //pos.setFromFEN(STARTPOS_FEN);
     perft(pos, 6);
 #else
-    Uci uci;
+    Uci uci(argc, argv);
     uci.loop();
 #endif
 

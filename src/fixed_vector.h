@@ -4,6 +4,7 @@
 #include <initializer_list>
 #include <cassert>
 #include <cstdint>
+#include <algorithm>
 
 namespace BabChess {
 
@@ -37,6 +38,7 @@ public:
     inline SizeT size() const {return count;}
     inline void resize(SizeT s) {assert(s <= count); count = s;} // only resize to smaller count
     inline bool empty() const {return count==0;}
+    inline bool contains(const T &e) { return std::find(begin(), end(), e) != end(); }
     inline SizeT capacity() const {return N;}
     inline iterator erase (const_iterator _pos) {iterator pos = begin() + (_pos - begin());copy(pos+1, end(), pos);count--;return pos;}
     inline iterator erase (const_iterator _first, const_iterator _last) {iterator first = begin() + (_first - begin());iterator last = begin() + (_last - begin());copy(last, end(), first);this->count -= last-first;return first;}

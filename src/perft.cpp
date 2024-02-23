@@ -1,8 +1,8 @@
 #include <iostream>
-#include <chrono>
 #include "perft.h"
 #include "move.h"
 #include "uci.h"
+#include "utils.h"
 
 using namespace std;
 
@@ -63,16 +63,16 @@ template size_t perft<false>(Position &pos, int depth);
 
 void perft(Position &pos, int depth) {
     std::cout << "perft depth=" << depth << endl;
-    auto begin = std::chrono::steady_clock::now();
+    auto begin = now();
     size_t n = perft<true>(pos, depth);
-    auto end = std::chrono::steady_clock::now();
+    auto end = now();
 
     auto elapsed = end - begin;
     std::cout << endl << "Nodes: " << n << endl;
 	std::cout << "NPS: "
-		<< int(n * 1000000.0 / std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count()) << endl;
+		<< size_t(n * 1000 / elapsed) << endl;
 	std::cout << "Time: "
-		<< std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count() << " us" << endl;
+		<< elapsed << "ms" << endl;
 }
 
 } /* namespace BabChess */
