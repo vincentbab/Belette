@@ -32,7 +32,7 @@ struct SearchData {
 
     inline bool shouldStop() {
         // Check time every 1024 nodes for performance reason
-        if (nbNode % 1024 != 0)  return false;
+        if (nbNodes % 1024 != 0)  return false;
         
         TimeMs elapsed = now() - startTime;
 
@@ -40,7 +40,7 @@ struct SearchData {
             return true;
         if (useFixedTime() && (elapsed > limits.maxTime))
             return true;
-        if (useNodeCountLimit() && nbNode >= limits.maxNodes)
+        if (useNodeCountLimit() && nbNodes >= limits.maxNodes)
             return true;
         
         return false;
@@ -48,7 +48,7 @@ struct SearchData {
 
     Position position;
     SearchLimits limits;
-    size_t nbNode;
+    size_t nbNodes;
 
     TimeMs startTime;
     TimeMs lastCheck;
@@ -57,12 +57,12 @@ struct SearchData {
 
 struct SearchEvent {
     SearchEvent(int depth_, const MoveList &pv_, Score bestScore_, size_t nbNode_, TimeMs elapsed_): 
-        depth(depth_), pv(pv_), bestScore(bestScore_), nbNode(nbNode_), elapsed(elapsed_) { }
+        depth(depth_), pv(pv_), bestScore(bestScore_), nbNodes(nbNode_), elapsed(elapsed_) { }
 
     int depth;
     const MoveList &pv;
     Score bestScore;
-    size_t nbNode;
+    size_t nbNodes;
     TimeMs elapsed;
 };
 

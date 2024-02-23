@@ -9,7 +9,7 @@ using namespace std;
 namespace BabChess {
 
 SearchData::SearchData(const Position& pos_, const SearchLimits& limits_):
-    position(pos_), limits(limits_), nbNode(0)
+    position(pos_), limits(limits_), nbNodes(0)
 {
     startTime = now();
     initAllocatedTime();
@@ -57,16 +57,16 @@ void Engine::idSearch(SearchData sd) {
         bestScore = score;
         completedDepth = depth;
 
-        onSearchProgress(SearchEvent(depth, pv, bestScore, sd.nbNode, sd.getElapsed()));
+        onSearchProgress(SearchEvent(depth, pv, bestScore, sd.nbNodes, sd.getElapsed()));
 
         if (sd.limits.maxDepth > 0 && depth >= sd.limits.maxDepth) break;
     }
 
-    SearchEvent event(depth, bestPv, bestScore, sd.nbNode, sd.getElapsed());
+    SearchEvent event(depth, bestPv, bestScore, sd.nbNodes, sd.getElapsed());
     if (depth != completedDepth)
         onSearchProgress(event);
     onSearchFinish(event);
-    
+
     searching = false;
 }
 
@@ -79,7 +79,7 @@ void updatePv(MoveList &pv, Move move, const MoveList &childPv) {
     }
 }
 
-// Root move search
+// Negamax search
 template<Side Me, bool RootNode>
 Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv) {
     if (depth <= 0) {
@@ -87,40 +87,45 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
     }
 
     // Check if we should stop according to limits
-    if (!RootNode && sd.shouldStop()) {
+    if (!RootNode && sd.shouldStop()) [[unlikely]] {
         stop();
     }
 
     // If search has been aborted (either by the gui or by limits) exit here
-    if (!RootNode && searchAborted()) {
+    if (!RootNode && searchAborted()) [[unlikely]] {
         return -SCORE_INFINITE;
     }
 
     Score bestScore = -SCORE_INFINITE;
     Position &pos = sd.position;
+    bool inCheck = pos.inCheck();
 
     if (pos.isFiftyMoveDraw() || pos.isMaterialDraw() || pos.isRepetitionDraw()) {
         // "Random" between [-2,1], avoid blindness to 3-fold repetitions
-        return 1-(sd.nbNode & 2);
+        return 1-(sd.nbNodes & 2);
+    }
+
+    if (ply >= MAX_PLY) [[unlikely]] {
+        return evaluate<Me>(pos); // TODO: check if we are in check ?
     }
 
     MoveList childPv;
     pv.clear();
 
-    int nbMove = 0;
-    enumerateLegalMoves<Me>(pos, [&](Move move, auto doMove, auto undoMove) -> bool {
+    int nbMoves = 0;
+    bool stopped = !enumerateLegalMoves<Me>(pos, [&](Move move, auto doMove, auto undoMove) -> bool {
         // Honor UCI searchmoves
         if (RootNode && sd.limits.searchMoves.size() > 0 && !sd.limits.searchMoves.contains(move))
-            return true;
+            return true; // continue
 
-        nbMove++;
-        sd.nbNode++;
+        nbMoves++;
+        sd.nbNodes++;
 
         (pos.*doMove)(move);
         Score score = -pvSearch<~Me, false>(sd, -beta, -alpha, depth-1, ply+1, childPv);
         (pos.*undoMove)(move);
 
-        if (searchAborted()) return false;
+        if (searchAborted()) return false; // break
 
         if (score > bestScore) {
             bestScore = score;
@@ -130,19 +135,17 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
                 updatePv(pv, move, childPv);
 
                 if (alpha >= beta) {
-                    return false;
+                    return false; // break
                 }
             }
         }
 
         return true;
-    });
-
-    if (searchAborted()) return -SCORE_INFINITE;
+    }); if (stopped) return bestScore;
 
     // Checkmate / Stalemate detection
-    if (nbMove == 0) {
-        return pos.inCheck() ? -SCORE_MATE + ply : SCORE_DRAW;
+    if (nbMoves == 0) {
+        return inCheck ? -SCORE_MATE + ply : SCORE_DRAW;
     }
 
     return bestScore;
@@ -151,28 +154,35 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
 // Quiescence search
 template<Side Me>
 Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv) {
-    Score bestScore = -SCORE_MATE + ply;
-    Position &pos = sd.position;
-    
     // Check if we should stop according to limits
-    if (sd.shouldStop()) {
+    if (sd.shouldStop()) [[unlikely]] {
         stop();
     }
 
     // If search has been aborted (either by the gui or by limits) exit here
-    if (searchAborted()) {
+    if (searchAborted()) [[unlikely]] {
         return -SCORE_INFINITE;
     }
 
+    // Default bestScore for mate detection
+    Score bestScore = -SCORE_MATE + ply;
+    Position &pos = sd.position;
+
     if (pos.isFiftyMoveDraw() || pos.isMaterialDraw() || pos.isRepetitionDraw()) {
         // "Random" between [-2,1], avoid blindness to 3-fold repetitions
-        return 1-(sd.nbNode & 2);
+        return 1-(sd.nbNodes & 2);
     }
 
-    Score eval = evaluate<Me>(pos);
+    if (ply >= MAX_PLY) [[unlikely]] {
+        return evaluate<Me>(pos); // TODO: check if we are in check ?
+    }
+
+    bool inCheck = pos.inCheck();
 
     // Standing Pat
-    if (!pos.inCheck()) {
+    if (!inCheck) {
+        Score eval = evaluate<Me>(pos);
+
         if (eval >= beta)
             return eval;
 
@@ -185,16 +195,16 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
     MoveList childPv;
     pv.clear();
 
-    int nbMove = 0;
-    enumerateLegalMoves<Me, NON_QUIET_MOVES>(pos, [&](Move move, auto doMove, auto undoMove) -> bool {
-        nbMove++;
-        sd.nbNode++;
+    int nbMoves = 0;
+    bool stopped = !enumerateLegalMoves<Me, NON_QUIET_MOVES>(pos, [&](Move move, auto doMove, auto undoMove) -> bool {
+        nbMoves++;
+        sd.nbNodes++;
 
         (pos.*doMove)(move);
         Score score = -qSearch<~Me>(sd, -beta, -alpha, depth-1, ply+1, childPv);
         (pos.*undoMove)(move);
 
-        if (searchAborted()) return false;
+        if (searchAborted()) return false; // break
 
         if (score > bestScore) {
             bestScore = score;
@@ -204,15 +214,13 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
                 updatePv(pv, move, childPv);
 
                 if (alpha >= beta) {
-                    return false;
+                    return false; // break
                 }
             }
         }
 
         return true;
-    });
-
-    if (searchAborted()) return -SCORE_INFINITE;
+    }); if (stopped) return bestScore;
 
     return bestScore;
 }

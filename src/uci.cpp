@@ -362,8 +362,8 @@ void UciEngine::onSearchProgress(const SearchEvent &event) {
         << " seldepth " << event.depth 
         << " multipv " << 1
         << " score " << Uci::formatScore(event.bestScore)
-        << " nodes " << event.nbNode
-        << " nps " << (int)((float)event.nbNode / std::max<std::common_type_t<int, TimeMs>>(1, event.elapsed) * 1000.0f)
+        << " nodes " << event.nbNodes
+        << " nps " << (int)((float)event.nbNodes / std::max<std::common_type_t<int, TimeMs>>(1, event.elapsed) * 1000.0f)
         << " time " << event.elapsed
         << " hashfull " << 0
         << " tbhits " << 0;

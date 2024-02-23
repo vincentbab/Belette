@@ -101,7 +101,25 @@ public:
 
     inline size_t historySize() const { return state - history; }
 
+    // Check if a position occurs 3 times in the game history
     inline bool isRepetitionDraw() const {
+        if (getFiftyMoveRule() < 4)
+            return false;
+
+        int reps = 0;
+        //State *start = std::max(history + 2, state - getFiftyMoveRule());
+        const State *historyStart = history+2;
+        const State *fiftyMoveStart = state - getFiftyMoveRule();
+        const State *start = fiftyMoveStart > historyStart ? fiftyMoveStart : historyStart;
+
+        for (State *st = state - 2; st >= start; st -= 2) {
+            assert(st >= history && st <= state);
+
+            if (st->hash == state->hash && ++reps == 2) {
+                return true;
+            }
+        }
+
         return false;
     }
 
