@@ -65,9 +65,9 @@ void Console::setLogFile(const std::string &filename) {
 
 Uci::Uci(int argc, char* argv[])  {
     std::filesystem::path path(argv[0]);
-    console.setLogFile(path.stem().string() + ".log");
+    //console.setLogFile(path.stem().string() + ".log");
 
-    cout << "BabChess v0.1 by Vincent Bab" << endl;
+    cout << "BabChess v1.0.0 by Vincent Bab" << endl;
     
     options["Debug Log File"] = UciOption(false);
 

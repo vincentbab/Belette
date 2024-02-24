@@ -5,7 +5,6 @@ namespace BabChess::Test {
 
 void run();
 
-}
-
+} /* namespace BabChess */
 
 #endif /* TEST_H_INCLUDED */
