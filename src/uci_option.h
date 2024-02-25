@@ -6,28 +6,22 @@
 #include <set>
 #include <cassert>
 #include <sstream>
+#include <functional>
 #include "utils.h"
 
 namespace BabChess {
 
 class UciOption {
-    typedef void (*OnUpdate)(const UciOption&);
-    typedef std::set<std::string> OptionValues;
-
-    std::string type; // button, check, string, spin, combo
-    std::string defaultValue;
-    std::string value;
-    int min;
-    int max;
-    std::set<std::string> allowedValues;
-    OnUpdate onUpdate;
-
 public:
+    using OnUpdate = std::function<void(const UciOption&)>;
+    using OptionValues = std::set<std::string>;
+
     UciOption(OnUpdate = nullptr); // button
-    explicit UciOption(bool _defaultValue, OnUpdate = nullptr); // check
-    explicit UciOption(std::string _defaultValue, OnUpdate = nullptr); // string
-    explicit UciOption(int _defaultValue, int _min, int _max, OnUpdate = nullptr); // spin
-    explicit UciOption(std::string _defaultValue, const OptionValues &_allowedValues, OnUpdate = nullptr); // combo
+    explicit UciOption(bool defaultValue_, OnUpdate = nullptr); // check
+    explicit UciOption(const std::string &defaultValue_, OnUpdate = nullptr); // string
+    explicit UciOption(const char *defaultValue_, OnUpdate = nullptr); // string
+    explicit UciOption(int defaultValue_, int min_, int max_, OnUpdate = nullptr); // spin
+    explicit UciOption(const std::string &defaultValue_, const OptionValues &allowedValues_, OnUpdate = nullptr); // combo
 
     inline bool isButton() const { return type == "button"; }
     inline bool isCheck() const { return type == "check"; }
@@ -51,8 +45,16 @@ public:
     }
 
     UciOption& operator=(const std::string& v);
-
     friend std::ostream &operator<<(std::ostream &, UciOption const &);
+
+private:
+    std::string type; // button, check, string, spin, combo
+    std::string defaultValue;
+    std::string value;
+    int min;
+    int max;
+    std::set<std::string> allowedValues;
+    OnUpdate onUpdate;
 };
 
 } /* namespace BabChess */

@@ -8,6 +8,8 @@
 #include "uci_option.h"
 #include "engine.h"
 
+#define VERSION "1.0.0"
+
 namespace BabChess {
 
 typedef std::ostream& (*Manipulator) (std::ostream&);

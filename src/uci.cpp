@@ -64,12 +64,9 @@ void Console::setLogFile(const std::string &filename) {
 }
 
 Uci::Uci(int argc, char* argv[])  {
-    std::filesystem::path path(argv[0]);
-    //console.setLogFile(path.stem().string() + ".log");
-
-    cout << "BabChess v1.0.0 by Vincent Bab" << endl;
+    cout << "BabChess " << VERSION << " by Vincent Bab" << endl;
     
-    options["Debug Log File"] = UciOption(false);
+    options["Debug Log File"] = UciOption("", [&] (const UciOption &opt) { console.setLogFile(opt); });
 
     commands["uci"] = &Uci::cmdUci;
     commands["isready"] = &Uci::cmdIsReady;
@@ -187,7 +184,7 @@ void Uci::loop() {
 }
 
 bool Uci::cmdUci(istringstream &is) {
-    console << "id name BabChess engine v0.1" << endl;
+    console << "id name BabChess " << VERSION << endl;
     console << "id author Vincent Bab" << endl;
 
     console << endl;

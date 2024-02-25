@@ -4,21 +4,22 @@ using namespace std;
 
 namespace BabChess {
 
-UciOption::UciOption(OnUpdate _onUpdate) : type("button"), onUpdate(_onUpdate) { }
+UciOption::UciOption(OnUpdate onUpdate_) : type("button"), onUpdate(onUpdate_) { }
 
-UciOption::UciOption(bool _defaultValue, OnUpdate _onUpdate) : type("check"), onUpdate(_onUpdate)
+UciOption::UciOption(bool defaultValue_, OnUpdate onUpdate_) : type("check"), onUpdate(onUpdate_)
 { 
-    defaultValue = value = (_defaultValue ? "true" : "false");
+    defaultValue = value = (defaultValue_ ? "true" : "false");
 }
 
-UciOption::UciOption(std::string _defaultValue, OnUpdate _onUpdate) : type("string"), defaultValue(_defaultValue), value(_defaultValue), onUpdate(_onUpdate) { }
+UciOption::UciOption(const std::string &defaultValue_, OnUpdate onUpdate_) : type("string"), defaultValue(defaultValue_), value(defaultValue_), onUpdate(onUpdate_) { }
+UciOption::UciOption(const char *defaultValue_, OnUpdate onUpdate_) : type("string"), defaultValue(defaultValue_), value(defaultValue_), onUpdate(onUpdate_) { }
 
-UciOption::UciOption(int _defaultValue, int _min, int _max, OnUpdate _onUpdate) : type("spin"), min(_min), max(_max), onUpdate(_onUpdate)
+UciOption::UciOption(int defaultValue_, int min_, int max_, OnUpdate onUpdate_) : type("spin"), min(min_), max(max_), onUpdate(onUpdate_)
 { 
-    defaultValue = value = _defaultValue;
+    defaultValue = value = defaultValue_;
 }
 
-UciOption::UciOption(std::string _defaultValue, const OptionValues &_allowedValues, OnUpdate _onUpdate) : defaultValue(_defaultValue), value(_defaultValue), allowedValues(_allowedValues), onUpdate(_onUpdate)
+UciOption::UciOption(const std::string &defaultValue_, const OptionValues &allowedValues_, OnUpdate onUpdate_) : defaultValue(defaultValue_), value(defaultValue_), allowedValues(allowedValues_), onUpdate(onUpdate_)
 {
     assert(allowedValues.count(value) == 1);
 }
