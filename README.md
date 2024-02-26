@@ -6,6 +6,10 @@ For now it only supports CPUs with AVX2 and BMI2 instructions. Support for other
 
 See [Release page](https://github.com/vincentbab/babchess-engine/releases) for precompiled binaries
 
+You can play against the engine on lichess: https://lichess.org/@/BabChess-Engine
+<br>
+The Bot is hosted on a machine with a Core i7 4785T. It will accept challenges up to 15min+10s, rated and casual.
+
 ## Compiling
 
 Tested on Windows and Linux with GCC >= 12. Might also work with CLang
