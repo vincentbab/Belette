@@ -67,6 +67,9 @@ Uci::Uci(int argc, char* argv[])  {
     cout << "BabChess " << VERSION << " by Vincent Bab" << endl;
     
     options["Debug Log File"] = UciOption("", [&] (const UciOption &opt) { console.setLogFile(opt); });
+    options["Hash"] = UciOption(16, 1, 1048576, [&] (const UciOption &opt) { 
+        engine.getTT().resize(int64_t(opt)*1024*1024);
+    });
 
     commands["uci"] = &Uci::cmdUci;
     commands["isready"] = &Uci::cmdIsReady;
@@ -205,7 +208,7 @@ bool Uci::cmdIsReady(istringstream& is) {
 }
 
 bool Uci::cmdUciNewGame(istringstream& is) {
-    engine.clearTT();
+    engine.getTT().clear();
     return true;
 }
 

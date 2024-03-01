@@ -29,9 +29,9 @@ public:
     inline bool isSpin() const { return type == "spin"; }
     inline bool isCombo() const { return type == "combo"; }
 
-    inline operator int() const {
+    inline operator int64_t() const {
         assert(type == "spin");
-        return parseInt(value);
+        return parseInt64(value);
     }
     inline operator std::string() const {
         assert(type != "button");

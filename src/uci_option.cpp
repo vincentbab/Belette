@@ -16,7 +16,7 @@ UciOption::UciOption(const char *defaultValue_, OnUpdate onUpdate_) : type("stri
 
 UciOption::UciOption(int defaultValue_, int min_, int max_, OnUpdate onUpdate_) : type("spin"), min(min_), max(max_), onUpdate(onUpdate_)
 { 
-    defaultValue = value = defaultValue_;
+    defaultValue = value = std::to_string(defaultValue_);
 }
 
 UciOption::UciOption(const std::string &defaultValue_, const OptionValues &allowedValues_, OnUpdate onUpdate_) : defaultValue(defaultValue_), value(defaultValue_), allowedValues(allowedValues_), onUpdate(onUpdate_)

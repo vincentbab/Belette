@@ -24,6 +24,18 @@ inline int parseInt(const std::string &str) {
     return 0;
 }
 
+inline int64_t parseInt64(const std::string &str) {
+    try {
+        return std::stoll(str);
+    } catch (const std::invalid_argument & e) {
+        return 0;
+    } catch (const std::out_of_range & e) {
+        return 0;
+    }
+
+    return 0;
+}
+
 } /* namespace BabChess */
 
 #endif /* TIMEMANAGER_H_INCLUDED */

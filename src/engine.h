@@ -80,7 +80,7 @@ public:
     void stop();
     inline bool isSearching() { return searching; }
     inline bool searchAborted() { return aborted; }
-    inline void clearTT() { tt.clear(); }
+    inline TranspositionTable& getTT() { return tt; }
 
     virtual void onSearchProgress(const SearchEvent &event) = 0;
     virtual void onSearchFinish(const SearchEvent &event) = 0;
