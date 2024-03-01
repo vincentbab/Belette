@@ -8,6 +8,7 @@
 #include "bitboard.h"
 
 #define STARTPOS_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+#define KIWIPETE_FEN "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
 
 namespace BabChess {
 
@@ -90,6 +91,7 @@ public:
 
     inline Bitboard checkedSquares() const { return state->checkedSquares; }
     inline Bitboard checkers() const { return state->checkers; }
+    inline Bitboard nbCheckers() const { return popcount(state->checkers); }
     inline bool inCheck() const { return !!state->checkers; }
 
     inline uint64_t hash() const { return state->hash; }
@@ -146,10 +148,18 @@ public:
         return true;
     }
 
+    template<Side Me> bool isLegal(Move m) const;
+    inline bool isLegal(Move m) const { return getSideToMove() == WHITE ? isLegal<WHITE>(m) : isLegal<BLACK>(m); };
+
+    inline bool isCapture(Move m) const { return getPieceAt(moveTo(m)) != NO_PIECE || moveType(m) == EN_PASSANT; }
+
+
     std::string debugHistory();
 
 private:
     void setCastlingRights(CastlingRight cr);
+
+    template<Side Me, bool InCheck, bool IsCapture> bool isLegal(Move m, Piece pc) const;
 
     template<Side Me> inline void setPiece(Square sq, Piece p);
     template<Side Me> inline void unsetPiece(Square sq);

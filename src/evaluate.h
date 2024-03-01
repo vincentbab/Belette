@@ -1,39 +1,12 @@
 #ifndef EVALUATE_H_INCLUDED
 #define EVALUATE_H_INCLUDED
 
+#include "chess.h"
 #include "position.h"
 
 namespace BabChess {
 
-using Score = int;
-
-enum Phase {
-    MG,
-    EG,
-    NB_PHASE = 2
-};
-
-constexpr Score makeScore(int mg, int eg) {
-  return Score((int)((unsigned int)eg << 16) + mg);
-}
-
-auto constexpr S = makeScore;
-
-inline int egScore(Score s) {
-    union { uint16_t u; int16_t s; } eg = { uint16_t(unsigned(s + 0x8000) >> 16) };
-    return int(eg.s);
-}
-
-inline int mgScore(Score s) {
-    union { uint16_t u; int16_t s; } mg = { uint16_t(unsigned(s)) };
-    return int(mg.s);
-}
-
-constexpr Score SCORE_INFINITE = 32500;
-constexpr Score SCORE_MATE = 32000;
-constexpr Score SCORE_DRAW = 0;
-
-constexpr Score PieceValue[NB_PIECE_TYPE][NB_PHASE] = {
+constexpr Score PieceTypeValue[NB_PIECE_TYPE][NB_PHASE] = {
     {},
     {85, 100}, // Pawn
     {335, 285}, // Knight

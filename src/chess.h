@@ -11,8 +11,15 @@ constexpr int MAX_PLY = 256;
 constexpr int MAX_HISTORY   = 2048;
 constexpr int MAX_MOVE   = 220;
 
-typedef uint64_t Bitboard;
+using Bitboard = uint64_t;
 constexpr Bitboard EmptyBB = 0ULL;
+
+using Score = int;
+constexpr Score SCORE_NONE = 32600;
+constexpr Score SCORE_INFINITE = 32500;
+constexpr Score SCORE_MATE = 32000;
+constexpr Score SCORE_MATE_MAX_PLY = 32000 - MAX_PLY;
+constexpr Score SCORE_DRAW = 0;
 
 // bit  0- 5: destination square (from 0 to 63)
 // bit  6-11: origin square (from 0 to 63)
@@ -117,6 +124,12 @@ enum CastlingRight {
     ANY_CASTLING   = WHITE_CASTLING | BLACK_CASTLING,
 
     NB_CASTLING_RIGHT = 16
+};
+
+enum Phase {
+    MG,
+    EG,
+    NB_PHASE = 2
 };
 
 constexpr Bitboard FileABB = 0x0101010101010101ULL;

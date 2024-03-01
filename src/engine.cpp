@@ -3,10 +3,20 @@
 #include "engine.h"
 #include "move.h"
 #include "evaluate.h"
+#include "movepicker.h"
 
 using namespace std;
 
 namespace BabChess {
+
+void updatePv(MoveList &pv, Move move, const MoveList &childPv) {
+    pv.clear();
+    pv.push_back(move);
+    // TODO: replace with pv.insert()
+    for(auto m : childPv) {
+        pv.push_back(m);
+    }
+}
 
 SearchData::SearchData(const Position& pos_, const SearchLimits& limits_):
     position(pos_), limits(limits_), nbNodes(0)
@@ -29,6 +39,8 @@ void Engine::search(const SearchLimits &limits) {
     SearchData data(position(), limits);
     aborted = false;
     searching = true;
+    
+    tt.clear(); // TODO: update age instead of clear
 
     std::thread th([this, data] { this->idSearch(data); });
     th.detach();
@@ -45,7 +57,7 @@ void Engine::idSearch(SearchData sd) {
     Score bestScore;
     int depth, completedDepth = 0;
 
-    for (depth = 1; depth <= MAX_PLY; depth++) {
+    for (depth = 1; depth < MAX_PLY; depth++) {
         Score alpha = -SCORE_INFINITE, beta = SCORE_INFINITE;
         MoveList pv;
 
@@ -57,26 +69,17 @@ void Engine::idSearch(SearchData sd) {
         bestScore = score;
         completedDepth = depth;
 
-        onSearchProgress(SearchEvent(depth, pv, bestScore, sd.nbNodes, sd.getElapsed()));
+        onSearchProgress(SearchEvent(depth, pv, bestScore, sd.nbNodes, sd.getElapsed(), tt.usage()));
 
         if (sd.limits.maxDepth > 0 && depth >= sd.limits.maxDepth) break;
     }
 
-    SearchEvent event(depth, bestPv, bestScore, sd.nbNodes, sd.getElapsed());
+    SearchEvent event(depth, bestPv, bestScore, sd.nbNodes, sd.getElapsed(), tt.usage());
     if (depth != completedDepth)
         onSearchProgress(event);
     onSearchFinish(event);
 
     searching = false;
-}
-
-void updatePv(MoveList &pv, Move move, const MoveList &childPv) {
-    pv.clear();
-    pv.push_back(move);
-    // TODO: replace with pv.insert()
-    for(auto m : childPv) {
-        pv.push_back(m);
-    }
 }
 
 // Negamax search
@@ -85,6 +88,8 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
     if (depth <= 0) {
         return qSearch<Me>(sd, alpha, beta, depth, ply, pv);
     }
+
+    pv.clear();
 
     // Check if we should stop according to limits
     if (!RootNode && sd.shouldStop()) [[unlikely]] {
@@ -96,7 +101,9 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
         return -SCORE_INFINITE;
     }
 
+    Score alphaOrig = alpha;
     Score bestScore = -SCORE_INFINITE;
+    Move bestMove = MOVE_NONE;
     Position &pos = sd.position;
     bool inCheck = pos.inCheck();
 
@@ -110,10 +117,13 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
     }
 
     MoveList childPv;
-    pv.clear();
+
+    auto&&[ttHit, tte] = tt.get(pos.hash());
 
     int nbMoves = 0;
-    bool stopped = !enumerateLegalMoves<Me>(pos, [&](Move move, auto doMove, auto undoMove) -> bool {
+    MovePicker<MAIN, Me> mp(pos, ttHit ? tte->move() : MOVE_NONE);
+    
+    mp.enumerate([&](Move move, auto doMove, auto undoMove) -> bool {
         // Honor UCI searchmoves
         if (RootNode && sd.limits.searchMoves.size() > 0 && !sd.limits.searchMoves.contains(move))
             return true; // continue
@@ -129,9 +139,10 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
 
         if (score > bestScore) {
             bestScore = score;
-
-            if (score > alpha) {
-                alpha = score;
+            
+            if (bestScore > alpha) {
+                bestMove = move;
+                alpha = bestScore;
                 updatePv(pv, move, childPv);
 
                 if (alpha >= beta) {
@@ -141,12 +152,17 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
         }
 
         return true;
-    }); if (stopped) return bestScore;
+    }); if (searchAborted()) return bestScore;
 
     // Checkmate / Stalemate detection
     if (nbMoves == 0) {
         return inCheck ? -SCORE_MATE + ply : SCORE_DRAW;
     }
+
+    // Update TT
+    Bound ttBound = bestScore >= beta      ? BOUND_LOWER : 
+                    bestScore <= alphaOrig ? BOUND_UPPER : BOUND_EXACT;
+    tt.set(tte, pos.hash(), depth, ply, ttBound, bestMove, SCORE_NONE, bestScore, false);
 
     return bestScore;
 }
@@ -154,6 +170,8 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
 // Quiescence search
 template<Side Me>
 Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv) {
+    pv.clear();
+
     // Check if we should stop according to limits
     if (sd.shouldStop()) [[unlikely]] {
         stop();
@@ -164,8 +182,9 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
         return -SCORE_INFINITE;
     }
 
-    // Default bestScore for mate detection
+    // Default bestScore for mate detection, if InCheck and there is no move this score will be returned
     Score bestScore = -SCORE_MATE + ply;
+    Move bestMove = MOVE_NONE;
     Position &pos = sd.position;
 
     if (pos.isFiftyMoveDraw() || pos.isMaterialDraw() || pos.isRepetitionDraw()) {
@@ -193,10 +212,14 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
     }
     
     MoveList childPv;
-    pv.clear();
+
+    auto&&[ttHit, tte] = tt.get(pos.hash());
 
     int nbMoves = 0;
-    bool stopped = !enumerateLegalMoves<Me, NON_QUIET_MOVES>(pos, [&](Move move, auto doMove, auto undoMove) -> bool {
+    MovePicker<QUIESCENCE, Me> mp(pos, ttHit ? tte->move() : MOVE_NONE);
+
+    //bool stopped = !enumerateLegalMoves<Me, NON_QUIET_MOVES>(pos, [&](Move move, auto doMove, auto undoMove) -> bool {
+    mp.enumerate([&](Move move, auto doMove, auto undoMove) -> bool {
         nbMoves++;
         sd.nbNodes++;
 
@@ -208,9 +231,11 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
 
         if (score > bestScore) {
             bestScore = score;
+            
 
-            if (score > alpha) {
-                alpha = score;
+            if (bestScore > alpha) {
+                bestMove = move;
+                alpha = bestScore;
                 updatePv(pv, move, childPv);
 
                 if (alpha >= beta) {
@@ -220,7 +245,10 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
         }
 
         return true;
-    }); if (stopped) return bestScore;
+    }); if (searchAborted()) return bestScore;
+
+    Bound ttBound = bestScore >= beta ? BOUND_LOWER : BOUND_UPPER;
+    tt.set(tte, pos.hash(), inCheck, ply, ttBound, bestMove, SCORE_NONE, bestScore, false);
 
     return bestScore;
 }

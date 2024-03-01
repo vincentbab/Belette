@@ -105,7 +105,7 @@ std::string Uci::formatSquare(Square sq) {
 std::string Uci::formatScore(Score score) {
     stringstream ss;
 
-    if (abs(score) >= (SCORE_MATE - MAX_PLY)) {
+    if (abs(score) >= SCORE_MATE_MAX_PLY) {
         ss << "mate " << (score > 0 ? SCORE_MATE - score + 1 : -SCORE_MATE - score) / 2;
     } else {
         ss << "cp " << score;
@@ -205,6 +205,7 @@ bool Uci::cmdIsReady(istringstream& is) {
 }
 
 bool Uci::cmdUciNewGame(istringstream& is) {
+    engine.clearTT();
     return true;
 }
 
@@ -236,6 +237,8 @@ bool Uci::cmdPosition(istringstream& is) {
 
     if (token == "startpos") {
         fen = STARTPOS_FEN;
+    } else if (token == "kiwipete") {
+        fen = KIWIPETE_FEN;
     } else if (token == "fen") {
         while (is >> token && token != "moves") {
             fen += token + " ";
@@ -246,6 +249,7 @@ bool Uci::cmdPosition(istringstream& is) {
 
     if (!engine.position().setFromFEN(fen)) {
         console << "Invalid FEN position" << endl;
+        return true;
     }
 
     while (is >> token) {
@@ -362,7 +366,7 @@ void UciEngine::onSearchProgress(const SearchEvent &event) {
         << " nodes " << event.nbNodes
         << " nps " << (int)((float)event.nbNodes / std::max<std::common_type_t<int, TimeMs>>(1, event.elapsed) * 1000.0f)
         << " time " << event.elapsed
-        << " hashfull " << 0
+        << " hashfull " << event.hashfull
         << " tbhits " << 0;
 
     if (!event.pv.empty()) 

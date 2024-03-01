@@ -182,7 +182,6 @@ bool Position::setFromFEN(const std::string &fen) {
 }
 
 std::ostream& operator<<(std::ostream& os, const Position& pos) {
-
     os << std::endl << " +---+---+---+---+---+---+---+---+" << std::endl;
 
     for (int r = RANK_8; r >= RANK_1; --r) {
@@ -257,16 +256,80 @@ inline bool Position::givesCheck(Move m) {
     );
 }
 
-inline bool Position::isLegal(Move m) {
-    switch(moveType(m)) {
+
+*/
+
+template<Side Me>
+bool Position::isLegal(Move move) const {
+    Square from = moveFrom(move);
+    Square to = moveTo(move);
+    if (from == to) return false;
+
+    Piece pc = getPieceAt(from);
+    if (pc == NO_PIECE || side(pc) != Me) return false;
+
+    Piece capture = getPieceAt(to);
+    if (pieceType(capture) == KING) return false;
+    if (capture != NO_PIECE && side(capture) != ~Me) return false;
+
+    if (checkers()) {
+        return capture != NO_PIECE ? isLegal<Me, true, true>(move, pc) : isLegal<Me, true, false>(move, pc);
+    }
+
+    return capture != NO_PIECE ? isLegal<Me, false, true>(move, pc) : isLegal<Me, false, false>(move, pc);
+}
+
+template bool Position::isLegal<WHITE>(Move move) const;
+template bool Position::isLegal<BLACK>(Move move) const;
+
+template<Side Me, bool InCheck, bool IsCapture>
+inline bool Position::isLegal(Move move, Piece pc) const {
+    constexpr MoveGenType Type = IsCapture ? NON_QUIET_MOVES : QUIET_MOVES;
+
+    Square from = moveFrom(move);
+    Bitboard src = bb(from);
+    PieceType pt = pieceType(pc);
+
+    switch(moveType(move)) {
         case NORMAL:
+            if (nbCheckers() > 1 && pt != KING) return false; // Only king move when in double check
+
+            switch(pt) {
+                case PAWN:
+                    return !enumeratePawnNormalMoves<Me, InCheck, Type>(*this, src, [move](Move m, auto doMove, auto undoMove){ return move != m; });
+                case KNIGHT:
+                    return !enumerateKnightMoves<Me, InCheck, Type>(*this, src, [move](Move m, auto doMove, auto undoMove){ return move != m; });
+                case BISHOP:
+                    return !enumerateBishopSliderMoves<Me, InCheck, Type>(*this, src, [move](Move m, auto doMove, auto undoMove){ return move != m; });
+                case ROOK:
+                    return !enumerateRookSliderMoves<Me, InCheck, Type>(*this, src, [move](Move m, auto doMove, auto undoMove){ return move != m; });
+                case QUEEN:
+                    return !enumerateQueenSliderMoves<Me, InCheck, Type>(*this, src, [move](Move m, auto doMove, auto undoMove){ return move != m; });
+                case KING:
+                    return !enumerateKingMoves<Me, Type>(*this, from, [move](Move m, auto doMove, auto undoMove){ return move != m; });
+                default:
+                    return false;
+            }
         case CASTLING:
+            if (nbCheckers() > 0) return false; // No castling when in check
+
+            return !enumerateCastlingMoves<Me>(*this, [move](Move m, auto doMove, auto undoMove) { return move != m; });
         case PROMOTION:
+            if (nbCheckers() > 1) return false; // Only king move when in double check
+            if (pt != PAWN) return false;
+            
+            return !enumeratePawnPromotionMoves<Me, InCheck, Type>(*this, src, [move](Move m, auto doMove, auto undoMove) { return (move != m); });
         case EN_PASSANT:
+            if (nbCheckers() > 1) return false; // Only king move when in double check
+            if (getEpSquare() == SQ_NONE || getEpSquare() != moveTo(move)) return false;
+            if (pt != PAWN) return false;
+
+            return !enumeratePawnEnpassantMoves<Me, InCheck>(*this, src, [move](Move m, auto doMove, auto undoMove){ return move != m; });
         break;
     }
+
+    return false;
 }
-*/
 
 template<Side Me>
 inline void Position::setPiece(Square sq, Piece p) {

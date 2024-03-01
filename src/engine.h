@@ -5,6 +5,7 @@
 #include "position.h"
 #include "evaluate.h"
 #include "move.h"
+#include "tt.h"
 #include "utils.h"
 
 namespace BabChess {
@@ -56,14 +57,15 @@ struct SearchData {
 };
 
 struct SearchEvent {
-    SearchEvent(int depth_, const MoveList &pv_, Score bestScore_, size_t nbNode_, TimeMs elapsed_): 
-        depth(depth_), pv(pv_), bestScore(bestScore_), nbNodes(nbNode_), elapsed(elapsed_) { }
+    SearchEvent(int depth_, const MoveList &pv_, Score bestScore_, size_t nbNode_, TimeMs elapsed_, size_t hashfull_): 
+        depth(depth_), pv(pv_), bestScore(bestScore_), nbNodes(nbNode_), elapsed(elapsed_), hashfull(hashfull_) { }
 
     int depth;
     const MoveList &pv;
     Score bestScore;
     size_t nbNodes;
     TimeMs elapsed;
+    size_t hashfull;
 };
 
 class Engine {
@@ -78,12 +80,14 @@ public:
     void stop();
     inline bool isSearching() { return searching; }
     inline bool searchAborted() { return aborted; }
+    inline void clearTT() { tt.clear(); }
 
     virtual void onSearchProgress(const SearchEvent &event) = 0;
     virtual void onSearchFinish(const SearchEvent &event) = 0;
 
 private:
     Position rootPosition;
+    TranspositionTable tt;
     bool aborted = true;
     bool searching = false;
 
