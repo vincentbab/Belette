@@ -31,11 +31,13 @@ public:
     MovePicker(const Position &pos_, Move ttMove_): pos(pos_), ttMove(ttMove_) { }
 
     template<typename Handler>
-    bool enumerate(const Handler &handler);
+    inline bool enumerate(const Handler &handler);
 
 private:
     const Position &pos;
     Move ttMove;
+
+    Bitboard threatenedPieces;
 
     inline int16_t scoreEvasion(Move m);
     inline int16_t scoreTactical(Move m);
@@ -46,10 +48,6 @@ private:
 template<MovePickerType Type, Side Me>
 template<typename Handler>
 bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
-    //constexpr MoveGenType MGType = Type == MAIN ? ALL_MOVES : NON_QUIET_MOVES;
-
-    //ttMove = MOVE_NONE;
-
     // TTMove
     if (pos.isLegal<Me>(ttMove)) {
         MoveList legals; enumerateLegalMoves<Me>(pos, [&](Move m, auto doMove, auto undoMove) { legals.push_back(m); return true; });
@@ -101,16 +99,25 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
         if (!handler(m.move, m.doMove, m.undoMove)) return false;
     }
 
+    // Stop here for Quiescence
     if constexpr(Type == QUIESCENCE) return true;
 
     // Quiets
     moves.clear();
+    threatenedPieces = (pos.getPiecesBB(Me, KING, BISHOP) & pos.threatenedByPawns())
+                     | (pos.getPiecesBB(Me, ROOK) & pos.threatenedByMinors())
+                     | (pos.getPiecesBB(Me, QUEEN) & pos.threatenedByRooks());
+
     enumerateLegalMoves<Me, QUIET_MOVES>(pos, [&](Move m, auto doMove, auto undoMove) {
         if (m == ttMove) return true; // continue;
 
         ScoredMove smove = {doMove, undoMove, m, scoreQuiet(m)};
         moves.push_back(smove);
         return true;
+    });
+
+    std::sort(moves.begin(), moves.end(), [](const ScoredMove &a, const ScoredMove &b) {
+        return a.score > b.score;
     });
 
     for (auto m : moves) {
@@ -131,12 +138,22 @@ int16_t MovePicker<Type, Me>::scoreEvasion(Move m) {
 
 template<MovePickerType Type, Side Me>
 int16_t MovePicker<Type, Me>::scoreTactical(Move m) {
-    return PieceTypeValue[pieceType(pos.getPieceAt(moveTo(m)))][MG];
+    return PieceTypeValue[pieceType(pos.getPieceAt(moveTo(m)))][MG] - (int)pieceType(pos.getPieceAt(moveFrom(m))); // MVV-LVA
 }
 
 template<MovePickerType Type, Side Me>
 int16_t MovePicker<Type, Me>::scoreQuiet(Move m) {
-    return 0;
+    Square from = moveFrom(m);
+    PieceType pt = pieceType(pos.getPieceAt(from));
+    
+    if (threatenedPieces & from) {
+        return pt == QUEEN && !(moveTo(m) & pos.threatenedByRooks()) ? 1000
+             : pt == ROOK && !(moveTo(m) & pos.threatenedByMinors()) ? 500
+             : (pt == BISHOP || pt == KNIGHT) && !(moveTo(m) & pos.threatenedByPawns()) ? 300
+             : -(int)pt;
+    }
+
+    return -(int)pt;
 }
 
 } /* namespace BabChess */

@@ -12,10 +12,7 @@ namespace BabChess {
 void updatePv(MoveList &pv, Move move, const MoveList &childPv) {
     pv.clear();
     pv.push_back(move);
-    // TODO: replace with pv.insert()
-    for(auto m : childPv) {
-        pv.push_back(m);
-    }
+    pv.insert(childPv.begin(), childPv.end());
 }
 
 SearchData::SearchData(const Position& pos_, const SearchLimits& limits_):
@@ -109,7 +106,8 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
 
     if (pos.isFiftyMoveDraw() || pos.isMaterialDraw() || pos.isRepetitionDraw()) {
         // "Random" between [-2,1], avoid blindness to 3-fold repetitions
-        return 1-(sd.nbNodes & 2);
+        //return 1-(sd.nbNodes & 2);
+        return SCORE_DRAW;
     }
 
     if (ply >= MAX_PLY) [[unlikely]] {
@@ -189,7 +187,8 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
 
     if (pos.isFiftyMoveDraw() || pos.isMaterialDraw() || pos.isRepetitionDraw()) {
         // "Random" between [-2,1], avoid blindness to 3-fold repetitions
-        return 1-(sd.nbNodes & 2);
+        //return 1-(sd.nbNodes & 2);
+        return SCORE_DRAW;
     }
 
     if (ply >= MAX_PLY) [[unlikely]] {
@@ -218,7 +217,6 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
     int nbMoves = 0;
     MovePicker<QUIESCENCE, Me> mp(pos, ttHit ? tte->move() : MOVE_NONE);
 
-    //bool stopped = !enumerateLegalMoves<Me, NON_QUIET_MOVES>(pos, [&](Move move, auto doMove, auto undoMove) -> bool {
     mp.enumerate([&](Move move, auto doMove, auto undoMove) -> bool {
         nbMoves++;
         sd.nbNodes++;

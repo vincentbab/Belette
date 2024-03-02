@@ -23,6 +23,10 @@ struct State {
 
     uint64_t hash;
     Bitboard checkedSquares;
+    Bitboard threatenedByPawns;
+    Bitboard threatenedByKnights;
+    Bitboard threatenedByMinors;
+    Bitboard threatenedByRooks;
     Bitboard checkers;
     Bitboard checkMask;
     Bitboard pinDiag;
@@ -90,6 +94,10 @@ public:
     inline Bitboard getAttackers(Side side, Square sq, Bitboard occupied) const;
 
     inline Bitboard checkedSquares() const { return state->checkedSquares; }
+    inline Bitboard threatenedByPawns() const { return state->threatenedByPawns; }
+    inline Bitboard threatenedByKnights() const { return state->threatenedByKnights; }
+    inline Bitboard threatenedByMinors() const { return state->threatenedByMinors; }
+    inline Bitboard threatenedByRooks() const { return state->threatenedByRooks; }
     inline Bitboard checkers() const { return state->checkers; }
     inline Bitboard nbCheckers() const { return popcount(state->checkers); }
     inline bool inCheck() const { return !!state->checkers; }

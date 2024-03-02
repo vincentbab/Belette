@@ -317,7 +317,7 @@ inline bool Position::isLegal(Move move, Piece pc) const {
         case PROMOTION:
             if (nbCheckers() > 1) return false; // Only king move when in double check
             if (pt != PAWN) return false;
-            
+
             return !enumeratePawnPromotionMoves<Me, InCheck, Type>(*this, src, [move](Move m, auto doMove, auto undoMove) { return (move != m); });
         case EN_PASSANT:
             if (nbCheckers() > 1) return false; // Only king move when in double check
@@ -574,28 +574,45 @@ template<Side Me>
 inline void Position::updateCheckedSquares() {
     constexpr Side Opp = ~Me;
 
-    //pawns
-    Bitboard csq = pawnAttacks<Opp>(getPiecesBB(Opp, PAWN)) | (attacks<KING>(getKingSquare(Opp)));
+    // Pawns
+    Bitboard threatened = pawnAttacks<Opp>(getPiecesBB(Opp, PAWN));
+    state->threatenedByPawns = threatened;
 
-    //knight
+    // Knights
     Bitboard enemies = getPiecesBB(Opp, KNIGHT);
     bitscan_loop(enemies) {
-        csq |= attacks<KNIGHT>(bitscan(enemies), getPiecesBB());
+        threatened |= attacks<KNIGHT>(bitscan(enemies), getPiecesBB());
     }
+    state->threatenedByKnights = threatened;
 
-    //bishop & queen
-    enemies = getPiecesBB(Opp, BISHOP, QUEEN);
+    Bitboard occupied = getPiecesBB() ^ getPiecesBB(Me, KING); // x-ray through king
+
+    // Bishops
+    enemies = getPiecesBB(Opp, BISHOP);
     bitscan_loop(enemies) {
-        csq |= attacks<BISHOP>(bitscan(enemies), getPiecesBB() ^ getPiecesBB(Me, KING));
+        threatened |= attacks<BISHOP>(bitscan(enemies), occupied); // x-ray through king
     }
+    state->threatenedByMinors = threatened;
 
-    //rook & queen
-    enemies = getPiecesBB(Opp, ROOK, QUEEN);
+    // Rooks
+    enemies = getPiecesBB(Opp, ROOK);
     bitscan_loop(enemies) {
-        csq |= attacks<ROOK>(bitscan(enemies), getPiecesBB() ^ getPiecesBB(Me, KING));
+        threatened |= attacks<ROOK>(bitscan(enemies), occupied);
+    }
+    state->threatenedByRooks = threatened;
+
+    // Queens
+    enemies = getPiecesBB(Opp, QUEEN);
+    bitscan_loop(enemies) {
+        Square enemy = bitscan(enemies);
+        threatened |= attacks<BISHOP>(enemy, occupied);
+        threatened |= attacks<ROOK>(enemy, occupied);
     }
 
-    state->checkedSquares = csq;
+    // King
+    threatened |= attacks<KING>(getKingSquare(Opp));
+
+    state->checkedSquares = threatened;
 }
 
 template<Side Me, bool InCheck>

@@ -33,6 +33,7 @@ public:
     inline const T &back() const {assert(count > 0); return elements[count-1]; }
     inline T &back() {assert(count > 0); return elements[count-1]; }
     inline void push_back(T e) {assert(count < N); elements[count++] = e;}
+    inline void push_back(T&& e) {assert(count < N); elements[count++] = e;}
     inline void pop_back() {assert(count > 0); count--;}
     inline void clear() {count = 0;}
     inline SizeT size() const {return count;}
@@ -40,9 +41,24 @@ public:
     inline bool empty() const {return count==0;}
     inline bool contains(const T &e) { return std::find(begin(), end(), e) != end(); }
     inline SizeT capacity() const {return N;}
-    inline iterator erase (const_iterator _pos) {iterator pos = begin() + (_pos - begin());copy(pos+1, end(), pos);count--;return pos;}
-    inline iterator erase (const_iterator _first, const_iterator _last) {iterator first = begin() + (_first - begin());iterator last = begin() + (_last - begin());copy(last, end(), first);this->count -= last-first;return first;}
-    // TODO: insert()
+    inline iterator erase (const_iterator _pos) {
+        iterator pos = begin() + (_pos - begin());
+        std::copy(pos+1, end(), pos);count--;
+        return pos;
+    }
+    inline iterator erase (const_iterator _first, const_iterator _last) {
+        iterator first = begin() + (_first - begin());
+        iterator last = begin() + (_last - begin());
+        std::copy(last, end(), first);
+        this->count -= last-first;return first;
+    }
+    
+    inline iterator insert(const_iterator _first, const_iterator _last) {
+        assert(std::distance(_first, _last) + count <= N);
+        std::copy(_first, _last, end());
+        count += std::distance(_first, _last);
+        return end();
+    }
 };
 
 } /* namespace BabChess */
