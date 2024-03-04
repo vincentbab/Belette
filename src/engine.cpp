@@ -58,7 +58,7 @@ void Engine::idSearch(SearchData sd) {
         Score alpha = -SCORE_INFINITE, beta = SCORE_INFINITE;
         MoveList pv;
 
-        Score score = pvSearch<Me, true>(sd, alpha, beta, depth, 0, pv);
+        Score score = pvSearch<Me, NodeType::Root>(sd, alpha, beta, depth, 0, pv);
 
         if (depth > 1 && searchAborted()) break;
 
@@ -80,8 +80,11 @@ void Engine::idSearch(SearchData sd) {
 }
 
 // Negamax search
-template<Side Me, bool RootNode>
+template<Side Me, NodeType NT>
 Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv) {
+    constexpr bool PvNode = (NT != NodeType::NonPV);
+    constexpr bool RootNode = (NT == NodeType::Root);
+
     if (depth <= 0) {
         return qSearch<Me>(sd, alpha, beta, depth, ply, pv);
     }
@@ -130,7 +133,17 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
         sd.nbNodes++;
 
         (pos.*doMove)(move);
-        Score score = -pvSearch<~Me, false>(sd, -beta, -alpha, depth-1, ply+1, childPv);
+
+        Score score;
+
+        if (!PvNode || nbMoves > 1) {
+            score = -pvSearch<~Me, NodeType::NonPV>(sd, -alpha-1, -alpha, depth-1, ply+1, childPv);
+        }
+
+        if (PvNode && (nbMoves == 1 || (score > alpha && (RootNode || score < beta)))) {
+            score = -pvSearch<~Me, NodeType::PV>(sd, -beta, -alpha, depth-1, ply+1, childPv);
+        }
+
         (pos.*undoMove)(move);
 
         if (searchAborted()) return false; // break

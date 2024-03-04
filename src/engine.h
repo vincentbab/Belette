@@ -68,6 +68,12 @@ struct SearchEvent {
     size_t hashfull;
 };
 
+enum class NodeType {
+    Root,
+    PV,
+    NonPV
+};
+
 class Engine {
 public:
     Engine() = default;
@@ -94,7 +100,7 @@ private:
     inline void idSearch(SearchData sd) { rootPosition.getSideToMove() == WHITE ? idSearch<WHITE>(sd) : idSearch<BLACK>(sd); }
     template<Side Me> void idSearch(SearchData sd);
 
-    template<Side Me, bool RootNode> Score pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv);
+    template<Side Me, NodeType NT> Score pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv);
 
     template<Side Me> Score qSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv);
 };
