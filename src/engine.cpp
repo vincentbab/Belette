@@ -114,14 +114,19 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
     }
 
     if (ply >= MAX_PLY) [[unlikely]] {
-        return evaluate<Me>(pos); // TODO: check if we are in check ?
+        return evaluate<Me>(pos); // TODO: verify if we are in check ?
     }
 
-    MoveList childPv;
-
+    // Query Transposition Table
     auto&&[ttHit, tte] = tt.get(pos.hash());
 
+    // Transposition Table cutoff
+    if (!PvNode && ttHit && tte->depth() >= depth && tte->score(ply) != SCORE_NONE && tte->boundMatch(alpha, beta, ply)) {
+        return tte->score(ply);
+    }
+
     int nbMoves = 0;
+    MoveList childPv;
     MovePicker<MAIN, Me> mp(pos, ttHit ? tte->move() : MOVE_NONE);
     
     mp.enumerate([&](Move move, auto doMove, auto undoMove) -> bool {
@@ -172,7 +177,7 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
 
     // Update TT
     Bound ttBound = bestScore >= beta      ? BOUND_LOWER : 
-                    bestScore <= alphaOrig ? BOUND_UPPER : BOUND_EXACT;
+                    !PvNode || bestScore <= alphaOrig ? BOUND_UPPER : BOUND_EXACT;
     tt.set(tte, pos.hash(), depth, ply, ttBound, bestMove, SCORE_NONE, bestScore, false);
 
     return bestScore;
@@ -195,6 +200,7 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
 
     // Default bestScore for mate detection, if InCheck and there is no move this score will be returned
     Score bestScore = -SCORE_MATE + ply;
+    Score alphaOrig = alpha;
     Move bestMove = MOVE_NONE;
     Position &pos = sd.position;
 
@@ -208,26 +214,41 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
         return evaluate<Me>(pos); // TODO: check if we are in check ?
     }
 
+    // TODO: Transposition Table cutoff seems slower in qsearch for now. Maybe more useful with more advanced eval...
+    // Query Transposition Table
+    /*auto&&[ttHit, tte] = tt.get(pos.hash());
+
+    // Transposition Table cutoff
+    if (ttHit && tte->depth() >= depth && tte->score(ply) != SCORE_NONE && tte->boundMatch(alpha, beta, ply)) {
+        return tte->score(ply);
+    }*/
+
     bool inCheck = pos.inCheck();
+    Score eval = SCORE_NONE;
 
     // Standing Pat
     if (!inCheck) {
-        Score eval = evaluate<Me>(pos);
+        //eval = (ttHit && tte->eval() != SCORE_NONE) ? tte->eval() : evaluate<Me>(pos);
+        eval = evaluate<Me>(pos);
 
-        if (eval >= beta)
+        if (eval >= beta) {
+            /*if (!ttHit) {
+                tt.set(tte, pos.hash(), 0, ply, BOUND_NONE, MOVE_NONE, eval, SCORE_NONE, false);
+            }*/
             return eval;
+        }
 
         if (eval > alpha)
             alpha = eval;
 
         bestScore = eval;
     }
-    
-    MoveList childPv;
 
+    // Query Transposition Table
     auto&&[ttHit, tte] = tt.get(pos.hash());
 
     int nbMoves = 0;
+    MoveList childPv;
     MovePicker<QUIESCENCE, Me> mp(pos, ttHit ? tte->move() : MOVE_NONE);
 
     mp.enumerate([&](Move move, auto doMove, auto undoMove) -> bool {
@@ -243,7 +264,6 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
         if (score > bestScore) {
             bestScore = score;
             
-
             if (bestScore > alpha) {
                 bestMove = move;
                 alpha = bestScore;
@@ -258,8 +278,10 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
         return true;
     }); if (searchAborted()) return bestScore;
 
-    Bound ttBound = bestScore >= beta ? BOUND_LOWER : BOUND_UPPER;
-    tt.set(tte, pos.hash(), inCheck, ply, ttBound, bestMove, SCORE_NONE, bestScore, false);
+    // Update TT - If we are in check use depth=1
+    Bound ttBound = bestScore >= beta      ? BOUND_LOWER : 
+                    bestScore <= alphaOrig ? BOUND_UPPER : BOUND_EXACT;
+    tt.set(tte, pos.hash(), inCheck, ply, ttBound, bestMove, eval, bestScore, false);
 
     return bestScore;
 }

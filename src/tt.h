@@ -34,19 +34,25 @@ public:
     inline Score score(int ply) const {
         return score16 == SCORE_NONE ? SCORE_NONE
              : score16 >=  SCORE_MATE_MAX_PLY ? score16 - ply
-             : score16 <= -SCORE_MATE_MAX_PLY ? score16 + ply : ply;
+             : score16 <= -SCORE_MATE_MAX_PLY ? score16 + ply : score16;
     }
     inline void score(Score s, int ply) {
-        score16 = (int16_t) s ==  SCORE_NONE   ? SCORE_NONE
-                          : s >=  SCORE_MATE_MAX_PLY ? s + ply
-                          : s <= -SCORE_MATE_MAX_PLY ? s - ply : s;
+        score16 = (int16_t) (s ==  SCORE_NONE   ? SCORE_NONE
+                           : s >=  SCORE_MATE_MAX_PLY ? s + ply
+                           : s <= -SCORE_MATE_MAX_PLY ? s - ply : s);
     }
     inline int depth() const { return depth8; }
     inline uint8_t age() const { return ageFlags8 & AGE_MASK; }
-    inline bool isPv() const { return bool(ageFlags8 & BOUND_MASK); }
-    inline Bound bound() const { return Bound(ageFlags8 & PV_MASK); }
+    inline bool isPv() const { return bool(ageFlags8 & PV_MASK); }
+    inline Bound bound() const { return Bound(ageFlags8 & BOUND_MASK); }
+    inline bool isExactBound() const { return bound() & BOUND_EXACT; }
+    inline bool isLowerBound() const { return bound() & BOUND_LOWER; }
+    inline bool isUpperBound() const { return bound() & BOUND_UPPER; }
+    inline bool boundMatch(Score alpha, Score beta, int ply) const {
+        return isExactBound() || (isLowerBound() && score(ply) >= beta) || (isUpperBound() && score(ply) <= alpha); 
+    }
 
-    inline void refresh(uint8_t age) { ageFlags8 = age | (ageFlags8 & PV_MASK & BOUND_MASK); }
+    inline void refresh(uint8_t age) { ageFlags8 = age | (ageFlags8 & (PV_MASK | BOUND_MASK)); }
 
     inline isBetterToKeep(const TTEntry &other, uint8_t age) const {
         return this->depth8 - ((AGE_CYCLE + age - this->ageFlags8) & AGE_MASK)

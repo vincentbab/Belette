@@ -83,7 +83,7 @@ void TranspositionTable::set(TTEntry *tte, uint64_t hash, int depth, int ply, Bo
     if (bound == BOUND_EXACT || !tte->hashEquals(hash) || (depth + 2*pv + 2 > tte->depth())) {
         tte->hash16 = (uint16_t)hash;
         tte->eval16 = (int16_t)eval;
-        tte->score16 = (int16_t)score;
+        tte->score(score, ply);
         tte->depth8 = (uint8_t)depth;
         tte->ageFlags8 = (uint8_t)(age | (pv << 2) | bound);
     }
