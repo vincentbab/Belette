@@ -102,7 +102,7 @@ private:
 
     template<Side Me, NodeType NT> Score pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv);
 
-    template<Side Me> Score qSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv);
+    template<Side Me, NodeType NT> Score qSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv);
 };
 
 } /* namespace BabChess */

@@ -86,10 +86,12 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
     constexpr bool RootNode = (NT == NodeType::Root);
 
     if (depth <= 0) {
-        return qSearch<Me>(sd, alpha, beta, depth, ply, pv);
+        constexpr NodeType QNodeType = PvNode ? NodeType::PV : NodeType::NonPV;
+        return qSearch<Me, QNodeType>(sd, alpha, beta, depth, ply, pv);
     }
 
-    pv.clear();
+    if (PvNode)
+        pv.clear();
 
     // Check if we should stop according to limits
     if (!RootNode && sd.shouldStop()) [[unlikely]] {
@@ -159,7 +161,8 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
             if (bestScore > alpha) {
                 bestMove = move;
                 alpha = bestScore;
-                updatePv(pv, move, childPv);
+                if (PvNode)
+                    updatePv(pv, move, childPv);
 
                 if (alpha >= beta) {
                     return false; // break
@@ -184,9 +187,11 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
 }
 
 // Quiescence search
-template<Side Me>
+template<Side Me, NodeType NT>
 Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv) {
-    pv.clear();
+    constexpr bool PvNode = (NT != NodeType::NonPV);
+    if (PvNode)
+        pv.clear();
 
     // Check if we should stop according to limits
     if (sd.shouldStop()) [[unlikely]] {
@@ -256,7 +261,7 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
         sd.nbNodes++;
 
         (pos.*doMove)(move);
-        Score score = -qSearch<~Me>(sd, -beta, -alpha, depth-1, ply+1, childPv);
+        Score score = -qSearch<~Me, NT>(sd, -beta, -alpha, depth-1, ply+1, childPv);
         (pos.*undoMove)(move);
 
         if (searchAborted()) return false; // break
@@ -267,7 +272,8 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
             if (bestScore > alpha) {
                 bestMove = move;
                 alpha = bestScore;
-                updatePv(pv, move, childPv);
+                if (PvNode)
+                    updatePv(pv, move, childPv);
 
                 if (alpha >= beta) {
                     return false; // break
