@@ -7,7 +7,7 @@
 
 namespace BabChess {
 
-constexpr int MAX_PLY = 256;
+constexpr int MAX_PLY = 255;
 constexpr int MAX_HISTORY   = 2048;
 constexpr int MAX_MOVE   = 220;
 

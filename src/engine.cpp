@@ -119,6 +119,14 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
         return -SCORE_INFINITE;
     }
 
+    // Mate distance pruning
+    if (!RootNode) {
+        alpha = std::max(alpha, -SCORE_MATE + ply);
+        beta  = std::min(beta, SCORE_MATE - ply - 1);
+
+        if (alpha >= beta) return alpha;
+    }
+
     Score alphaOrig = alpha;
     Score bestScore = -SCORE_INFINITE;
     Move bestMove = MOVE_NONE;
