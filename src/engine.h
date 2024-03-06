@@ -21,10 +21,14 @@ struct SearchLimits {
 };
 
 struct SearchData {
-    SearchData(const Position& pos_, const SearchLimits& limits_);
-    inline void initAllocatedTime();
+    SearchData(const Position& pos_, const SearchLimits& limits_): position(pos_), limits(limits_), nbNodes(0) { start(); }
+    void initAllocatedTime();
 
     inline TimeMs getElapsed() { return now() - startTime; }
+    inline void start() {
+        startTime = now();
+        initAllocatedTime();
+    }
     
     inline bool useTournamentTime() { return !!(limits.timeLeft[WHITE] | limits.timeLeft[WHITE]); }
     inline bool useFixedTime() { return limits.maxTime > 0; }

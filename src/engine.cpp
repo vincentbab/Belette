@@ -15,14 +15,7 @@ void updatePv(MoveList &pv, Move move, const MoveList &childPv) {
     pv.insert(childPv.begin(), childPv.end());
 }
 
-SearchData::SearchData(const Position& pos_, const SearchLimits& limits_):
-    position(pos_), limits(limits_), nbNodes(0)
-{
-    startTime = now();
-    initAllocatedTime();
-}
-
-inline void SearchData::initAllocatedTime() {
+void SearchData::initAllocatedTime() {
     int64_t moves = limits.movesToGo > 0 ? limits.movesToGo : 40;
     Side stm = position.getSideToMove();
 
@@ -56,9 +49,32 @@ void Engine::idSearch(SearchData sd) {
 
     for (depth = 1; depth < MAX_PLY; depth++) {
         Score alpha = -SCORE_INFINITE, beta = SCORE_INFINITE;
+        Score delta = 16;
+        Score score;
         MoveList pv;
 
-        Score score = pvSearch<Me, NodeType::Root>(sd, alpha, beta, depth, 0, pv);
+        // Aspiration window
+        if (depth > 4) {
+            alpha = std::max(-SCORE_INFINITE, bestScore - delta);
+            beta  = std::min( SCORE_INFINITE, bestScore + delta);
+        }
+
+        while (true) {
+            score = pvSearch<Me, NodeType::Root>(sd, alpha, beta, depth, 0, pv);
+
+            if (searchAborted()) break;
+
+            if (score <= alpha) { // Fail low
+                beta = (alpha + beta) / 2;
+                alpha = std::max(score - delta, -SCORE_INFINITE);
+            } else if (score >= beta) { // Fail high
+                beta = std::min(score + delta, SCORE_INFINITE);
+            } else {
+                break;
+            }
+
+            delta += delta / 2;
+        }
 
         if (depth > 1 && searchAborted()) break;
 
