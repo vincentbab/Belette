@@ -135,8 +135,8 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
 
     if (pos.isFiftyMoveDraw() || pos.isMaterialDraw() || pos.isRepetitionDraw()) {
         // "Random" between [-2,1], avoid blindness to 3-fold repetitions
-        //return 1-(sd.nbNodes & 2);
-        return SCORE_DRAW;
+        return 1-(sd.nbNodes & 2);
+        //return SCORE_DRAW;
     }
 
     if (ply >= MAX_PLY) [[unlikely]] {
@@ -235,8 +235,8 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
 
     if (pos.isFiftyMoveDraw() || pos.isMaterialDraw() || pos.isRepetitionDraw()) {
         // "Random" between [-2,1], avoid blindness to 3-fold repetitions
-        //return 1-(sd.nbNodes & 2);
-        return SCORE_DRAW;
+        return 1-(sd.nbNodes & 2);
+        //return SCORE_DRAW;
     }
 
     if (ply >= MAX_PLY) [[unlikely]] {
