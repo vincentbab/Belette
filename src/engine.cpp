@@ -45,30 +45,37 @@ template<Side Me>
 void Engine::idSearch(SearchData sd) {
     MoveList bestPv;
     Score bestScore;
-    int depth, completedDepth = 0;
+    int depth, searchDepth, completedDepth = 0;
 
     for (depth = 1; depth < MAX_PLY; depth++) {
         Score alpha = -SCORE_INFINITE, beta = SCORE_INFINITE;
-        Score delta = 16;
-        Score score;
+        Score delta, score;
         MoveList pv;
+
+        searchDepth = depth;
 
         // Aspiration window
         if (depth > 4) {
+            delta = 16 + std::abs(bestScore)/100;
             alpha = std::max(-SCORE_INFINITE, bestScore - delta);
             beta  = std::min( SCORE_INFINITE, bestScore + delta);
         }
 
         while (true) {
-            score = pvSearch<Me, NodeType::Root>(sd, alpha, beta, depth, 0, pv);
+            //std::cout << "  depth=" << searchDepth << " d=" << delta << std::endl;
+            score = pvSearch<Me, NodeType::Root>(sd, alpha, beta, searchDepth, 0, pv);
 
             if (searchAborted()) break;
 
             if (score <= alpha) { // Fail low
+                //std::cout << "  Fail Low: a=" << alpha << " b=" << beta << " score=" << score << std::endl;
                 beta = (alpha + beta) / 2;
                 alpha = std::max(score - delta, -SCORE_INFINITE);
+                searchDepth = depth;
             } else if (score >= beta) { // Fail high
+                //std::cout << "  Fail High: a=" << alpha << " b=" << beta << " score=" << score << std::endl;
                 beta = std::min(score + delta, SCORE_INFINITE);
+                searchDepth = std::max(std::max(1, depth - 4), searchDepth - 1);
             } else {
                 break;
             }
@@ -205,7 +212,8 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
     // Update TT
     Bound ttBound = bestScore >= beta      ? BOUND_LOWER : 
                     !PvNode || bestScore <= alphaOrig ? BOUND_UPPER : BOUND_EXACT;
-    tt.set(tte, pos.hash(), depth, ply, ttBound, bestMove, SCORE_NONE, bestScore, false);
+    bool ttPv = PvNode || tte->isPv();
+    tt.set(tte, pos.hash(), depth, ply, ttBound, bestMove, SCORE_NONE, bestScore, ttPv);
 
     return bestScore;
 }
@@ -311,7 +319,8 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
     // Update TT - If we are in check use depth=1
     Bound ttBound = bestScore >= beta      ? BOUND_LOWER : 
                     bestScore <= alphaOrig ? BOUND_UPPER : BOUND_EXACT;
-    tt.set(tte, pos.hash(), inCheck, ply, ttBound, bestMove, eval, bestScore, false);
+    bool ttPv = PvNode || tte->isPv();
+    tt.set(tte, pos.hash(), inCheck, ply, ttBound, bestMove, eval, bestScore, ttPv);
 
     return bestScore;
 }
