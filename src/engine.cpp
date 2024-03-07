@@ -71,11 +71,11 @@ void Engine::idSearch(SearchData sd) {
                 //std::cout << "  Fail Low: a=" << alpha << " b=" << beta << " score=" << score << std::endl;
                 beta = (alpha + beta) / 2;
                 alpha = std::max(score - delta, -SCORE_INFINITE);
-                searchDepth = depth;
+                //searchDepth = depth;
             } else if (score >= beta) { // Fail high
                 //std::cout << "  Fail High: a=" << alpha << " b=" << beta << " score=" << score << std::endl;
                 beta = std::min(score + delta, SCORE_INFINITE);
-                searchDepth = std::max(std::max(1, depth - 4), searchDepth - 1);
+                //searchDepth = std::max(std::max(1, depth - 4), searchDepth - 1);
             } else {
                 break;
             }
@@ -283,6 +283,10 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
 
     // Query Transposition Table
     auto&&[ttHit, tte] = tt.get(pos.hash());
+
+    if (ttHit && tte->depth() >= depth && tte->score(ply) != SCORE_NONE && tte->boundMatch(alpha, beta, ply)) {
+        return tte->score(ply);
+    }
 
     int nbMoves = 0;
     MoveList childPv;
