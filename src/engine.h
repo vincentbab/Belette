@@ -21,7 +21,11 @@ struct SearchLimits {
 };
 
 struct SearchData {
-    SearchData(const Position& pos_, const SearchLimits& limits_): position(pos_), limits(limits_), nbNodes(0) { start(); }
+    SearchData(const Position& pos_, const SearchLimits& limits_)
+    : position(pos_), limits(limits_), nbNodes(0), killerMoves{MOVE_NONE}, counterMoves{MOVE_NONE} { 
+        start();
+    }
+
     void initAllocatedTime();
 
     inline TimeMs getElapsed() { return now() - startTime; }
@@ -51,6 +55,30 @@ struct SearchData {
         return false;
     }
 
+    inline void clearKillers(int ply) {
+        killerMoves[ply][0] = killerMoves[ply][1] = MOVE_NONE;
+    }
+
+    inline void updateKillers(Move move, int ply) {
+        if (killerMoves[ply][0] != move) {
+            killerMoves[ply][1] = killerMoves[ply][0];
+            killerMoves[ply][0] = move;
+        }
+    }
+
+    inline void updateCounter(Move move) {
+        Move prevMove = position.previousMove();
+        if (prevMove != MOVE_NONE)
+            counterMoves[position.getPieceAt(moveTo(prevMove))][moveTo(prevMove)] = move;
+    }
+
+    inline Move getCounter() const {
+        Move prevMove = position.previousMove();
+        if (prevMove == MOVE_NONE) return MOVE_NONE;
+
+        return counterMoves[position.getPieceAt(moveTo(prevMove))][moveTo(prevMove)];
+    }
+
     Position position;
     SearchLimits limits;
     size_t nbNodes;
@@ -58,6 +86,9 @@ struct SearchData {
     TimeMs startTime;
     TimeMs lastCheck;
     TimeMs allocatedTime;
+
+    Move killerMoves[MAX_PLY][2];
+    Move counterMoves[NB_PIECE][NB_SQUARE];
 };
 
 struct SearchEvent {
@@ -101,8 +132,8 @@ private:
     bool aborted = true;
     bool searching = false;
 
-    inline void idSearch(SearchData sd) { rootPosition.getSideToMove() == WHITE ? idSearch<WHITE>(sd) : idSearch<BLACK>(sd); }
-    template<Side Me> void idSearch(SearchData sd);
+    inline void idSearch(SearchData &sd) { rootPosition.getSideToMove() == WHITE ? idSearch<WHITE>(sd) : idSearch<BLACK>(sd); }
+    template<Side Me> void idSearch(SearchData &sd);
 
     template<Side Me, NodeType NT> Score pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv);
 

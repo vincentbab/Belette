@@ -28,7 +28,8 @@ enum MovePickerType {
 template<MovePickerType Type, Side Me>
 class MovePicker {
 public:
-    MovePicker(const Position &pos_, Move ttMove_): pos(pos_), ttMove(ttMove_) { }
+    MovePicker(const Position &pos_, Move ttMove_, Move killer1_ = MOVE_NONE, Move killer2_ = MOVE_NONE, Move counter_ = MOVE_NONE)
+        : pos(pos_), ttMove(ttMove_), refutations{killer1_, killer2_, counter_} { }
 
     template<typename Handler>
     inline bool enumerate(const Handler &handler);
@@ -36,6 +37,7 @@ public:
 private:
     const Position &pos;
     Move ttMove;
+    Move refutations[3];
 
     Bitboard threatenedPieces;
 
@@ -50,10 +52,6 @@ template<typename Handler>
 bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     // TTMove
     if (pos.isLegal<Me>(ttMove)) {
-        MoveList legals; enumerateLegalMoves<Me>(pos, [&](Move m, auto doMove, auto undoMove) { legals.push_back(m); return true; });
-        if (!legals.contains(ttMove))
-            assert(pos.isLegal<Me>(ttMove));
-
         if (!handler(ttMove, &Position::doMove<Me>, &Position::undoMove<Me>)) return false;
     }
     
@@ -102,16 +100,24 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     // Stop here for Quiescence
     if constexpr(Type == QUIESCENCE) return true;
 
+    // Refutations (killers & counter)
+    for (auto m : refutations) {
+        if (pos.isLegal<Me>(m)) {
+            if (!handler(m, &Position::doMove<Me>, &Position::undoMove<Me>)) return false;
+        }
+    }
+
     // Quiets
     moves.clear();
     threatenedPieces = (pos.getPiecesBB(Me, KING, BISHOP) & pos.threatenedByPawns())
                      | (pos.getPiecesBB(Me, ROOK) & pos.threatenedByMinors())
                      | (pos.getPiecesBB(Me, QUEEN) & pos.threatenedByRooks());
 
-    enumerateLegalMoves<Me, QUIET_MOVES>(pos, [&](Move m, auto doMove, auto undoMove) {
-        if (m == ttMove) return true; // continue;
+    enumerateLegalMoves<Me, QUIET_MOVES>(pos, [&](Move move, auto doMove, auto undoMove) {
+        if (move == ttMove) return true; // continue;
+        for (auto m : refutations) if (move == m) return true; // continue;
 
-        ScoredMove smove = {doMove, undoMove, m, scoreQuiet(m)};
+        ScoredMove smove = {doMove, undoMove, move, scoreQuiet(move)};
         moves.push_back(smove);
         return true;
     });

@@ -26,13 +26,15 @@ void SearchData::initAllocatedTime() {
 void Engine::search(const SearchLimits &limits) {
     if (searching) return;
 
-    SearchData data(position(), limits);
+    SearchData *data = new SearchData(position(), limits);
     aborted = false;
     searching = true;
     
     tt.clear(); // TODO: update age instead of clear
 
-    std::thread th([this, data] { this->idSearch(data); });
+    std::thread th([this, data] { 
+        this->idSearch(*data); 
+    });
     th.detach();
 }
 
@@ -42,7 +44,7 @@ void Engine::stop() {
 
 // Iterative deepening loop
 template<Side Me>
-void Engine::idSearch(SearchData sd) {
+void Engine::idSearch(SearchData &sd) {
     MoveList bestPv;
     Score bestScore;
     int depth, searchDepth, completedDepth = 0;
@@ -100,6 +102,8 @@ void Engine::idSearch(SearchData sd) {
     onSearchFinish(event);
 
     searching = false;
+
+    delete &sd;
 }
 
 // Negamax search
@@ -155,9 +159,11 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
         return tte->score(ply);
     }
 
+    sd.clearKillers(ply+1);
+
     int nbMoves = 0;
     MoveList childPv;
-    MovePicker<MAIN, Me> mp(pos, ttHit ? tte->move() : MOVE_NONE);
+    MovePicker<MAIN, Me> mp(pos, ttHit ? tte->move() : MOVE_NONE, sd.killerMoves[ply][0], sd.killerMoves[ply][1]);
     
     mp.enumerate([&](Move move, auto doMove, auto undoMove) -> bool {
         // Honor UCI searchmoves
@@ -196,6 +202,10 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
                     updatePv(pv, move, childPv);
 
                 if (alpha >= beta) {
+                    if (!pos.isTactical(bestMove)) {
+                        sd.updateKillers(bestMove, ply);
+                        sd.updateCounter(bestMove);
+                    }
                     return false; // break
                 }
             }
