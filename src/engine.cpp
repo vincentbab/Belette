@@ -113,9 +113,6 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
         return qSearch<Me, QNodeType>(sd, alpha, beta, depth, ply, pv);
     }
 
-    if (PvNode)
-        pv.clear();
-
     // Check if we should stop according to limits
     if (!RootNode && sd.shouldStop()) [[unlikely]] {
         stop();
@@ -166,6 +163,9 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
         // Honor UCI searchmoves
         if (RootNode && sd.limits.searchMoves.size() > 0 && !sd.limits.searchMoves.contains(move))
             return true; // continue
+
+        if (PvNode)
+            childPv.clear();
 
         nbMoves++;
         sd.nbNodes++;
