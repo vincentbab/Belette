@@ -324,6 +324,19 @@ bool Uci::cmdDebug(istringstream& is) {
             console << Uci::formatMove(m) << endl;
             return true;
         });
+    } else if (token == "see") {
+        is >> token;
+        Move m = Uci::parseMove(token);
+
+        if (m == MOVE_NONE) {
+            console << "Invalid move " << token << endl;
+            return true;
+        }
+
+        is >> token;
+        int threshold = parseInt(token);
+
+        console << Uci::formatMove(m) << "/" << threshold << " => " << (engine.position().see(m, threshold) ? "PASS" : "FAIL") << endl;
     } else {
         console << engine.position() << endl;
     }

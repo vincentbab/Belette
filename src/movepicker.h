@@ -29,7 +29,10 @@ template<MovePickerType Type, Side Me>
 class MovePicker {
 public:
     MovePicker(const Position &pos_, Move ttMove_, Move killer1_ = MOVE_NONE, Move killer2_ = MOVE_NONE, Move counter_ = MOVE_NONE)
-        : pos(pos_), ttMove(ttMove_), refutations{killer1_, killer2_, counter_} { }
+    : pos(pos_), ttMove(ttMove_), refutations{killer1_, killer2_, counter_} 
+    { 
+        assert(killer1_ != killer2_ || killer1_ == MOVE_NONE);
+    }
 
     template<typename Handler>
     inline bool enumerate(const Handler &handler);
@@ -64,7 +67,6 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
 
             ScoredMove smove = {doMove, undoMove, m, scoreEvasion(m)};
             moves.push_back(smove);
-            //return handler(m, doMove, undoMove);
             return true;
         });
 
@@ -83,6 +85,10 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     // Tacticals
     enumerateLegalMoves<Me, NON_QUIET_MOVES>(pos, [&](Move m, auto doMove, auto undoMove) {
         if (m == ttMove) return true; // continue;
+
+        if constexpr(Type == QUIESCENCE) {
+            if (!pos.see(m, 0)) return true; // continue;
+        }
         
         ScoredMove smove = {doMove, undoMove, m, scoreTactical(m)};
         moves.push_back(smove);
@@ -100,11 +106,19 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     // Stop here for Quiescence
     if constexpr(Type == QUIESCENCE) return true;
 
-    // Refutations (killers & counter)
-    for (auto m : refutations) {
-        if (pos.isLegal<Me>(m)) {
-            if (!handler(m, &Position::doMove<Me>, &Position::undoMove<Me>)) return false;
-        }
+    // Killer 1
+    if (refutations[0] != ttMove && pos.isLegal<Me>(refutations[0])) {
+        if (!handler(refutations[0], &Position::doMove<Me>, &Position::undoMove<Me>)) return false;
+    }
+
+    // Killer 2
+    if (refutations[1] != ttMove && pos.isLegal<Me>(refutations[1])) {
+        if (!handler(refutations[1], &Position::doMove<Me>, &Position::undoMove<Me>)) return false;
+    }
+
+    // Counter
+    if (refutations[2] != ttMove && refutations[2] != refutations[0] && refutations[2] != refutations[1] && pos.isLegal<Me>(refutations[2])) {
+        if (!handler(refutations[2], &Position::doMove<Me>, &Position::undoMove<Me>)) return false;
     }
 
     // Quiets
@@ -115,7 +129,7 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
 
     enumerateLegalMoves<Me, QUIET_MOVES>(pos, [&](Move move, auto doMove, auto undoMove) {
         if (move == ttMove) return true; // continue;
-        for (auto m : refutations) if (move == m) return true; // continue;
+        if (refutations[0] == move || refutations[1] == move || refutations[2] == move) return true; // continue
 
         ScoredMove smove = {doMove, undoMove, move, scoreQuiet(move)};
         moves.push_back(smove);
@@ -144,7 +158,7 @@ int16_t MovePicker<Type, Me>::scoreEvasion(Move m) {
 
 template<MovePickerType Type, Side Me>
 int16_t MovePicker<Type, Me>::scoreTactical(Move m) {
-    return PieceTypeValue[pieceType(pos.getPieceAt(moveTo(m)))][MG] - (int)pieceType(pos.getPieceAt(moveFrom(m))); // MVV-LVA
+    return PieceValue<MG>(pos.getPieceAt(moveTo(m))) - (int)pieceType(pos.getPieceAt(moveFrom(m))); // MVV-LVA
 }
 
 template<MovePickerType Type, Side Me>

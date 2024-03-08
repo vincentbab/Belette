@@ -88,6 +88,7 @@ public:
     //template<Side Me> inline Square getKingSquare() const { return Square(bitscan(piecesBB[Me == WHITE ? W_KING : B_KING])); }
 
     inline Bitboard getPiecesTypeBB(PieceType pt) const { return getPiecesBB(WHITE, pt) | getPiecesBB(BLACK, pt); }
+    inline Bitboard getPiecesTypeBB(PieceType pt1, PieceType pt2) const { return getPiecesBB(WHITE, pt1, pt2) | getPiecesBB(BLACK, pt1, pt2); }
 
     inline Bitboard nbPieces(Side side) const { return popcount(getPiecesBB(side)); }
     inline Bitboard nbPieces() const { return popcount(getPiecesBB(WHITE) | getPiecesBB(BLACK)); }
@@ -97,7 +98,7 @@ public:
 
     inline Bitboard getEmptyBB() const { return ~getPiecesBB(); }
 
-    inline Bitboard getAttackers(Side side, Square sq, Bitboard occupied) const;
+    inline Bitboard getAttackers(Square sq, Bitboard occupied) const;
 
     inline Bitboard checkedSquares() const { return state->checkedSquares; }
     inline Bitboard threatenedByPawns() const { return state->threatenedByPawns; }
@@ -125,13 +126,13 @@ public:
 
     template<Side Me> bool isLegal(Move m) const;
     inline bool isLegal(Move m) const { return getSideToMove() == WHITE ? isLegal<WHITE>(m) : isLegal<BLACK>(m); };
-
     inline bool isCapture(Move m) const { return getPieceAt(moveTo(m)) != NO_PIECE || moveType(m) == EN_PASSANT; }
-
     inline bool isTactical(Move m) const { return isCapture(m) || (moveType(m) == PROMOTION && movePromotionType(m) == QUEEN); }
 
+    inline Move currentMove() const { return state->move; }
     inline Move previousMove() const { return state > history ? state->prev().move : MOVE_NONE; }
-
+    
+    bool see(Move m, int threshold) const ;
 
     std::string debugHistory();
 
@@ -164,24 +165,15 @@ private:
 
 std::ostream& operator<<(std::ostream& os, const Position& pos);
 
-inline Bitboard Position::getAttackers(Side side, Square sq, Bitboard occupied) const {
-    return ((pawnAttacks(~side, sq) & getPiecesBB(side, PAWN))
-        | (attacks<KNIGHT>(sq) & getPiecesBB(side, KNIGHT))
-        | (attacks<BISHOP>(sq, occupied) & getPiecesBB(side, BISHOP, QUEEN))
-        | (attacks<ROOK>(sq, occupied) & getPiecesBB(side, ROOK, QUEEN))
-        //| (attacks<KING>(sq) & getPiecesBB(side, KING))
+inline Bitboard Position::getAttackers(Square sq, Bitboard occupied) const {
+    return ((pawnAttacks(BLACK, sq) & getPiecesBB(WHITE, PAWN))
+          | (pawnAttacks(WHITE, sq) & getPiecesBB(BLACK, PAWN))
+          | (attacks<KNIGHT>(sq) & getPiecesTypeBB(KNIGHT))
+          | (attacks<BISHOP>(sq, occupied) & getPiecesTypeBB(BISHOP, QUEEN))
+          | (attacks<ROOK>(sq, occupied) & getPiecesTypeBB(ROOK, QUEEN))
+          | (attacks<KING>(sq) & getPiecesTypeBB(KING))
     );
 }
-
-/*template<Side Me>
-inline Bitboard Position::getAttackers(Square sq, Bitboard occupied) const {
-    return ((pawnAttacks(~Me, sq) & getPiecesBB(Me, PAWN))
-        | (attacks<KNIGHT>(sq) & getPiecesBB(Me, KNIGHT))
-        | (attacks<BISHOP>(sq, occupied) & getPiecesBB(Me, BISHOP, QUEEN))
-        | (attacks<ROOK>(sq, occupied) & getPiecesBB(Me, ROOK, QUEEN))
-        | (attacks<KING>(sq) & getPiecesBB(Me, KING))
-    );
-}*/
 
 inline bool Position::isMaterialDraw() const {
     if ((getPiecesTypeBB(PAWN) | getPiecesTypeBB(ROOK) | getPiecesTypeBB(QUEEN)) != 0)

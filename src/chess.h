@@ -247,6 +247,10 @@ constexpr bool isValidSq(Square s) {
     return s >= SQ_A1 && s <= SQ_H8;
 }
 
+constexpr bool isValidMove(Move m) {
+    return m != MOVE_NONE && m != MOVE_NULL;
+}
+
 constexpr bool isValidPiece(Piece p) {
     switch(p) {
         case W_PAWN: case W_KNIGHT: case W_BISHOP: case W_ROOK: case W_QUEEN: case W_KING:

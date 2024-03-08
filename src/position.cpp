@@ -261,6 +261,8 @@ inline bool Position::givesCheck(Move m) {
 
 template<Side Me>
 bool Position::isLegal(Move move) const {
+    if (!isValidMove(move)) return false;
+
     Square from = moveFrom(move);
     Square to = moveTo(move);
     if (from == to) return false;
@@ -679,6 +681,77 @@ uint64_t Position::computeHash() const {
     if (getSideToMove() == BLACK) h ^= Zobrist::sideToMoveKey;
 
     return h;
+}
+
+// Static exchange evaluation. Algorithm from stockfish
+bool Position::see(Move move, int threshold) const {
+    assert(isValidMove(move));
+    assert(getSideToMove() == side(getPieceAt(moveFrom(move))));
+
+    Square from = moveFrom(move);
+    Square to = moveTo(move);
+
+    Score value = PieceValue<MG>(getPieceAt(to)) - threshold;
+    if (value < 0) return false;
+
+    value = PieceValue<MG>(getPieceAt(from)) - value;
+    if (value <= 0) return true;
+
+    Bitboard occupied = getPiecesBB() ^ from ^ to;
+    Side me = ~getSideToMove();
+    Bitboard allAttackers = getAttackers(to, occupied) & occupied;
+    int result = 1;
+
+    while (true) {
+        Bitboard myAttackers = allAttackers & getPiecesBB(me);
+        if (!myAttackers) break; // No more attackers
+
+        // TODO: remove pinned pieces
+
+        result ^= 1;
+
+        Bitboard nextAttacker;
+
+        if ((nextAttacker = myAttackers & getPiecesTypeBB(PAWN))) { // Pawn
+            value = PieceValue<MG>(PAWN) - value;
+            if (value < result) break;
+
+            occupied ^= bitscan(nextAttacker);
+            allAttackers |= attacks<BISHOP>(to, occupied) & getPiecesTypeBB(BISHOP, QUEEN); // Add X-Ray attackers
+        } else if ((nextAttacker = myAttackers & getPiecesTypeBB(KNIGHT))) { // Knight
+            value = PieceValue<MG>(KNIGHT) - value;
+            if (value < result) break;
+
+            occupied ^= bitscan(nextAttacker);
+        } else if ((nextAttacker = myAttackers & getPiecesTypeBB(BISHOP))) { // Bishop
+            value = PieceValue<MG>(BISHOP) - value;
+            if (value < result) break;
+
+            occupied ^= bitscan(nextAttacker);
+            allAttackers |= attacks<BISHOP>(to, occupied) & getPiecesTypeBB(BISHOP, QUEEN); // Add X-Ray attackers
+        } else if ((nextAttacker = myAttackers & getPiecesTypeBB(ROOK))) { // Rook
+            value = PieceValue<MG>(ROOK) - value;
+            if (value < result) break;
+
+            occupied ^= bitscan(nextAttacker);
+            allAttackers |= attacks<ROOK>(to, occupied) & getPiecesTypeBB(ROOK, QUEEN); // Add X-Ray attackers
+        } else if ((nextAttacker = myAttackers & getPiecesTypeBB(QUEEN))) { // Queen
+            value = PieceValue<MG>(QUEEN) - value;
+            if (value < result) break;
+
+            occupied ^= bitscan(nextAttacker);
+            allAttackers |= (attacks<BISHOP>(to, occupied) & getPiecesTypeBB(BISHOP, QUEEN)) // Add X-Ray attackers
+                         |  (attacks<ROOK>(to, occupied) & getPiecesTypeBB(ROOK, QUEEN));
+        } else { // King
+            // King cannot capture if opponent still has attackers
+            return (allAttackers & ~getPiecesBB(me)) ? result ^ 1 : result;
+        }
+
+        me = ~me;
+        allAttackers &= occupied;
+    }
+
+    return (bool)result;
 }
 
 } /* namespace BabChess */

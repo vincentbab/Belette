@@ -8,11 +8,11 @@ Score evaluateMaterial(const Position &pos) {
     constexpr Side Opp = ~Me;
     Score score = 0;
 
-    score += PieceTypeValue[PAWN][P]*pos.nbPieces(Me, PAWN) - PieceTypeValue[PAWN][P]*pos.nbPieces(Opp, PAWN);
-    score += PieceTypeValue[KNIGHT][P]*pos.nbPieces(Me, KNIGHT) - PieceTypeValue[KNIGHT][P]*pos.nbPieces(Opp, KNIGHT);
-    score += PieceTypeValue[BISHOP][P]*pos.nbPieces(Me, BISHOP) - PieceTypeValue[BISHOP][P]*pos.nbPieces(Opp, BISHOP);
-    score += PieceTypeValue[ROOK][P]*pos.nbPieces(Me, ROOK) - PieceTypeValue[ROOK][P]*pos.nbPieces(Opp, ROOK);
-    score += PieceTypeValue[QUEEN][P]*pos.nbPieces(Me, QUEEN) - PieceTypeValue[QUEEN][P]*pos.nbPieces(Opp, QUEEN);
+    score += PieceValue<P>(PAWN)*pos.nbPieces(Me, PAWN) - PieceValue<P>(PAWN)*pos.nbPieces(Opp, PAWN);
+    score += PieceValue<P>(KNIGHT)*pos.nbPieces(Me, KNIGHT) - PieceValue<P>(KNIGHT)*pos.nbPieces(Opp, KNIGHT);
+    score += PieceValue<P>(BISHOP)*pos.nbPieces(Me, BISHOP) - PieceValue<P>(BISHOP)*pos.nbPieces(Opp, BISHOP);
+    score += PieceValue<P>(ROOK)*pos.nbPieces(Me, ROOK) - PieceValue<P>(ROOK)*pos.nbPieces(Opp, ROOK);
+    score += PieceValue<P>(QUEEN)*pos.nbPieces(Me, QUEEN) - PieceValue<P>(QUEEN)*pos.nbPieces(Opp, QUEEN);
 
     return score;
 }
