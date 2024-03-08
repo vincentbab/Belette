@@ -172,7 +172,7 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
 
     int nbMoves = 0;
     MoveList childPv;
-    MovePicker<MAIN, Me> mp(pos, ttHit ? tte->move() : MOVE_NONE, sd.killerMoves[ply][0], sd.killerMoves[ply][1]);
+    MovePicker<MAIN, Me> mp(pos, ttHit ? tte->move() : MOVE_NONE, sd.killerMoves[ply][0], sd.killerMoves[ply][1], sd.getCounter());
     
     mp.enumerate([&](Move move, auto doMove, auto undoMove) -> bool {
         // Honor UCI searchmoves
