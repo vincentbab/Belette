@@ -82,6 +82,7 @@ struct SearchData {
     Position position;
     SearchLimits limits;
     size_t nbNodes;
+    int selDepth;
 
     TimeMs startTime;
     TimeMs lastCheck;
@@ -92,10 +93,11 @@ struct SearchData {
 };
 
 struct SearchEvent {
-    SearchEvent(int depth_, const MoveList &pv_, Score bestScore_, size_t nbNode_, TimeMs elapsed_, size_t hashfull_): 
-        depth(depth_), pv(pv_), bestScore(bestScore_), nbNodes(nbNode_), elapsed(elapsed_), hashfull(hashfull_) { }
+    SearchEvent(int depth_, int selDepth_, const MoveList &pv_, Score bestScore_, size_t nbNode_, TimeMs elapsed_, size_t hashfull_): 
+        depth(depth_), selDepth(selDepth_), pv(pv_), bestScore(bestScore_), nbNodes(nbNode_), elapsed(elapsed_), hashfull(hashfull_) { }
 
     int depth;
+    int selDepth;
     const MoveList &pv;
     Score bestScore;
     size_t nbNodes;

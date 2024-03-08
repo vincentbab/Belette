@@ -363,7 +363,7 @@ bool Uci::cmdTest(istringstream& is) {
 void UciEngine::onSearchProgress(const SearchEvent &event) {
     console << "info"
         << " depth " << event.depth 
-        << " seldepth " << event.depth 
+        << " seldepth " << event.selDepth 
         << " multipv " << 1
         << " score " << Uci::formatScore(event.bestScore)
         << " nodes " << event.nbNodes

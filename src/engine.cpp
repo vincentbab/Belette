@@ -54,6 +54,9 @@ void Engine::idSearch(SearchData &sd) {
         Score delta, score;
         MoveList pv;
 
+        // Reset selDepth
+        sd.selDepth = 0;
+
         searchDepth = depth;
 
         // Aspiration window
@@ -91,12 +94,12 @@ void Engine::idSearch(SearchData &sd) {
         bestScore = score;
         completedDepth = depth;
 
-        onSearchProgress(SearchEvent(depth, pv, bestScore, sd.nbNodes, sd.getElapsed(), tt.usage()));
+        onSearchProgress(SearchEvent(depth, sd.selDepth, pv, bestScore, sd.nbNodes, sd.getElapsed(), tt.usage()));
 
         if (sd.limits.maxDepth > 0 && depth >= sd.limits.maxDepth) break;
     }
 
-    SearchEvent event(depth, bestPv, bestScore, sd.nbNodes, sd.getElapsed(), tt.usage());
+    SearchEvent event(depth, sd.selDepth, bestPv, bestScore, sd.nbNodes, sd.getElapsed(), tt.usage());
     if (depth != completedDepth)
         onSearchProgress(event);
     onSearchFinish(event);
@@ -112,9 +115,15 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
     constexpr bool PvNode = (NT != NodeType::NonPV);
     constexpr bool RootNode = (NT == NodeType::Root);
 
+    // Quiescence
     if (depth <= 0) {
         constexpr NodeType QNodeType = PvNode ? NodeType::PV : NodeType::NonPV;
         return qSearch<Me, QNodeType>(sd, alpha, beta, depth, ply, pv);
+    }
+
+    // Update selDepth
+    if (PvNode && sd.selDepth < ply + 1) {
+        sd.selDepth = ply + 1;
     }
 
     // Check if we should stop according to limits
@@ -122,7 +131,7 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
         stop();
     }
 
-    // If search has been aborted (either by the gui or by limits) exit here
+    // If search has been aborted (either by the gui or by reaching limits) exit here
     if (!RootNode && searchAborted()) [[unlikely]] {
         return -SCORE_INFINITE;
     }
@@ -142,7 +151,7 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
     bool inCheck = pos.inCheck();
 
     if (pos.isFiftyMoveDraw() || pos.isMaterialDraw() || pos.isRepetitionDraw()) {
-        // "Random" between [-2,1], avoid blindness to 3-fold repetitions
+        // "Random" either -1 or 1, avoid blindness to 3-fold repetitions
         return 1-(sd.nbNodes & 2);
         //return SCORE_DRAW;
     }
@@ -177,6 +186,11 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
         sd.nbNodes++;
 
         (pos.*doMove)(move);
+
+        // Check extension
+        if (PvNode && inCheck && depth <= 1) {
+            depth++;
+        }
 
         Score score;
 
@@ -252,7 +266,7 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
     Position &pos = sd.position;
 
     if (pos.isFiftyMoveDraw() || pos.isMaterialDraw() || pos.isRepetitionDraw()) {
-        // "Random" between [-2,1], avoid blindness to 3-fold repetitions
+        // "Random" either -1 or 1, avoid blindness to 3-fold repetitions
         return 1-(sd.nbNodes & 2);
         //return SCORE_DRAW;
     }
@@ -330,7 +344,7 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
         return true;
     }); if (searchAborted()) return bestScore;
 
-    // Update TT - If we are in check use depth=1
+    // Update TT - If we are in check use depth=1 because when we are in check we verify all moves
     Bound ttBound = bestScore >= beta      ? BOUND_LOWER : 
                     bestScore <= alphaOrig ? BOUND_UPPER : BOUND_EXACT;
     bool ttPv = PvNode || tte->isPv();
