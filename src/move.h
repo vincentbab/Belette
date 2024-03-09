@@ -13,8 +13,8 @@ std::ostream& operator<<(std::ostream& os, const MoveList& pos);
 
 enum MoveGenType {
     QUIET_MOVES = 1,
-    NON_QUIET_MOVES = 2,
-    ALL_MOVES = QUIET_MOVES | NON_QUIET_MOVES,
+    TACTICAL_MOVES = 2,
+    ALL_MOVES = QUIET_MOVES | TACTICAL_MOVES,
 };
 
 /*#define MAKE_MOVE_HANDLER(type) \
@@ -54,12 +54,17 @@ inline bool enumeratePromotion(Square from, Square to, const Handler& handler) {
     return true;
 }
 
-template<Side Me, typename Handler>
+template<Side Me, MoveGenType MGType = ALL_MOVES, typename Handler>
 inline bool enumeratePromotions(Square from, Square to, const Handler& handler) {
-    CALL_ENUMERATOR(enumeratePromotion<Me, QUEEN>(from, to, handler));
-    CALL_ENUMERATOR(enumeratePromotion<Me, KNIGHT>(from, to, handler));
-    CALL_ENUMERATOR(enumeratePromotion<Me, ROOK>(from, to, handler));
-    CALL_ENUMERATOR(enumeratePromotion<Me, BISHOP>(from, to, handler));
+    if constexpr (MGType & TACTICAL_MOVES) {
+        CALL_ENUMERATOR(enumeratePromotion<Me, QUEEN>(from, to, handler));
+    }
+    
+    if constexpr (MGType & QUIET_MOVES) {
+        CALL_ENUMERATOR(enumeratePromotion<Me, KNIGHT>(from, to, handler));
+        CALL_ENUMERATOR(enumeratePromotion<Me, ROOK>(from, to, handler));
+        CALL_ENUMERATOR(enumeratePromotion<Me, BISHOP>(from, to, handler));
+    }
 
     return true;
 }
@@ -94,12 +99,12 @@ inline bool enumeratePawnPromotionMoves(const Position &pos, Bitboard source, co
             bitscan_loop(capLPromotions) {
                 Square to = bitscan(capLPromotions);
                 Square from = to - UpLeft;
-                CALL_ENUMERATOR(enumeratePromotions<Me>(from, to, handler));
+                CALL_ENUMERATOR(enumeratePromotions<Me, MGType>(from, to, handler));
             }
             bitscan_loop(capRPromotions) {
                 Square to = bitscan(capRPromotions);
                 Square from = to - UpRight;
-                CALL_ENUMERATOR(enumeratePromotions<Me>(from, to, handler));
+                CALL_ENUMERATOR(enumeratePromotions<Me, MGType>(from, to, handler));
             }
         }
 
@@ -113,7 +118,7 @@ inline bool enumeratePawnPromotionMoves(const Position &pos, Bitboard source, co
             bitscan_loop(quietPromotions) {
                 Square to = bitscan(quietPromotions);
                 Square from = to - Up;
-                CALL_ENUMERATOR(enumeratePromotions<Me>(from, to, handler));
+                CALL_ENUMERATOR(enumeratePromotions<Me, MGType>(from, to, handler));
             }
         }
     }
@@ -212,7 +217,7 @@ inline bool enumeratePawnNormalMoves(const Position &pos, Bitboard source, const
     }
 
     // Normal Capture
-    if constexpr (MGType & NON_QUIET_MOVES) {
+    if constexpr (MGType & TACTICAL_MOVES) {
         Bitboard pawns = source & ~Rank7 & ~pinOrtho;
         Bitboard capL = (shift<UpLeft>(pawns & ~pinDiag) | (shift<UpLeft>(pawns & pinDiag) & pinDiag)) & pos.getPiecesBB(Opp);
         Bitboard capR = (shift<UpRight>(pawns & ~pinDiag) | (shift<UpRight>(pawns & pinDiag) & pinDiag)) & pos.getPiecesBB(Opp);
@@ -242,9 +247,9 @@ inline bool enumeratePawnNormalMoves(const Position &pos, Bitboard source, const
 template<Side Me, bool InCheck, MoveGenType MGType = ALL_MOVES, typename Handler>
 inline bool enumeratePawnMoves(const Position &pos, Bitboard source, const Handler& handler) {
     CALL_ENUMERATOR(enumeratePawnNormalMoves<Me, InCheck, MGType, Handler>(pos, source, handler));
-
-    if constexpr (MGType & NON_QUIET_MOVES) {
-        CALL_ENUMERATOR(enumeratePawnPromotionMoves<Me, InCheck, MGType, Handler>(pos, source, handler));
+    CALL_ENUMERATOR(enumeratePawnPromotionMoves<Me, InCheck, MGType, Handler>(pos, source, handler));
+    
+    if constexpr (MGType & TACTICAL_MOVES) {
         CALL_ENUMERATOR(enumeratePawnEnpassantMoves<Me, InCheck, MGType, Handler>(pos, source, handler));
     }
 
@@ -271,7 +276,7 @@ template<Side Me, MoveGenType MGType = ALL_MOVES, typename Handler>
 inline bool enumerateKingMoves(const Position &pos, Square from, const Handler& handler) {
     Bitboard dest = attacks<KING>(from) & ~pos.getPiecesBB(Me) & ~pos.checkedSquares();
 
-    if constexpr (MGType == NON_QUIET_MOVES) dest &= pos.getPiecesBB(~Me);
+    if constexpr (MGType == TACTICAL_MOVES) dest &= pos.getPiecesBB(~Me);
     if constexpr (MGType == QUIET_MOVES) dest &= ~pos.getPiecesBB(~Me);
 
     bitscan_loop(dest) {
@@ -292,7 +297,7 @@ inline bool enumerateKnightMoves(const Position &pos, Bitboard source, const Han
         Bitboard dest = attacks<KNIGHT>(from) & ~pos.getPiecesBB(Me);
 
         if constexpr (InCheck) dest &= pos.checkMask();
-        if constexpr (MGType == NON_QUIET_MOVES) dest &= pos.getPiecesBB(~Me);
+        if constexpr (MGType == TACTICAL_MOVES) dest &= pos.getPiecesBB(~Me);
         if constexpr (MGType == QUIET_MOVES) dest &= ~pos.getPiecesBB(~Me);
 
         bitscan_loop(dest) {
@@ -317,7 +322,7 @@ inline bool enumerateBishopSliderMoves(const Position &pos, Bitboard source, con
         Bitboard dest = attacks<BISHOP>(from, pos.getPiecesBB()) & ~pos.getPiecesBB(Me);
 
         if constexpr (InCheck) dest &= pos.checkMask();
-        if constexpr (MGType == NON_QUIET_MOVES) dest &= oppPiecesBB;
+        if constexpr (MGType == TACTICAL_MOVES) dest &= oppPiecesBB;
         if constexpr (MGType == QUIET_MOVES) dest &= ~oppPiecesBB;
 
         bitscan_loop(dest) {
@@ -334,7 +339,7 @@ inline bool enumerateBishopSliderMoves(const Position &pos, Bitboard source, con
         Bitboard dest = attacks<BISHOP>(from, pos.getPiecesBB()) & ~pos.getPiecesBB(Me) & pos.pinDiag();
 
         if constexpr (InCheck) dest &= pos.checkMask();
-        if constexpr (MGType == NON_QUIET_MOVES) dest &= oppPiecesBB;
+        if constexpr (MGType == TACTICAL_MOVES) dest &= oppPiecesBB;
         if constexpr (MGType == QUIET_MOVES) dest &= ~oppPiecesBB;
 
         bitscan_loop(dest) {
@@ -359,7 +364,7 @@ inline bool enumerateRookSliderMoves(const Position &pos, Bitboard source, const
         Bitboard dest = attacks<ROOK>(from, pos.getPiecesBB()) & ~pos.getPiecesBB(Me);
 
         if constexpr (InCheck) dest &= pos.checkMask();
-        if constexpr (MGType == NON_QUIET_MOVES) dest &= oppPiecesBB;
+        if constexpr (MGType == TACTICAL_MOVES) dest &= oppPiecesBB;
         if constexpr (MGType == QUIET_MOVES) dest &= ~oppPiecesBB;
 
         bitscan_loop(dest) {
@@ -376,7 +381,7 @@ inline bool enumerateRookSliderMoves(const Position &pos, Bitboard source, const
         Bitboard dest = attacks<ROOK>(from, pos.getPiecesBB()) & ~pos.getPiecesBB(Me) & pos.pinOrtho();
 
         if constexpr (InCheck) dest &= pos.checkMask();
-        if constexpr (MGType == NON_QUIET_MOVES) dest &= oppPiecesBB;
+        if constexpr (MGType == TACTICAL_MOVES) dest &= oppPiecesBB;
         if constexpr (MGType == QUIET_MOVES) dest &= ~oppPiecesBB;
 
         bitscan_loop(dest) {

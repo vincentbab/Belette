@@ -28,7 +28,7 @@ enum MovePickerType {
 template<MovePickerType Type, Side Me>
 class MovePicker {
 public:
-    MovePicker(const Position &pos_, Move ttMove_, Move killer1_ = MOVE_NONE, Move killer2_ = MOVE_NONE, Move counter_ = MOVE_NONE)
+    MovePicker(const Position &pos_, Move ttMove_ = MOVE_NONE, Move killer1_ = MOVE_NONE, Move killer2_ = MOVE_NONE, Move counter_ = MOVE_NONE)
     : pos(pos_), ttMove(ttMove_), refutations{killer1_, killer2_, counter_} 
     { 
         assert(killer1_ != killer2_ || killer1_ == MOVE_NONE);
@@ -83,7 +83,7 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     }
 
     // Tacticals
-    enumerateLegalMoves<Me, NON_QUIET_MOVES>(pos, [&](Move m, auto doMove, auto undoMove) {
+    enumerateLegalMoves<Me, TACTICAL_MOVES>(pos, [&](Move m, auto doMove, auto undoMove) {
         if (m == ttMove) return true; // continue;
 
         if constexpr(Type == QUIESCENCE) {
@@ -107,23 +107,23 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     if constexpr(Type == QUIESCENCE) return true;
 
     // Killer 1
-    if (refutations[0] != ttMove && pos.isLegal<Me>(refutations[0])) {
+    if (refutations[0] != ttMove && !pos.isTactical(refutations[0]) && pos.isLegal<Me>(refutations[0])) {
         if (!handler(refutations[0], &Position::doMove<Me>, &Position::undoMove<Me>)) return false;
     }
 
     // Killer 2
-    if (refutations[1] != ttMove && pos.isLegal<Me>(refutations[1])) {
+    if (refutations[1] != ttMove && !pos.isTactical(refutations[1]) && pos.isLegal<Me>(refutations[1])) {
         if (!handler(refutations[1], &Position::doMove<Me>, &Position::undoMove<Me>)) return false;
     }
 
     // Counter
-    if (refutations[2] != ttMove && refutations[2] != refutations[0] && refutations[2] != refutations[1] && pos.isLegal<Me>(refutations[2])) {
+    if (refutations[2] != ttMove && !pos.isTactical(refutations[2]) && refutations[2] != refutations[0] && refutations[2] != refutations[1] && pos.isLegal<Me>(refutations[2])) {
         if (!handler(refutations[2], &Position::doMove<Me>, &Position::undoMove<Me>)) return false;
     }
 
     // Quiets
     moves.clear();
-    threatenedPieces = (pos.getPiecesBB(Me, KING, BISHOP) & pos.threatenedByPawns())
+    threatenedPieces = (pos.getPiecesBB(Me, KNIGHT, BISHOP) & pos.threatenedByPawns())
                      | (pos.getPiecesBB(Me, ROOK) & pos.threatenedByMinors())
                      | (pos.getPiecesBB(Me, QUEEN) & pos.threatenedByRooks());
 

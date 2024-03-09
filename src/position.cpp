@@ -286,7 +286,7 @@ template bool Position::isLegal<BLACK>(Move move) const;
 
 template<Side Me, bool InCheck, bool IsCapture>
 inline bool Position::isLegal(Move move, Piece pc) const {
-    constexpr MoveGenType Type = IsCapture ? NON_QUIET_MOVES : QUIET_MOVES;
+    constexpr MoveGenType Type = IsCapture ? TACTICAL_MOVES : QUIET_MOVES;
 
     Square from = moveFrom(move);
     Bitboard src = bb(from);
@@ -320,7 +320,7 @@ inline bool Position::isLegal(Move move, Piece pc) const {
             if (nbCheckers() > 1) return false; // Only king move when in double check
             if (pt != PAWN) return false;
 
-            return !enumeratePawnPromotionMoves<Me, InCheck, Type>(*this, src, [move](Move m, auto doMove, auto undoMove) { return (move != m); });
+            return !enumeratePawnPromotionMoves<Me, InCheck, ALL_MOVES>(*this, src, [move](Move m, auto doMove, auto undoMove) { return (move != m); });
         case EN_PASSANT:
             if (nbCheckers() > 1) return false; // Only king move when in double check
             if (getEpSquare() == SQ_NONE || getEpSquare() != moveTo(move)) return false;
