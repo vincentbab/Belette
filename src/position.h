@@ -129,8 +129,7 @@ public:
     inline bool isCapture(Move m) const { return getPieceAt(moveTo(m)) != NO_PIECE || moveType(m) == EN_PASSANT; }
     inline bool isTactical(Move m) const { return isCapture(m) || (moveType(m) == PROMOTION && movePromotionType(m) == QUEEN); }
 
-    inline Move currentMove() const { return state->move; }
-    inline Move previousMove() const { return state > history ? state->prev().move : MOVE_NONE; }
+    inline Move previousMove() const { return state->move; }
     
     bool see(Move m, int threshold) const ;
 
