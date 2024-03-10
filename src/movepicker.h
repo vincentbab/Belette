@@ -59,6 +59,7 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     }
     
     ScoredMoveList moves;
+    ScoredMove *current, *endBadTacticals, *beginQuiets, *endBadQuiets;
 
     // Evasions
     if (pos.inCheck()) {
@@ -99,8 +100,16 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
         return a.score > b.score;
     });
 
-    for (auto m : moves) {
-        if (!handler(m.move, m.doMove, m.undoMove)) return false;
+    // Good tacticals
+    for (current = endBadTacticals = moves.begin(); current != moves.end(); current++) {
+        if constexpr(Type == MAIN) { // For quiescence bad moves are already pruned in move enumeration
+            if (!pos.see(current->move, -50)) { // Allow Bishop takes Knight
+                *endBadTacticals++ = *current;
+                continue;
+            }
+        }
+
+        if (!handler(current->move, current->doMove, current->undoMove)) return false;
     }
 
     // Stop here for Quiescence
@@ -122,7 +131,7 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     }
 
     // Quiets
-    moves.clear();
+    moves.resize(endBadTacticals - moves.begin()); // Keep only bad tacticals
     threatenedPieces = (pos.getPiecesBB(Me, KNIGHT, BISHOP) & pos.threatenedByPawns())
                      | (pos.getPiecesBB(Me, ROOK) & pos.threatenedByMinors())
                      | (pos.getPiecesBB(Me, QUEEN) & pos.threatenedByRooks());
@@ -140,8 +149,24 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
         return a.score > b.score;
     });
 
-    for (auto m : moves) {
-        if (!handler(m.move, m.doMove, m.undoMove)) return false;
+    // Good quiets
+    for (current = beginQuiets = endBadQuiets = endBadTacticals; current != moves.end(); current++) {
+        if (current->score < 0) {
+            *endBadQuiets++ = *current;
+            continue;
+        }
+
+        if (!handler(current->move, current->doMove, current->undoMove)) return false;
+    }
+
+    // Bad tacticals
+    for (current = moves.begin(); current != endBadTacticals; current++) {
+        if (!handler(current->move, current->doMove, current->undoMove)) return false;
+    }
+
+    // Bad quiets
+    for (current = beginQuiets; current != endBadQuiets; current++) {
+        if (!handler(current->move, current->doMove, current->undoMove)) return false;
     }
 
     return true;
@@ -163,17 +188,48 @@ int16_t MovePicker<Type, Me>::scoreTactical(Move m) {
 
 template<MovePickerType Type, Side Me>
 int16_t MovePicker<Type, Me>::scoreQuiet(Move m) {
-    Square from = moveFrom(m);
+    Square from = moveFrom(m), to = moveTo(m);
     PieceType pt = pieceType(pos.getPieceAt(from));
-    
+    Score score = NB_PIECE_TYPE-(int)pt;
+
+    if (moveType(m) == PROMOTION) [[unlikely]]
+        return -100;
+
     if (threatenedPieces & from) {
-        return pt == QUEEN && !(moveTo(m) & pos.threatenedByRooks()) ? 1000
-             : pt == ROOK && !(moveTo(m) & pos.threatenedByMinors()) ? 500
-             : (pt == BISHOP || pt == KNIGHT) && !(moveTo(m) & pos.threatenedByPawns()) ? 300
-             : -(int)pt;
+        score += pt == QUEEN && !(to & pos.threatenedByRooks()) ? 1000
+             : pt == ROOK && !(to & pos.threatenedByMinors()) ? 500
+             : (pt == BISHOP || pt == KNIGHT) && !(to & pos.threatenedByPawns()) ? 300
+             : 0;
     }
 
-    return -(int)pt;
+    switch (pt) {
+        case PAWN:
+            if (pawnAttacks<Me>(bb(to)) & pos.getPiecesBB(~Me, KING)) {
+                score += 10;
+            }
+            break;
+        case KNIGHT:
+            if (attacks<KNIGHT>(to, pos.getPiecesBB()) & pos.getPiecesBB(~Me, KING)) {
+                score += 10;
+            }
+            break;
+        case BISHOP:
+            if (attacks<BISHOP>(to, pos.getPiecesBB()) & pos.getPiecesBB(~Me, KING)) {
+                score += 10;
+            }
+        case ROOK:
+            if (attacks<ROOK>(to, pos.getPiecesBB()) & pos.getPiecesBB(~Me, KING)) {
+                score += 10;
+            }
+        case QUEEN:
+            if (attacks<QUEEN>(to, pos.getPiecesBB()) & pos.getPiecesBB(~Me, KING)) {
+                score += 10;
+            }
+        default:
+            break;
+    }
+
+    return score;
 }
 
 } /* namespace BabChess */
