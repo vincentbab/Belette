@@ -31,6 +31,7 @@ void Engine::search(const SearchLimits &limits) {
     searching = true;
     
     tt.clear(); // TODO: update age instead of clear
+    //tt.newSearch();
 
     std::thread th([this, data] { 
         this->idSearch(*data); 
@@ -236,7 +237,7 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
     // Update TT
     Bound ttBound = bestScore >= beta      ? BOUND_LOWER : 
                     !PvNode || bestScore <= alphaOrig ? BOUND_UPPER : BOUND_EXACT;
-    bool ttPv = PvNode || tte->isPv();
+    bool ttPv = PvNode || (ttHit && tte->isPv());
     tt.set(tte, pos.hash(), depth, ply, ttBound, bestMove, SCORE_NONE, bestScore, ttPv);
 
     return bestScore;
@@ -275,17 +276,18 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
         return evaluate<Me>(pos); // TODO: check if we are in check ?
     }
 
+    bool inCheck = pos.inCheck();
+    int ttDepth = inCheck ? 1 : 0;
+    Score eval = SCORE_NONE;
+
     // TODO: Transposition Table cutoff seems slower in qsearch for now. Maybe more useful with more advanced eval...
     // Query Transposition Table
     /*auto&&[ttHit, tte] = tt.get(pos.hash());
 
     // Transposition Table cutoff
-    if (ttHit && tte->depth() >= depth && tte->score(ply) != SCORE_NONE && tte->boundMatch(alpha, beta, ply)) {
+    if (!PvNode && ttHit && tte->depth() >= ttDepth && tte->score(ply) != SCORE_NONE && tte->boundMatch(alpha, beta, ply)) {
         return tte->score(ply);
     }*/
-
-    bool inCheck = pos.inCheck();
-    Score eval = SCORE_NONE;
 
     // Standing Pat
     if (!inCheck) {
@@ -308,7 +310,7 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
     // Query Transposition Table
     auto&&[ttHit, tte] = tt.get(pos.hash());
 
-    if (ttHit && tte->depth() >= depth && tte->score(ply) != SCORE_NONE && tte->boundMatch(alpha, beta, ply)) {
+    if (!PvNode && ttHit && tte->depth() >= ttDepth && tte->score(ply) != SCORE_NONE && tte->boundMatch(alpha, beta, ply)) {
         return tte->score(ply);
     }
 
@@ -347,8 +349,9 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
     // Update TT - If we are in check use depth=1 because when we are in check we verify all moves
     Bound ttBound = bestScore >= beta      ? BOUND_LOWER : 
                     bestScore <= alphaOrig ? BOUND_UPPER : BOUND_EXACT;
-    bool ttPv = PvNode || tte->isPv();
-    tt.set(tte, pos.hash(), inCheck, ply, ttBound, bestMove, eval, bestScore, ttPv);
+    //Bound ttBound = bestScore >= beta ? BOUND_LOWER : BOUND_UPPER;
+    bool ttPv = PvNode || (ttHit && tte->isPv());
+    tt.set(tte, pos.hash(), ttDepth, ply, ttBound, bestMove, eval, bestScore, ttPv);
 
     return bestScore;
 }
