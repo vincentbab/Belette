@@ -10,6 +10,7 @@
 #include "test.h"
 #include "perft.h"
 #include "utils.h"
+#include "movepicker.h"
 
 using namespace std;
 
@@ -324,6 +325,23 @@ bool Uci::cmdDebug(istringstream& is) {
             console << Uci::formatMove(m) << endl;
             return true;
         });
+    } else if (token == "movepicker") {
+        if (engine.position().getSideToMove() == WHITE) {
+            MovePicker<MAIN, WHITE> mp(engine.position());
+
+            mp.enumerate([&] (Move m, auto doMove, auto undoMove) {
+                console << Uci::formatMove(m) << endl;
+                return true;
+            });
+        } else {
+            MovePicker<MAIN, BLACK> mp(engine.position());
+
+            mp.enumerate([&] (Move m, auto doMove, auto undoMove) {
+                console << Uci::formatMove(m) << endl;
+                return true;
+            });
+        }
+        
     } else if (token == "see") {
         is >> token;
         Move m = Uci::parseMove(token);

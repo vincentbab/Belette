@@ -132,6 +132,7 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
 
     // Quiets
     moves.resize(endBadTacticals - moves.begin()); // Keep only bad tacticals
+    beginQuiets = endBadTacticals;
     threatenedPieces = (pos.getPiecesBB(Me, KNIGHT, BISHOP) & pos.threatenedByPawns())
                      | (pos.getPiecesBB(Me, ROOK) & pos.threatenedByMinors())
                      | (pos.getPiecesBB(Me, QUEEN) & pos.threatenedByRooks());
@@ -145,12 +146,12 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
         return true;
     });
 
-    std::sort(moves.begin(), moves.end(), [](const ScoredMove &a, const ScoredMove &b) {
+    std::sort(beginQuiets, moves.end(), [](const ScoredMove &a, const ScoredMove &b) {
         return a.score > b.score;
     });
 
     // Good quiets
-    for (current = beginQuiets = endBadQuiets = endBadTacticals; current != moves.end(); current++) {
+    for (current = endBadQuiets = beginQuiets; current != moves.end(); current++) {
         if (current->score < 0) {
             *endBadQuiets++ = *current;
             continue;
