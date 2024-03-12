@@ -1,59 +1,25 @@
-#include <iostream>
-#include <fstream>
 #include <cassert>
 #include <algorithm>
 #include <ctime>
-#include <iomanip>
-#include <filesystem>
 #include "uci.h"
 #include "move.h"
 #include "test.h"
 #include "perft.h"
 #include "utils.h"
 #include "movepicker.h"
+#include "bench.h"
 
 using namespace std;
 
 namespace BabChess {
 
-static Console console;
+Console console;
 
 Console::~Console() {
     if (file != nullptr) delete file;
 }
 
-template <class T> Console& Console::log(const T& x, bool isInput) {
-    if (file != nullptr) {
-        if (buffer.rdbuf()->in_avail() == 0) {
-            auto now = time(nullptr);
-            buffer << "[" << std::put_time(std::localtime(&now), "%F %T") << "] " << (isInput ? "<< " : ">> ");
-        }
-        buffer << x;
-
-        if (buffer.str().ends_with('\n')) {
-            (*file) << buffer.str();
-            file->flush();
-            buffer.str(std::string()); // clear buffer
-        }
-        
-    }
-
-    return *this;
-}
-
-Console& operator<<(Console& console, Manipulator x){
-    std::cout << x;
-    console.log(x);
-    return console;
-}
-
-template <class T>
-Console& operator<<(Console& console, const T& x) { 
-    std::cout << x;
-    console.log(x);
-    return console;
-}
-istream& Console::getline(string& x) {
+std::istream& Console::getline(std::string& x) {
     std::getline(std::cin, x);
     console.log(x, true).log('\n');
     return std::cin;
@@ -69,7 +35,7 @@ Uci::Uci(int argc, char* argv[])  {
     
     options["Debug Log File"] = UciOption("", [&] (const UciOption &opt) { console.setLogFile(opt); });
     options["Hash"] = UciOption(16, 1, 1048576, [&] (const UciOption &opt) { 
-        engine.getTT().resize(int64_t(opt)*1024*1024);
+        engine.setHashSize(int64_t(opt)*1024*1024);
     });
 
     commands["uci"] = &Uci::cmdUci;
@@ -86,6 +52,7 @@ Uci::Uci(int argc, char* argv[])  {
     commands["eval"] = &Uci::cmdEval;
     commands["perft"] = &Uci::cmdPerft;
     commands["test"] = &Uci::cmdTest;
+    commands["bench"] = &Uci::cmdBench;
 }
 
 Square Uci::parseSquare(std::string str) {
@@ -209,7 +176,7 @@ bool Uci::cmdIsReady(istringstream& is) {
 }
 
 bool Uci::cmdUciNewGame(istringstream& is) {
-    engine.getTT().clear();
+    engine.newGame();
     return true;
 }
 
@@ -387,6 +354,15 @@ bool Uci::cmdQuit(istringstream& is) {
 
 bool Uci::cmdTest(istringstream& is) {
     Test::run();
+    
+    return true;
+}
+
+bool Uci::cmdBench(istringstream& is) {
+    int depth = 9;
+    is >> depth;
+
+    bench(depth);
     
     return true;
 }

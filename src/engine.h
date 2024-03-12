@@ -60,6 +60,8 @@ struct SearchData {
     }
 
     inline void updateKillers(Move move, int ply) {
+        assert(ply < MAX_PLY);
+
         if (killerMoves[ply][0] != move) {
             killerMoves[ply][1] = killerMoves[ply][0];
             killerMoves[ply][0] = move;
@@ -123,8 +125,10 @@ public:
     void stop();
     inline bool isSearching() { return searching; }
     inline bool searchAborted() { return aborted; }
-    inline TranspositionTable& getTT() { return tt; }
+    inline void setHashSize(size_t size) { tt.resize(size); }
+    inline void newGame() { tt.clear(); }
 
+protected:
     virtual void onSearchProgress(const SearchEvent &event) = 0;
     virtual void onSearchFinish(const SearchEvent &event) = 0;
 

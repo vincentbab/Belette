@@ -5,6 +5,10 @@
 #include <string>
 #include <sstream>
 #include <istream>
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <filesystem>
 #include "uci_option.h"
 #include "engine.h"
 
@@ -34,7 +38,44 @@ private:
     std::ofstream *file;
 };
 
+extern Console console;
+
+inline Console& operator<<(Console& console, Manipulator x) {
+    std::cout << x;
+    console.log(x);
+    return console;
+}
+
+template <class T>
+inline Console& operator<<(Console& console, const T& x) { 
+    std::cout << x;
+    console.log(x);
+    return console;
+}
+
+template <class T> Console& Console::log(const T& x, bool isInput) {
+    if (file != nullptr) {
+        if (buffer.rdbuf()->in_avail() == 0) {
+            auto now = time(nullptr);
+            buffer << "[" << std::put_time(std::localtime(&now), "%F %T") << "] " << (isInput ? "<< " : ">> ");
+        }
+        buffer << x;
+
+        if (buffer.str().ends_with('\n')) {
+            (*file) << buffer.str();
+            file->flush();
+            buffer.str(std::string()); // clear buffer
+        }
+        
+    }
+
+    return *this;
+}
+
+
+
 class UciEngine : public Engine {
+protected:
     virtual void onSearchProgress(const SearchEvent &event);
     virtual void onSearchFinish(const SearchEvent &event);
 };
@@ -79,6 +120,7 @@ private:
     bool cmdEval(std::istringstream& is);
     bool cmdPerft(std::istringstream& is);
     bool cmdTest(std::istringstream& is);
+    bool cmdBench(std::istringstream& is);
 };
 
 } /* namespace BabChess */
