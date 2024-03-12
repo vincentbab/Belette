@@ -6,6 +6,8 @@
 
 namespace BabChess {
 
+constexpr Score Tempo = 10;
+
 constexpr Score PawnValueMg = 85;
 constexpr Score PawnValueEg = 100;
 

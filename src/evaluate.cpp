@@ -60,6 +60,7 @@ Score evaluate(const Position &pos) {
               + 1 * pos.nbPieceTypes(BISHOP);
 
     Score score = (mg*phase +  eg*(PHASE_TOTAL - phase)) / PHASE_TOTAL;
+    score += Tempo;
 
     return score;
 }
