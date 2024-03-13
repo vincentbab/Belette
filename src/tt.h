@@ -34,7 +34,8 @@ public:
     inline Score score(int ply) const {
         return score16 == SCORE_NONE ? SCORE_NONE
              : score16 >=  SCORE_MATE_MAX_PLY ? score16 - ply
-             : score16 <= -SCORE_MATE_MAX_PLY ? score16 + ply : score16;
+             : score16 <= -SCORE_MATE_MAX_PLY ? score16 + ply 
+             : score16;
     }
     inline void score(Score s, int ply) {
         score16 = (int16_t) (s ==  SCORE_NONE   ? SCORE_NONE
@@ -48,9 +49,7 @@ public:
     inline bool isExactBound() const { return bound() & BOUND_EXACT; }
     inline bool isLowerBound() const { return bound() & BOUND_LOWER; }
     inline bool isUpperBound() const { return bound() & BOUND_UPPER; }
-    inline bool boundMatch(Score alpha, Score beta, int ply) const {
-        return isExactBound() || (isLowerBound() && score(ply) >= beta) || (isUpperBound() && score(ply) <= alpha); 
-    }
+    inline bool canCutoff(Score score, Score beta) { return score != SCORE_NONE && (bound() & (score >= beta ? BOUND_LOWER : BOUND_UPPER)); }
 
     inline void refresh(uint8_t age) { ageFlags8 = age | (ageFlags8 & (PV_MASK | BOUND_MASK)); }
 
@@ -78,6 +77,7 @@ public:
 
     void resize(size_t size);
     void clear();
+    void newSearch();
 
     TTResult get(uint64_t hash);
     void set(TTEntry *tte, uint64_t hash, int depth, int ply, Bound bound, Move move, Score eval, Score score, bool pv);

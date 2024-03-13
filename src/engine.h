@@ -56,12 +56,13 @@ struct SearchData {
     }
 
     inline void clearKillers(int ply) {
+        assert(ply < MAX_PLY);
         killerMoves[ply][0] = killerMoves[ply][1] = MOVE_NONE;
     }
 
     inline void updateKillers(Move move, int ply) {
         assert(ply < MAX_PLY);
-
+        
         if (killerMoves[ply][0] != move) {
             killerMoves[ply][1] = killerMoves[ply][0];
             killerMoves[ply][0] = move;

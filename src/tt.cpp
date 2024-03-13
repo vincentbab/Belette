@@ -31,8 +31,12 @@ void TranspositionTable::resize(size_t size){
 }
 
 void TranspositionTable::clear() {
-    memset(buckets, 0, nbBuckets * sizeof(TTBucket));
+    std::memset(buckets, 0, nbBuckets * sizeof(TTBucket));
     age = 0;
+}
+
+void TranspositionTable::newSearch() {
+    age += TTEntry::AGE_DELTA;
 }
 
 size_t TranspositionTable::usage() const {
