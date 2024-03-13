@@ -4,13 +4,13 @@
 #include "chess.h"
 #include "position.h"
 
-namespace BabChess {
+namespace Belette {
 
 template<bool Div>
 size_t perft(Position &pos, int depth);
 
 void perft(Position &pos, int depth);
 
-} /* namespace BabChess */
+} /* namespace Belette */
 
 #endif /* PERFT_H_INCLUDED */

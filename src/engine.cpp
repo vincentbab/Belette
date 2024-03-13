@@ -7,7 +7,7 @@
 
 using namespace std;
 
-namespace BabChess {
+namespace Belette {
 
 void updatePv(MoveList &pv, Move move, const MoveList &childPv) {
     pv.clear();
@@ -353,4 +353,4 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
     return bestScore;
 }
 
-} /* namespace BabChess */
+} /* namespace Belette */

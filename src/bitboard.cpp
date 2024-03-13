@@ -3,7 +3,7 @@
 
 using namespace std;
 
-namespace BabChess {
+namespace Belette {
 
 Bitboard PAWN_ATTACK[NB_SIDE][NB_SQUARE];
 Bitboard KNIGHT_MOVE[NB_SQUARE];
@@ -125,4 +125,4 @@ void init()
 } // namespace Bitboard
 
 
-} /* namespace BabChess */
+} /* namespace Belette */

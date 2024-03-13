@@ -6,7 +6,7 @@
 
 using namespace std;
 
-namespace BabChess {
+namespace Belette {
 
 const string PIECE_TO_CHAR(" PNBRQK  pnbrqk");
 
@@ -754,4 +754,4 @@ bool Position::see(Move move, int threshold) const {
     return (bool)result;
 }
 
-} /* namespace BabChess */
+} /* namespace Belette */

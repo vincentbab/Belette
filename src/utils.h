@@ -4,7 +4,7 @@
 #include <chrono>
 #include <string>
 
-namespace BabChess {
+namespace Belette {
 
 using TimeMs = std::chrono::milliseconds::rep;
 
@@ -36,6 +36,6 @@ inline int64_t parseInt64(const std::string &str) {
     return 0;
 }
 
-} /* namespace BabChess */
+} /* namespace Belette */
 
 #endif /* TIMEMANAGER_H_INCLUDED */

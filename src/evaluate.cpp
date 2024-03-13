@@ -1,6 +1,6 @@
 #include "evaluate.h"
 
-namespace BabChess {
+namespace Belette {
 
 template<Side Me, Phase P>
 Score evaluateMaterial(const Position &pos) {
@@ -68,4 +68,4 @@ Score evaluate(const Position &pos) {
 template Score evaluate<WHITE>(const Position &pos);
 template Score evaluate<BLACK>(const Position &pos);
 
-} /* namespace BabChess */
+} /* namespace Belette */

@@ -2,7 +2,7 @@
 
 using namespace std;
 
-namespace BabChess {
+namespace Belette {
 
 UciOption::UciOption(OnUpdate onUpdate_) : type("button"), onUpdate(onUpdate_) { }
 
@@ -59,4 +59,4 @@ UciOption& UciOption::operator=(const string& newValue)
     return *this;
 }
 
-} /* namespace BabChess */
+} /* namespace Belette */

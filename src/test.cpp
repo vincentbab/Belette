@@ -9,7 +9,7 @@
 
 using namespace std;
 
-namespace BabChess::Test {
+namespace Belette::Test {
 
 struct TestCase {
     string fen;
@@ -65,4 +65,4 @@ void run() {
     
 }
 
-}
+} /* namespace Belette::Test */

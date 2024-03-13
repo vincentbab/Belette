@@ -1,5 +1,5 @@
 
-export TARGET_EXEC := babchess
+export TARGET_EXEC := belette
 export BUILD_DIR := ./build
 export SRC_DIR := ./src
 

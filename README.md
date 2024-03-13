@@ -1,10 +1,11 @@
-# BabChess
+# Belette
+![Belette logo](https://raw.githubusercontent.com/vincentbab/Belette/main/belette.png)
 
 Another UCI-compatible chess engine written in C++. 
 
 For now it only supports CPUs with AVX2 and BMI2 instructions. Support for other architectures might be added in the future.
 
-See [Release page](https://github.com/vincentbab/babchess-engine/releases) for precompiled binaries
+See [Release page](https://github.com/vincentbab/Belette/releases) for precompiled binaries
 
 You can play against the engine on lichess: https://lichess.org/@/BabChess-Engine
 <br>
@@ -17,19 +18,22 @@ Tested on Windows and Linux with GCC >= 12. Might also work with CLang
 ```sh
 make release
 ```
-Executable will be in `./build/Release/bin/`
+Executable will be in `./build/Release/bin/belette[.exe]`
 
 ## UCI Options
 
 ### Debug Log File
 Log every input and output of the engine to the specified file
 
+### Hash
+Specify the hash table size in megabytes
+
 ## Internals
 
 ### Board & Move generation
  - Bitboard
  - Zobrist hashing
- - Fast legal move generation inspired by [Gigantua](https://github.com/Gigantua/Gigantua)
+ - Fast legal move enumeration inspired by [Gigantua](https://github.com/Gigantua/Gigantua)
 ```
 perft 7, start position, Core i7 12700k
 
@@ -40,8 +44,20 @@ Time: 3455ms
 
 ### Search
  - Iterative deepening
+ - Aspiration window
  - Negamax
+ - Transpositation Table
+ - Check extension
  - Quiescence
+ - SEE pruning (Quiescence)
+
+ ### Move ordering
+  - Hash move
+  - MVV-LVA
+  - Killer moves
+  - Counter move
+  - Threats
+  - Staged move generation (good captures, good quiets, bad captures, bad quiets)
 
 ### Evaluation
  - Tapered

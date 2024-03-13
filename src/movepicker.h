@@ -9,7 +9,7 @@
 #include "move.h"
 #include "evaluate.h"
 
-namespace BabChess {
+namespace Belette {
 
 struct ScoredMove {
     void (Position::*doMove)(Move m);
@@ -233,6 +233,6 @@ int16_t MovePicker<Type, Me>::scoreQuiet(Move m) {
     return score;
 }
 
-} /* namespace BabChess */
+} /* namespace Belette */
 
 #endif /* MOVEPICKER_H_INCLUDED */

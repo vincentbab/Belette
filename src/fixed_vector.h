@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <algorithm>
 
-namespace BabChess {
+namespace Belette {
 
 template <typename T, int N, typename SizeT = uint32_t> class fixed_vector {
     T elements[N];
@@ -61,6 +61,6 @@ public:
     }
 };
 
-} /* namespace BabChess */
+} /* namespace Belette */
 
 #endif /* FIXED_VECTOR_H_INCLUDED */

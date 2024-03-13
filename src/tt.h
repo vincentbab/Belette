@@ -6,7 +6,7 @@
 #include <tuple>
 #include "chess.h"
 
-namespace BabChess {
+namespace Belette {
 
 constexpr size_t TT_DEFAULT_SIZE = 1024*1024*16;
 
@@ -102,6 +102,6 @@ private:
     inline uint64_t index(uint64_t hash) { return ((unsigned __int128)hash * (unsigned __int128)nbBuckets) >> 64; }
 };
 
-} /* namespace BabChess */
+} /* namespace Belette */
 
 #endif /* TT_H_INCLUDED */

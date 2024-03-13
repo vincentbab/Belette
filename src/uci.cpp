@@ -11,7 +11,7 @@
 
 using namespace std;
 
-namespace BabChess {
+namespace Belette {
 
 Console console;
 
@@ -31,7 +31,7 @@ void Console::setLogFile(const std::string &filename) {
 }
 
 Uci::Uci(int argc, char* argv[])  {
-    cout << "BabChess " << VERSION << " by Vincent Bab" << endl;
+    cout << "Belette " << VERSION << " by Vincent Bab" << endl;
     
     options["Debug Log File"] = UciOption("", [&] (const UciOption &opt) { console.setLogFile(opt); });
     options["Hash"] = UciOption(16, 1, 1048576, [&] (const UciOption &opt) { 
@@ -155,7 +155,7 @@ void Uci::loop() {
 }
 
 bool Uci::cmdUci(istringstream &is) {
-    console << "id name BabChess " << VERSION << endl;
+    console << "id name Belette " << VERSION << endl;
     console << "id author Vincent Bab" << endl;
 
     console << endl;
@@ -394,4 +394,4 @@ void UciEngine::onSearchFinish(const SearchEvent &event) {
 
 
 
-} /* namespace BabChess */
+} /* namespace Belette */

@@ -8,7 +8,7 @@
 #include "tt.h"
 #include "utils.h"
 
-namespace BabChess {
+namespace Belette {
 
 struct SearchLimits {
     TimeMs timeLeft[NB_SIDE] = {0};
@@ -62,7 +62,7 @@ struct SearchData {
 
     inline void updateKillers(Move move, int ply) {
         assert(ply < MAX_PLY);
-        
+
         if (killerMoves[ply][0] != move) {
             killerMoves[ply][1] = killerMoves[ply][0];
             killerMoves[ply][0] = move;
@@ -147,6 +147,6 @@ private:
     template<Side Me, NodeType NT> Score qSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv);
 };
 
-} /* namespace BabChess */
+} /* namespace Belette */
 
 #endif /* ENGINE_H_INCLUDED */

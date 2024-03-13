@@ -4,7 +4,7 @@
 
 using namespace std;
 
-namespace BabChess {
+namespace Belette {
 
 std::ostream& operator<<(std::ostream& os, const MoveList& moves) {
     bool first = true;
@@ -19,4 +19,4 @@ std::ostream& operator<<(std::ostream& os, const MoveList& moves) {
     return os;
 }
 
-} /* namespace BabChess*/
+} /* namespace Belette*/

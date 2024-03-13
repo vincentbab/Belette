@@ -2,7 +2,7 @@
 #include <stdexcept>
 #include "tt.h"
 
-namespace BabChess {
+namespace Belette {
 
 
 TranspositionTable::TranspositionTable(size_t defaultSize): buckets(nullptr), nbBuckets(0), age(0) {
@@ -93,4 +93,4 @@ void TranspositionTable::set(TTEntry *tte, uint64_t hash, int depth, int ply, Bo
     }
 }
 
-} /* namespace BabChess */
+} /* namespace Belette */

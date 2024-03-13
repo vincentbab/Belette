@@ -3,19 +3,20 @@
 #include "move.h"
 #include "uci.h"
 #include "utils.h"
+#include "movepicker.h"
 
 using namespace std;
 
-namespace BabChess {
+namespace Belette {
 
 template<bool Div, Side Me>
 size_t perft(Position &pos, int depth) {
     size_t total = 0;
     MoveList moves;
     
-    //if (depth <= 0) return 1;
     if (!Div && depth <= 1) {
-        enumerateLegalMoves<Me>(pos, [&](Move m, auto doMH, auto undoMH) {
+        MovePicker<MAIN, Me> mp(pos);
+        mp.enumerate([&](Move m, auto doMH, auto undoMH) {
             total += 1;
             return true;
         });
@@ -23,17 +24,18 @@ size_t perft(Position &pos, int depth) {
         return total;
     }
     
-    enumerateLegalMoves<Me>(pos, [&](Move move, auto doMove, auto undoMove) {
+    MovePicker<MAIN, Me> mp(pos);
+    mp.enumerate([&](Move move, auto doMove, auto undoMove) {
         size_t n = 0;
 
         if (Div && depth == 1) {
             n = 1;
         } else {
-            //pos.doMove<Me>(move);
+            if (!pos.isLegal(move)) {
+                assert(false);
+            }
             (pos.*doMove)(move);
             n = (depth == 1 ? 1 : perft<false, ~Me>(pos, depth - 1));
-            //n = perft<false, ~Me>(pos, depth - 1);
-            //pos.undoMove<Me>(move);
             (pos.*undoMove)(move);
         }
 
@@ -75,4 +77,4 @@ void perft(Position &pos, int depth) {
 		<< elapsed << "ms" << endl;
 }
 
-} /* namespace BabChess */
+} /* namespace Belette */

@@ -1,10 +1,10 @@
 #ifndef BENCH_H_INCLUDED
 #define BENCH_H_INCLUDED
 
-namespace BabChess {
+namespace Belette {
 
 void bench(int depth);
     
-} /* namespace BabChess */
+} /* namespace Belette */
 
 #endif /* BENCH_H_INCLUDED */

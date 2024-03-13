@@ -5,7 +5,7 @@
 #include "uci.h"
 #include "utils.h"
 
-namespace BabChess {
+namespace Belette {
 
 std::vector<std::string> BENCH_POSITIONS = {
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -62,4 +62,4 @@ void bench(int depth) {
     console << "NPS: " << (engine.nbNodes/(elapsed/1000)) << std::endl;
 }
 
-} /* namespace BabChess  */
+} /* namespace Belette  */

@@ -3,7 +3,7 @@
 
 #include "chess.h"
 
-namespace BabChess {
+namespace Belette {
 
 namespace Zobrist {
     extern Bitboard keys[NB_PIECE][NB_SQUARE];
@@ -14,6 +14,6 @@ namespace Zobrist {
     void init();
 }
 
-} /* namespace BabChess */
+} /* namespace Belette */
 
 #endif /* ZOBRIST_H_INCLUDED */

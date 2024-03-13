@@ -9,7 +9,7 @@
 #include <functional>
 #include "utils.h"
 
-namespace BabChess {
+namespace Belette {
 
 class UciOption {
 public:
@@ -57,6 +57,6 @@ private:
     OnUpdate onUpdate;
 };
 
-} /* namespace BabChess */
+} /* namespace Belette */
 
 #endif /* UCI_OPTION_H_INCLUDED */

@@ -4,7 +4,7 @@
 #include "chess.h"
 #include "position.h"
 
-namespace BabChess {
+namespace Belette {
 
 constexpr Score Tempo = 10;
 
@@ -197,6 +197,6 @@ inline Score evaluate(const Position &pos) {
     return pos.getSideToMove() == WHITE ? evaluate<WHITE>(pos) : evaluate<BLACK>(pos);
 };
 
-} /* namespace BabChess */
+} /* namespace Belette */
 
 #endif /* EVALUATE_H_INCLUDED */

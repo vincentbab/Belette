@@ -5,7 +5,7 @@
 #include <cassert>
 #include <string>
 
-namespace BabChess {
+namespace Belette {
 
 constexpr int MAX_PLY = 128;
 constexpr int MAX_HISTORY   = 2048;
@@ -346,6 +346,6 @@ inline Bitboard& operator|=(Bitboard& b, Square s) { return b |= bb(s); }
 inline Bitboard& operator^=(Bitboard& b, Square s) { return b ^= bb(s); }
 inline Bitboard  operator|(Square s1, Square s2) { return bb(s1) | bb(s2); }
 
-} /* namespace BabChess */
+} /* namespace Belette */
 
 #endif /* CHESS_H_INCLUDED */

@@ -5,7 +5,7 @@
 #include <cassert>
 #include "chess.h"
 
-namespace BabChess {
+namespace Belette {
 
 
 namespace BB {
@@ -103,6 +103,6 @@ inline Bitboard betweenBB(Square from, Square to) {
     return BETWEEN_BB[from][to];
 }
 
-} /* namespace BabChess */
+} /* namespace Belette */
 
 #endif /* BITBOARD_H_INCLUDED */

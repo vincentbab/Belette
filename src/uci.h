@@ -14,7 +14,7 @@
 
 #define VERSION "2.0.0"
 
-namespace BabChess {
+namespace Belette {
 
 typedef std::ostream& (*Manipulator) (std::ostream&);
 
@@ -123,6 +123,6 @@ private:
     bool cmdBench(std::istringstream& is);
 };
 
-} /* namespace BabChess */
+} /* namespace Belette */
 
 #endif /* UCI_H_INCLUDED */

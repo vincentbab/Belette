@@ -5,7 +5,7 @@
 #include "position.h"
 #include "fixed_vector.h"
 
-namespace BabChess {
+namespace Belette {
 
 using MoveList = fixed_vector<Move, MAX_MOVE, uint8_t>;
 
@@ -445,7 +445,7 @@ inline void generateLegalMoves(const Position &pos, MoveList &moves) {
     });
 }
 
-} /* namespace BabChess */
+} /* namespace Belette */
 
 #undef CALL_HANDLER
 #undef CALL_ENUMERATOR

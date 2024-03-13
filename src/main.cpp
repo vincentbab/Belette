@@ -9,7 +9,7 @@
 #include "zobrist.h"
 
 using namespace std;
-using namespace BabChess;
+using namespace Belette;
 
 int main(int argc, char* argv[])
 {
