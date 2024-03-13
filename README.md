@@ -1,6 +1,6 @@
-# Belette
-![Belette logo](https://raw.githubusercontent.com/vincentbab/Belette/main/belette.png)
+<p align="center"><img src="https://raw.githubusercontent.com/vincentbab/Belette/main/belette.png" width="250" alt="Belette logo"></p>
 
+# Belette
 Another UCI-compatible chess engine written in C++. 
 
 For now it only supports CPUs with AVX2 and BMI2 instructions. Support for other architectures might be added in the future.
