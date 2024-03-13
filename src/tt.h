@@ -53,7 +53,7 @@ public:
 
     inline void refresh(uint8_t age) { ageFlags8 = age | (ageFlags8 & (PV_MASK | BOUND_MASK)); }
 
-    inline isBetterToKeep(const TTEntry &other, uint8_t age) const {
+    inline bool isBetterToKeep(const TTEntry &other, uint8_t age) const {
         return this->depth8 - ((AGE_CYCLE + age - this->ageFlags8) & AGE_MASK)
              > other.depth8 - ((AGE_CYCLE + age - other.ageFlags8) & AGE_MASK);
     }
