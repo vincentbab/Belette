@@ -169,6 +169,11 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
         return ttScore;
     }
 
+    // Check extension
+    if (PvNode && inCheck && depth <= 2) {
+        depth++;
+    }
+
     sd.clearKillers(ply+1);
 
     int nbMoves = 0;
@@ -187,11 +192,6 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
         sd.nbNodes++;
 
         (pos.*doMove)(move);
-
-        // Check extension
-        if (PvNode && inCheck && depth <= 1) {
-            depth++;
-        }
 
         Score score;
 
