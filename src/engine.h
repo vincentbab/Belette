@@ -1,6 +1,7 @@
 #ifndef ENGINE_H_INCLUDED
 #define ENGINE_H_INCLUDED
 
+#include <memory>
 #include "chess.h"
 #include "position.h"
 #include "evaluate.h"
@@ -134,17 +135,18 @@ protected:
     virtual void onSearchFinish(const SearchEvent &event) = 0;
 
 private:
+    std::unique_ptr<SearchData> sd;
     Position rootPosition;
     TranspositionTable tt;
     bool aborted = true;
     bool searching = false;
 
-    inline void idSearch(SearchData &sd) { rootPosition.getSideToMove() == WHITE ? idSearch<WHITE>(sd) : idSearch<BLACK>(sd); }
-    template<Side Me> void idSearch(SearchData &sd);
+    inline void idSearch() { rootPosition.getSideToMove() == WHITE ? idSearch<WHITE>() : idSearch<BLACK>(); }
+    template<Side Me> void idSearch();
 
-    template<Side Me, NodeType NT> Score pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv);
+    template<Side Me, NodeType NT> Score pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv);
 
-    template<Side Me, NodeType NT> Score qSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv);
+    template<Side Me, NodeType NT> Score qSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv);
 };
 
 } /* namespace Belette */

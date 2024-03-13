@@ -26,14 +26,14 @@ void SearchData::initAllocatedTime() {
 void Engine::search(const SearchLimits &limits) {
     if (searching) return;
 
-    SearchData *data = new SearchData(position(), limits);
+    sd = std::make_unique<SearchData>(position(), limits);
     aborted = false;
     searching = true;
     
     tt.newSearch();
 
-    std::thread th([this, data] { 
-        this->idSearch(*data); 
+    std::thread th([&] { 
+        this->idSearch();
     });
     th.detach();
 }
@@ -44,7 +44,7 @@ void Engine::stop() {
 
 // Iterative deepening loop
 template<Side Me>
-void Engine::idSearch(SearchData &sd) {
+void Engine::idSearch() {
     MoveList bestPv;
     Score bestScore;
     int depth, searchDepth, completedDepth = 0;
@@ -55,7 +55,7 @@ void Engine::idSearch(SearchData &sd) {
         MoveList pv;
 
         // Reset selDepth
-        sd.selDepth = 0;
+        sd->selDepth = 0;
 
         searchDepth = depth;
 
@@ -68,7 +68,7 @@ void Engine::idSearch(SearchData &sd) {
 
         while (true) {
             //std::cout << "  depth=" << searchDepth << " d=" << delta << std::endl;
-            score = pvSearch<Me, NodeType::Root>(sd, alpha, beta, searchDepth, 0, pv);
+            score = pvSearch<Me, NodeType::Root>(alpha, beta, searchDepth, 0, pv);
 
             if (searchAborted()) break;
 
@@ -94,40 +94,38 @@ void Engine::idSearch(SearchData &sd) {
         bestScore = score;
         completedDepth = depth;
 
-        onSearchProgress(SearchEvent(depth, sd.selDepth, pv, bestScore, sd.nbNodes, sd.getElapsed(), tt.usage()));
+        onSearchProgress(SearchEvent(depth, sd->selDepth, pv, bestScore, sd->nbNodes, sd->getElapsed(), tt.usage()));
 
-        if (sd.limits.maxDepth > 0 && depth >= sd.limits.maxDepth) break;
+        if (sd->limits.maxDepth > 0 && depth >= sd->limits.maxDepth) break;
     }
 
-    SearchEvent event(depth, sd.selDepth, bestPv, bestScore, sd.nbNodes, sd.getElapsed(), tt.usage());
+    SearchEvent event(depth, sd->selDepth, bestPv, bestScore, sd->nbNodes, sd->getElapsed(), tt.usage());
     if (depth != completedDepth)
         onSearchProgress(event);
     onSearchFinish(event);
 
     searching = false;
-
-    delete &sd;
 }
 
 // Negamax search
 template<Side Me, NodeType NT>
-Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv) {
+Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv) {
     constexpr bool PvNode = (NT != NodeType::NonPV);
     constexpr bool RootNode = (NT == NodeType::Root);
 
     // Quiescence
     if (depth <= 0) {
         constexpr NodeType QNodeType = PvNode ? NodeType::PV : NodeType::NonPV;
-        return qSearch<Me, QNodeType>(sd, alpha, beta, depth, ply, pv);
+        return qSearch<Me, QNodeType>(alpha, beta, depth, ply, pv);
     }
 
     // Update selDepth
-    if (PvNode && sd.selDepth < ply + 1) {
-        sd.selDepth = ply + 1;
+    if (PvNode && sd->selDepth < ply + 1) {
+        sd->selDepth = ply + 1;
     }
 
     // Check if we should stop according to limits
-    if (!RootNode && sd.shouldStop()) [[unlikely]] {
+    if (!RootNode && sd->shouldStop()) [[unlikely]] {
         stop();
     }
 
@@ -147,12 +145,12 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
     Score alphaOrig = alpha;
     Score bestScore = -SCORE_INFINITE;
     Move bestMove = MOVE_NONE;
-    Position &pos = sd.position;
+    Position &pos = sd->position;
     bool inCheck = pos.inCheck();
 
     if (pos.isFiftyMoveDraw() || pos.isMaterialDraw() || pos.isRepetitionDraw()) {
         // "Random" either -1 or 1, avoid blindness to 3-fold repetitions
-        return 1-(sd.nbNodes & 2);
+        return 1-(sd->nbNodes & 2);
         //return SCORE_DRAW;
     }
 
@@ -174,35 +172,38 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
         depth++;
     }
 
-    sd.clearKillers(ply+1);
+    sd->clearKillers(ply+1);
 
     int nbMoves = 0;
     MoveList childPv;
-    MovePicker<MAIN, Me> mp(pos, ttHit ? tte->move() : MOVE_NONE, sd.killerMoves[ply][0], sd.killerMoves[ply][1], sd.getCounter());
+    MovePicker<MAIN, Me> mp(pos, ttHit ? tte->move() : MOVE_NONE, sd->killerMoves[ply][0], sd->killerMoves[ply][1], sd->getCounter());
     
     mp.enumerate([&](Move move, auto doMove, auto undoMove) -> bool {
         // Honor UCI searchmoves
-        if (RootNode && sd.limits.searchMoves.size() > 0 && !sd.limits.searchMoves.contains(move))
+        if (RootNode && sd->limits.searchMoves.size() > 0 && !sd->limits.searchMoves.contains(move))
             return true; // continue
 
         if (PvNode)
             childPv.clear();
 
         nbMoves++;
-        sd.nbNodes++;
+        sd->nbNodes++;
 
+        // Do move
         (pos.*doMove)(move);
 
         Score score;
 
+        // PVS
         if (!PvNode || nbMoves > 1) {
-            score = -pvSearch<~Me, NodeType::NonPV>(sd, -alpha-1, -alpha, depth-1, ply+1, childPv);
+            score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, depth-1, ply+1, childPv);
         }
 
         if (PvNode && (nbMoves == 1 || (score > alpha && (RootNode || score < beta)))) {
-            score = -pvSearch<~Me, NodeType::PV>(sd, -beta, -alpha, depth-1, ply+1, childPv);
+            score = -pvSearch<~Me, NodeType::PV>(-beta, -alpha, depth-1, ply+1, childPv);
         }
 
+        // Undo move
         (pos.*undoMove)(move);
 
         if (searchAborted()) return false; // break
@@ -218,8 +219,8 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
 
                 if (alpha >= beta) {
                     if (!pos.isTactical(bestMove)) {
-                        sd.updateKillers(bestMove, ply);
-                        sd.updateCounter(bestMove);
+                        sd->updateKillers(bestMove, ply);
+                        sd->updateCounter(bestMove);
                     }
                     return false; // break
                 }
@@ -245,13 +246,13 @@ Score Engine::pvSearch(SearchData &sd, Score alpha, Score beta, int depth, int p
 
 // Quiescence search
 template<Side Me, NodeType NT>
-Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int ply, MoveList &pv) {
+Score Engine::qSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv) {
     constexpr bool PvNode = (NT != NodeType::NonPV);
     if (PvNode)
         pv.clear();
 
     // Check if we should stop according to limits
-    if (sd.shouldStop()) [[unlikely]] {
+    if (sd->shouldStop()) [[unlikely]] {
         stop();
     }
 
@@ -263,11 +264,11 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
     // Default bestScore for mate detection, if InCheck and there is no move this score will be returned
     Score bestScore = -SCORE_MATE + ply;
     Move bestMove = MOVE_NONE;
-    Position &pos = sd.position;
+    Position &pos = sd->position;
 
     if (pos.isFiftyMoveDraw() || pos.isMaterialDraw() || pos.isRepetitionDraw()) {
         // "Random" either -1 or 1, avoid blindness to 3-fold repetitions
-        return 1-(sd.nbNodes & 2);
+        return 1-(sd->nbNodes & 2);
         //return SCORE_DRAW;
     }
 
@@ -322,10 +323,10 @@ Score Engine::qSearch(SearchData &sd, Score alpha, Score beta, int depth, int pl
 
     mp.enumerate([&](Move move, auto doMove, auto undoMove) -> bool {
         nbMoves++;
-        sd.nbNodes++;
+        sd->nbNodes++;
 
         (pos.*doMove)(move);
-        Score score = -qSearch<~Me, NT>(sd, -beta, -alpha, depth-1, ply+1, childPv);
+        Score score = -qSearch<~Me, NT>(-beta, -alpha, depth-1, ply+1, childPv);
         (pos.*undoMove)(move);
 
         if (searchAborted()) return false; // break
