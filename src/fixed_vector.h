@@ -32,7 +32,7 @@ public:
     inline T &front() {assert(count > 0); return elements[0]; }
     inline const T &back() const {assert(count > 0); return elements[count-1]; }
     inline T &back() {assert(count > 0); return elements[count-1]; }
-    inline void push_back(T e) {assert(count < N); elements[count++] = e;}
+    inline void push_back(const T& e) {assert(count < N); elements[count++] = e;}
     inline void push_back(T&& e) {assert(count < N); elements[count++] = e;}
     inline void pop_back() {assert(count > 0); count--;}
     inline void clear() {count = 0;}

@@ -22,6 +22,13 @@ void SearchData::initAllocatedTime() {
     allocatedTime = limits.timeLeft[stm] / moves + limits.increment[stm];
 }
 
+void Engine::waitForSearchFinish() {
+    // TODO: use condition variable ?
+    while (isSearching()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+}
+
 // Search entry point
 void Engine::search(const SearchLimits &limits) {
     if (searching) return;

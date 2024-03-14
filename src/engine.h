@@ -125,6 +125,7 @@ public:
 
     void search(const SearchLimits &limits);
     void stop();
+    void waitForSearchFinish();
     inline bool isSearching() { return searching; }
     inline bool searchAborted() { return aborted; }
     inline void setHashSize(size_t size) { tt.resize(size); }
