@@ -36,6 +36,19 @@ inline int64_t parseInt64(const std::string &str) {
     return 0;
 }
 
+// https://stackoverflow.com/questions/9779105/generic-member-function-pointer-as-a-template-parameter
+template <typename T, typename R, typename ...Args>
+class MemberFunctionProxy {
+public:
+    typedef void (T::*Func)(Args...);
+    
+    inline MemberFunctionProxy() { };
+    inline MemberFunctionProxy(Func func_): func(func_) { };
+    inline R operator()(T &obj, Args ...args) { (obj.*func)(std::forward<Args>(args)...); }
+private:
+    Func func;
+};
+
 } /* namespace Belette */
 
 #endif /* TIMEMANAGER_H_INCLUDED */

@@ -4,6 +4,7 @@
 #include "chess.h"
 #include "position.h"
 #include "fixed_vector.h"
+#include "utils.h"
 
 namespace Belette {
 
@@ -17,31 +18,28 @@ enum MoveGenType {
     ALL_MOVES = QUIET_MOVES | TACTICAL_MOVES,
 };
 
-/*#define MAKE_MOVE_HANDLER(type) \
-    auto doMoveHandler = [from, to](Position &p) { p.doMove<Me, type, false, false>(from, to); }; \
-    auto undoMoveHandler = [from, to](Position &p) { p.undoMove<Me, type>(from, to); }
+using DoMoveProxy = MemberFunctionProxy<Position, void, Move>;
+using UndoMoveProxy = MemberFunctionProxy<Position, void, Move>;
 
-#define MAKE_MOVE_HANDLER_PAWN(type, isDoublePush) \
-    auto doMoveHandler = [from, to](Position &p) { p.doMove<Me, type, true, isDoublePush>(from, to); }; \
-    auto undoMoveHandler = [from, to](Position &p) { p.undoMove<Me, type>(from, to); }
-
-#define MAKE_MOVE_HANDLER_PROMOTION(type, promotionType) \
-    auto doMoveHandler = [from, to](Position &p) { p.doMove<Me, type, true, false>(from, to, promotionType); }; \
-    auto undoMoveHandler = [from, to](Position &p) { p.undoMove<Me, type>(from, to); }*/
+#define MAKE_BASIC_MOVE_HANDLER() \
+    auto doMoveHandler = DoMoveProxy(&Position::doMove<Me>); \
+    auto undoMoveHandler = UndoMoveProxy(&Position::undoMove<Me>)
 
 #define MAKE_MOVE_HANDLER(type) \
-    auto doMoveHandler = &Position::doMove<Me, type, false, false>; \
-    auto undoMoveHandler = &Position::undoMove<Me, type>
+    auto doMoveHandler = DoMoveProxy(&Position::doMove<Me, type, false, false>); \
+    auto undoMoveHandler = UndoMoveProxy(&Position::undoMove<Me, type>)
 
 #define MAKE_MOVE_HANDLER_PAWN(type, isDoublePush) \
-    auto doMoveHandler = &Position::doMove<Me, type, true, isDoublePush>; \
-    auto undoMoveHandler = &Position::undoMove<Me, type>
+    auto doMoveHandler = DoMoveProxy(&Position::doMove<Me, type, true, isDoublePush>); \
+    auto undoMoveHandler = UndoMoveProxy(&Position::undoMove<Me, type>)
 
 #define MAKE_MOVE_HANDLER_PROMOTION(type, promotionType) \
-    auto doMoveHandler = &Position::doMove<Me, type, true, false>; \
-    auto undoMoveHandler = &Position::undoMove<Me, type>
+    auto doMoveHandler = DoMoveProxy(&Position::doMove<Me, type, true, false>); \
+    auto undoMoveHandler = UndoMoveProxy(&Position::undoMove<Me, type>)
 
 #define CALL_HANDLER(...) if (!handler(__VA_ARGS__, doMoveHandler, undoMoveHandler)) return false
+
+#define CALL_HANDLER_X(...) if (!handler(__VA_ARGS__)) return false
 
 #define CALL_ENUMERATOR(...) if (!__VA_ARGS__) return false
 
@@ -446,11 +444,5 @@ inline void generateLegalMoves(const Position &pos, MoveList &moves) {
 }
 
 } /* namespace Belette */
-
-#undef CALL_HANDLER
-#undef CALL_ENUMERATOR
-#undef MAKE_MOVE_HANDLER
-#undef MAKE_MOVE_HANDLER_PAWN
-#undef MAKE_MOVE_HANDLER_PROMOTION
 
 #endif /* MOVE_H_INCLUDED */

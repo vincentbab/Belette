@@ -190,7 +190,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
         sd->nbNodes++;
 
         // Do move
-        (pos.*doMove)(move);
+        doMove(pos, move);
 
         Score score;
 
@@ -204,7 +204,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
         }
 
         // Undo move
-        (pos.*undoMove)(move);
+        undoMove(pos, move);
 
         if (searchAborted()) return false; // break
 
@@ -325,9 +325,9 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv)
         nbMoves++;
         sd->nbNodes++;
 
-        (pos.*doMove)(move);
+        doMove(pos, move);
         Score score = -qSearch<~Me, NT>(-beta, -alpha, depth-1, ply+1, childPv);
-        (pos.*undoMove)(move);
+        undoMove(pos, move);
 
         if (searchAborted()) return false; // break
 

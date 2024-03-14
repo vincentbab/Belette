@@ -59,6 +59,11 @@ public:
         count += std::distance(_first, _last);
         return end();
     }
+
+    template<typename... Args> inline void emplace_back(Args&&... args) {
+        assert(count < N);
+        new(&elements[count++]) T(std::forward<Args>(args)...);
+    }
 };
 
 } /* namespace Belette */

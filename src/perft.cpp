@@ -31,12 +31,9 @@ size_t perft(Position &pos, int depth) {
         if (Div && depth == 1) {
             n = 1;
         } else {
-            if (!pos.isLegal(move)) {
-                assert(false);
-            }
-            (pos.*doMove)(move);
+            doMove(pos, move);
             n = (depth == 1 ? 1 : perft<false, ~Me>(pos, depth - 1));
-            (pos.*undoMove)(move);
+            undoMove(pos, move);
         }
 
         total += n;

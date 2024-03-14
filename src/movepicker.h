@@ -12,8 +12,11 @@
 namespace Belette {
 
 struct ScoredMove {
-    void (Position::*doMove)(Move m);
-    void (Position::*undoMove)(Move m);
+    ScoredMove() { };
+    inline ScoredMove(DoMoveProxy doMove_, UndoMoveProxy undoMove_, Move move_, int16_t score_) 
+        : doMove(doMove_), undoMove(undoMove_), move(move_), score(score_) { }
+    DoMoveProxy doMove;
+    UndoMoveProxy undoMove;
     Move move;
     int16_t score;
 };
@@ -53,9 +56,10 @@ private:
 template<MovePickerType Type, Side Me>
 template<typename Handler>
 bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
-    // TTMove
+    // TT Move
     if (pos.isLegal<Me>(ttMove)) {
-        if (!handler(ttMove, &Position::doMove<Me>, &Position::undoMove<Me>)) return false;
+        MAKE_BASIC_MOVE_HANDLER();
+        CALL_HANDLER(ttMove);
     }
     
     ScoredMoveList moves;
@@ -66,8 +70,8 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
         enumerateLegalMoves<Me, ALL_MOVES>(pos, [&](Move m, auto doMove, auto undoMove) {
             if (m == ttMove) return true; // continue;
 
-            ScoredMove smove = {doMove, undoMove, m, scoreEvasion(m)};
-            moves.push_back(smove);
+            //ScoredMove smove = {doMove, undoMove, m, scoreEvasion(m)};
+            moves.emplace_back(doMove, undoMove, m, scoreEvasion(m));
             return true;
         });
 
@@ -109,7 +113,7 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
             }
         }
 
-        if (!handler(current->move, current->doMove, current->undoMove)) return false;
+        CALL_HANDLER_X(current->move, current->doMove, current->undoMove);
     }
 
     // Stop here for Quiescence
@@ -117,17 +121,20 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
 
     // Killer 1
     if (refutations[0] != ttMove && !pos.isTactical(refutations[0]) && pos.isLegal<Me>(refutations[0])) {
-        if (!handler(refutations[0], &Position::doMove<Me>, &Position::undoMove<Me>)) return false;
+        MAKE_BASIC_MOVE_HANDLER();
+        CALL_HANDLER(refutations[0]);
     }
 
     // Killer 2
     if (refutations[1] != ttMove && !pos.isTactical(refutations[1]) && pos.isLegal<Me>(refutations[1])) {
-        if (!handler(refutations[1], &Position::doMove<Me>, &Position::undoMove<Me>)) return false;
+        MAKE_BASIC_MOVE_HANDLER();
+        CALL_HANDLER(refutations[1]);
     }
 
     // Counter
     if (refutations[2] != ttMove && !pos.isTactical(refutations[2]) && refutations[2] != refutations[0] && refutations[2] != refutations[1] && pos.isLegal<Me>(refutations[2])) {
-        if (!handler(refutations[2], &Position::doMove<Me>, &Position::undoMove<Me>)) return false;
+        MAKE_BASIC_MOVE_HANDLER();
+        CALL_HANDLER(refutations[2]);
     }
 
     // Quiets
@@ -141,8 +148,7 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
         if (move == ttMove) return true; // continue;
         if (refutations[0] == move || refutations[1] == move || refutations[2] == move) return true; // continue
 
-        ScoredMove smove = {doMove, undoMove, move, scoreQuiet(move)};
-        moves.push_back(smove);
+        moves.emplace_back(doMove, undoMove, move, scoreQuiet(move));
         return true;
     });
 
@@ -162,12 +168,12 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
 
     // Bad tacticals
     for (current = moves.begin(); current != endBadTacticals; current++) {
-        if (!handler(current->move, current->doMove, current->undoMove)) return false;
+        CALL_HANDLER_X(current->move, current->doMove, current->undoMove);
     }
 
     // Bad quiets
     for (current = beginQuiets; current != endBadQuiets; current++) {
-        if (!handler(current->move, current->doMove, current->undoMove)) return false;
+        CALL_HANDLER_X(current->move, current->doMove, current->undoMove);
     }
 
     return true;
@@ -203,6 +209,7 @@ int16_t MovePicker<Type, Me>::scoreQuiet(Move m) {
              : 0;
     }
 
+    // TODO: refactor this!
     switch (pt) {
         case PAWN:
             if (pawnAttacks<Me>(bb(to)) & pos.getPiecesBB(~Me, KING)) {
