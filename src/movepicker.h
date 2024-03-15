@@ -13,10 +13,8 @@ namespace Belette {
 
 struct ScoredMove {
     ScoredMove() { };
-    inline ScoredMove(DoMoveProxy doMove_, UndoMoveProxy undoMove_, Move move_, int16_t score_) 
-        : doMove(doMove_), undoMove(undoMove_), move(move_), score(score_) { }
-    DoMoveProxy doMove;
-    UndoMoveProxy undoMove;
+    inline ScoredMove(Move move_, int16_t score_) 
+        : move(move_), score(score_) { }
     Move move;
     int16_t score;
 };
@@ -58,7 +56,6 @@ template<typename Handler>
 bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     // TT Move
     if (pos.isLegal<Me>(ttMove)) {
-        MAKE_BASIC_MOVE_HANDLER();
         CALL_HANDLER(ttMove);
     }
     
@@ -67,11 +64,10 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
 
     // Evasions
     if (pos.inCheck()) {
-        enumerateLegalMoves<Me, ALL_MOVES>(pos, [&](Move m, auto doMove, auto undoMove) {
+        enumerateLegalMoves<Me, ALL_MOVES>(pos, [&](Move m) {
             if (m == ttMove) return true; // continue;
 
-            //ScoredMove smove = {doMove, undoMove, m, scoreEvasion(m)};
-            moves.emplace_back(doMove, undoMove, m, scoreEvasion(m));
+            moves.emplace_back(m, scoreEvasion(m));
             return true;
         });
 
@@ -81,22 +77,21 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
 
         for (auto m : moves) {
             if (m.move == ttMove) continue;
-            if (!handler(m.move, m.doMove, m.undoMove)) return false;
+            CALL_HANDLER(m.move);
         }
 
         return true;
     }
 
     // Tacticals
-    enumerateLegalMoves<Me, TACTICAL_MOVES>(pos, [&](Move m, auto doMove, auto undoMove) {
+    enumerateLegalMoves<Me, TACTICAL_MOVES>(pos, [&](Move m) {
         if (m == ttMove) return true; // continue;
 
         if constexpr(Type == QUIESCENCE) {
             if (!pos.see(m, 0)) return true; // continue;
         }
         
-        ScoredMove smove = {doMove, undoMove, m, scoreTactical(m)};
-        moves.push_back(smove);
+        moves.emplace_back(m, scoreTactical(m));
         return true;
     });
 
@@ -113,7 +108,7 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
             }
         }
 
-        CALL_HANDLER_X(current->move, current->doMove, current->undoMove);
+        CALL_HANDLER(current->move);
     }
 
     // Stop here for Quiescence
@@ -121,19 +116,16 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
 
     // Killer 1
     if (refutations[0] != ttMove && !pos.isTactical(refutations[0]) && pos.isLegal<Me>(refutations[0])) {
-        MAKE_BASIC_MOVE_HANDLER();
         CALL_HANDLER(refutations[0]);
     }
 
     // Killer 2
     if (refutations[1] != ttMove && !pos.isTactical(refutations[1]) && pos.isLegal<Me>(refutations[1])) {
-        MAKE_BASIC_MOVE_HANDLER();
         CALL_HANDLER(refutations[1]);
     }
 
     // Counter
     if (refutations[2] != ttMove && !pos.isTactical(refutations[2]) && refutations[2] != refutations[0] && refutations[2] != refutations[1] && pos.isLegal<Me>(refutations[2])) {
-        MAKE_BASIC_MOVE_HANDLER();
         CALL_HANDLER(refutations[2]);
     }
 
@@ -144,11 +136,11 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
                      | (pos.getPiecesBB(Me, ROOK) & pos.threatenedByMinors())
                      | (pos.getPiecesBB(Me, QUEEN) & pos.threatenedByRooks());
 
-    enumerateLegalMoves<Me, QUIET_MOVES>(pos, [&](Move move, auto doMove, auto undoMove) {
+    enumerateLegalMoves<Me, QUIET_MOVES>(pos, [&](Move move) {
         if (move == ttMove) return true; // continue;
         if (refutations[0] == move || refutations[1] == move || refutations[2] == move) return true; // continue
 
-        moves.emplace_back(doMove, undoMove, move, scoreQuiet(move));
+        moves.emplace_back(move, scoreQuiet(move));
         return true;
     });
 
@@ -163,17 +155,17 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
             continue;
         }
 
-        if (!handler(current->move, current->doMove, current->undoMove)) return false;
+        CALL_HANDLER(current->move);
     }
 
     // Bad tacticals
     for (current = moves.begin(); current != endBadTacticals; current++) {
-        CALL_HANDLER_X(current->move, current->doMove, current->undoMove);
+        CALL_HANDLER(current->move);
     }
 
     // Bad quiets
     for (current = beginQuiets; current != endBadQuiets; current++) {
-        CALL_HANDLER_X(current->move, current->doMove, current->undoMove);
+        CALL_HANDLER(current->move);
     }
 
     return true;

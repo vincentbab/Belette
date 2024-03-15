@@ -119,6 +119,7 @@ private:
     bool cmdDebug(std::istringstream& is);
     bool cmdEval(std::istringstream& is);
     bool cmdPerft(std::istringstream& is);
+    bool cmdPerftmp(std::istringstream& is);
     bool cmdTest(std::istringstream& is);
     bool cmdBench(std::istringstream& is);
 };

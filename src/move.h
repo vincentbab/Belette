@@ -18,35 +18,13 @@ enum MoveGenType {
     ALL_MOVES = QUIET_MOVES | TACTICAL_MOVES,
 };
 
-using DoMoveProxy = MemberFunctionProxy<Position, void, Move>;
-using UndoMoveProxy = MemberFunctionProxy<Position, void, Move>;
-
-#define MAKE_BASIC_MOVE_HANDLER() \
-    auto doMoveHandler = DoMoveProxy(&Position::doMove<Me>); \
-    auto undoMoveHandler = UndoMoveProxy(&Position::undoMove<Me>)
-
-#define MAKE_MOVE_HANDLER(type) \
-    auto doMoveHandler = DoMoveProxy(&Position::doMove<Me, type, false, false>); \
-    auto undoMoveHandler = UndoMoveProxy(&Position::undoMove<Me, type>)
-
-#define MAKE_MOVE_HANDLER_PAWN(type, isDoublePush) \
-    auto doMoveHandler = DoMoveProxy(&Position::doMove<Me, type, true, isDoublePush>); \
-    auto undoMoveHandler = UndoMoveProxy(&Position::undoMove<Me, type>)
-
-#define MAKE_MOVE_HANDLER_PROMOTION(type, promotionType) \
-    auto doMoveHandler = DoMoveProxy(&Position::doMove<Me, type, true, false>); \
-    auto undoMoveHandler = UndoMoveProxy(&Position::undoMove<Me, type>)
-
-#define CALL_HANDLER(...) if (!handler(__VA_ARGS__, doMoveHandler, undoMoveHandler)) return false
-
-#define CALL_HANDLER_X(...) if (!handler(__VA_ARGS__)) return false
+#define CALL_HANDLER(...) if (!handler(__VA_ARGS__)) return false
 
 #define CALL_ENUMERATOR(...) if (!__VA_ARGS__) return false
 
 
 template<Side Me, PieceType PromotionType, typename Handler>
 inline bool enumeratePromotion(Square from, Square to, const Handler& handler) {
-    MAKE_MOVE_HANDLER_PROMOTION(PROMOTION, PromotionType);
     CALL_HANDLER(makeMove<PROMOTION>(from, to, PromotionType));
 
     return true;
@@ -165,7 +143,6 @@ inline bool enumeratePawnEnpassantMoves(const Position &pos, Bitboard source, co
                 || !(attacks<ROOK>(pos.getKingSquare(Me), pos.getPiecesBB() ^ bb(from) ^ epcapture) & pos.getPiecesBB(Opp, ROOK, QUEEN)) )
             {
                 Square to = pos.getEpSquare();
-                MAKE_MOVE_HANDLER_PAWN(EN_PASSANT, false);
                 CALL_HANDLER(makeMove<EN_PASSANT>(from, to));
             }
         }
@@ -202,14 +179,12 @@ inline bool enumeratePawnNormalMoves(const Position &pos, Bitboard source, const
         bitscan_loop(singlePushes) {
             Square to = bitscan(singlePushes);
             Square from = to - Up;
-            MAKE_MOVE_HANDLER_PAWN(NORMAL, false);
             CALL_HANDLER(makeMove(from, to));
         }
 
         bitscan_loop(doublePushes) {
             Square to = bitscan(doublePushes);
             Square from = to - Up - Up;
-            MAKE_MOVE_HANDLER_PAWN(NORMAL, true);
             CALL_HANDLER(makeMove(from, to));
         }
     }
@@ -228,13 +203,11 @@ inline bool enumeratePawnNormalMoves(const Position &pos, Bitboard source, const
         bitscan_loop(capL) {
             Square to = bitscan(capL);
             Square from = to - UpLeft;
-            MAKE_MOVE_HANDLER_PAWN(NORMAL, false);
             CALL_HANDLER(makeMove(from, to));
         }
         bitscan_loop(capR) {
             Square to = bitscan(capR);
             Square from = to - UpRight;
-            MAKE_MOVE_HANDLER_PAWN(NORMAL, false);
             CALL_HANDLER(makeMove(from, to));
         }
     }
@@ -262,7 +235,6 @@ inline bool enumerateCastlingMoves(const Position &pos, const Handler& handler) 
         if (pos.canCastle(cr) && pos.isEmpty(CastlingPath[cr]) && !(pos.checkedSquares() & CastlingKingPath[cr])) {
             Square from = kingSquare;
             Square to = CastlingKingTo[cr];
-            MAKE_MOVE_HANDLER(CASTLING);
             CALL_HANDLER(makeMove<CASTLING>(from, to));
         }
     }
@@ -279,7 +251,6 @@ inline bool enumerateKingMoves(const Position &pos, Square from, const Handler& 
 
     bitscan_loop(dest) {
         Square to = bitscan(dest);
-        MAKE_MOVE_HANDLER(NORMAL);
         CALL_HANDLER(makeMove(from, to));
     }
 
@@ -300,7 +271,6 @@ inline bool enumerateKnightMoves(const Position &pos, Bitboard source, const Han
 
         bitscan_loop(dest) {
             Square to = bitscan(dest);
-            MAKE_MOVE_HANDLER(NORMAL);
             CALL_HANDLER(makeMove(from, to));
         }
     }
@@ -325,7 +295,6 @@ inline bool enumerateBishopSliderMoves(const Position &pos, Bitboard source, con
 
         bitscan_loop(dest) {
             Square to = bitscan(dest);
-            MAKE_MOVE_HANDLER(NORMAL);
             CALL_HANDLER(makeMove(from, to));
         }
     }
@@ -342,7 +311,6 @@ inline bool enumerateBishopSliderMoves(const Position &pos, Bitboard source, con
 
         bitscan_loop(dest) {
             Square to = bitscan(dest);
-            MAKE_MOVE_HANDLER(NORMAL);
             CALL_HANDLER(makeMove(from, to));
         }
     }
@@ -367,7 +335,6 @@ inline bool enumerateRookSliderMoves(const Position &pos, Bitboard source, const
 
         bitscan_loop(dest) {
             Square to = bitscan(dest);
-            MAKE_MOVE_HANDLER(NORMAL);
             CALL_HANDLER(makeMove(from, to));
         }
     }
@@ -384,7 +351,6 @@ inline bool enumerateRookSliderMoves(const Position &pos, Bitboard source, const
 
         bitscan_loop(dest) {
             Square to = bitscan(dest);
-            MAKE_MOVE_HANDLER(NORMAL);
             CALL_HANDLER(makeMove(from, to));
         }
     }
@@ -438,7 +404,7 @@ inline bool enumerateLegalMoves(const Position &pos, const Handler& handler) {
 }
 
 inline void generateLegalMoves(const Position &pos, MoveList &moves) {
-    enumerateLegalMoves(pos, [&](Move m, auto doMH, auto undoMH) {
+    enumerateLegalMoves(pos, [&](Move m) {
         moves.push_back(m); return true;
     });
 }

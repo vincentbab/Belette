@@ -51,6 +51,7 @@ Uci::Uci(int argc, char* argv[])  {
     commands["d"] = &Uci::cmdDebug;
     commands["eval"] = &Uci::cmdEval;
     commands["perft"] = &Uci::cmdPerft;
+    commands["perftmp"] = &Uci::cmdPerftmp;
     commands["test"] = &Uci::cmdTest;
     commands["bench"] = &Uci::cmdBench;
 }
@@ -105,7 +106,7 @@ Move Uci::parseMove(std::string str) const {
     if (str.length() == 5) str[4] = char(tolower(str[4]));
 
     Move move;
-    enumerateLegalMoves(engine.position(), [&](Move m, auto doMH, auto undoMH) {
+    enumerateLegalMoves(engine.position(), [&](Move m) {
         if (str == formatMove(m)) {
             move = m;
             return false;
@@ -241,6 +242,8 @@ bool Uci::cmdGo(istringstream& is) {
     while (is >> token) {
         if (token == "perft") {
             return cmdPerft(is);
+        } else if (token == "perftmp") {
+            return cmdPerftmp(is);
         } else if (token == "searchmoves") {
             while (is >> token) {
                 Move m = Uci::parseMove(token);
@@ -288,7 +291,7 @@ bool Uci::cmdDebug(istringstream& is) {
     is >> token;
 
     if (token == "moves") {
-        enumerateLegalMoves(engine.position(), [&] (Move m, auto doMove, auto undoMove) {
+        enumerateLegalMoves(engine.position(), [&] (Move m) {
             console << Uci::formatMove(m) << endl;
             return true;
         });
@@ -296,14 +299,14 @@ bool Uci::cmdDebug(istringstream& is) {
         if (engine.position().getSideToMove() == WHITE) {
             MovePicker<MAIN, WHITE> mp(engine.position());
 
-            mp.enumerate([&] (Move m, auto doMove, auto undoMove) {
+            mp.enumerate([&] (Move m) {
                 console << Uci::formatMove(m) << endl;
                 return true;
             });
         } else {
             MovePicker<MAIN, BLACK> mp(engine.position());
 
-            mp.enumerate([&] (Move m, auto doMove, auto undoMove) {
+            mp.enumerate([&] (Move m) {
                 console << Uci::formatMove(m) << endl;
                 return true;
             });
@@ -335,10 +338,19 @@ bool Uci::cmdEval(istringstream& is) {
 }
 
 bool Uci::cmdPerft(istringstream& is) {
-    int depth;
+    int depth = 1;
     is >> depth;
 
     perft(engine.position(), depth);
+
+    return true;
+}
+
+bool Uci::cmdPerftmp(istringstream& is) {
+    int depth = 1;
+    is >> depth;
+
+    perftmp(engine.position(), depth);
 
     return true;
 }

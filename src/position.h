@@ -50,13 +50,10 @@ public:
     std::string fen() const;
     
     inline void doMove(Move m) { getSideToMove() == WHITE ? doMove<WHITE>(m) : doMove<BLACK>(m); }
-    template<Side Me> void doMove(Move m);
-    //template<Side Me, MoveType Mt, bool IsPawn, bool IsDoublePush> void doMove(Square from, Square to, PieceType promotionType = NO_PIECE_TYPE);
-    template<Side Me, MoveType Mt, bool IsPawn, bool IsDoublePush> void doMove(Move m);
+    template<Side Me> inline void doMove(Move m);
 
-    template<Side Me> void undoMove(Move m);
-    //template<Side Me, MoveType Mt> void undoMove(Square from, Square to);
-    template<Side Me, MoveType Mt> void undoMove(Move m);
+    inline void undoMove(Move m) { getSideToMove() == WHITE ? undoMove<WHITE>(m) : undoMove<BLACK>(m); }
+    template<Side Me> inline void undoMove(Move m);
 
     //bool givesCheck(Move m);
 
@@ -138,6 +135,9 @@ public:
 private:
     void setCastlingRights(CastlingRight cr);
 
+    template<Side Me, MoveType Mt> void doMove(Move m);
+    template<Side Me, MoveType Mt> void undoMove(Move m);
+
     template<Side Me, bool InCheck, bool IsCapture> bool isLegal(Move m, Piece pc) const;
 
     template<Side Me> inline void setPiece(Square sq, Piece p);
@@ -216,6 +216,26 @@ inline bool Position::isRepetitionDraw() const {
     }
 
     return false;
+}
+
+template<Side Me>
+inline void Position::doMove(Move m) {
+    switch(moveType(m)) {
+        case NORMAL:     doMove<Me, NORMAL>(m); return;
+        case CASTLING:   doMove<Me, CASTLING>(m); return;
+        case PROMOTION:  doMove<Me, PROMOTION>(m); return;
+        case EN_PASSANT: doMove<Me, EN_PASSANT>(m); return;
+    }
+}
+
+template<Side Me>
+inline void Position::undoMove(Move m) {
+    switch(moveType(m)) {
+        case NORMAL:     undoMove<Me, NORMAL>(m); return;
+        case CASTLING:   undoMove<Me, CASTLING>(m); return;
+        case PROMOTION:  undoMove<Me, PROMOTION>(m); return;
+        case EN_PASSANT: undoMove<Me, EN_PASSANT>(m); return;
+    }
 }
 
 } /* namespace Belette */

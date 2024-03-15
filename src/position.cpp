@@ -43,7 +43,6 @@ void Position::reset() {
     state->castlingRights = NO_CASTLING;
     state->move = MOVE_NONE;
 
-
     for(int i=0; i<NB_SQUARE; i++) pieces[i] = NO_PIECE;
     for(int i=0; i<NB_PIECE; i++) piecesBB[i] = EmptyBB;
     //for(int i=0; i<NB_PIECE_TYPE; i++) typeBB[i] = EmptyBB;
@@ -298,36 +297,36 @@ inline bool Position::isLegal(Move move, Piece pc) const {
 
             switch(pt) {
                 case PAWN:
-                    return !enumeratePawnNormalMoves<Me, InCheck, Type>(*this, src, [move](Move m, auto doMove, auto undoMove){ return move != m; });
+                    return !enumeratePawnNormalMoves<Me, InCheck, Type>(*this, src, [move](Move m){ return move != m; });
                 case KNIGHT:
-                    return !enumerateKnightMoves<Me, InCheck, Type>(*this, src, [move](Move m, auto doMove, auto undoMove){ return move != m; });
+                    return !enumerateKnightMoves<Me, InCheck, Type>(*this, src, [move](Move m){ return move != m; });
                 case BISHOP:
-                    return !enumerateBishopSliderMoves<Me, InCheck, Type>(*this, src, [move](Move m, auto doMove, auto undoMove){ return move != m; });
+                    return !enumerateBishopSliderMoves<Me, InCheck, Type>(*this, src, [move](Move m){ return move != m; });
                 case ROOK:
-                    return !enumerateRookSliderMoves<Me, InCheck, Type>(*this, src, [move](Move m, auto doMove, auto undoMove){ return move != m; });
+                    return !enumerateRookSliderMoves<Me, InCheck, Type>(*this, src, [move](Move m){ return move != m; });
                 case QUEEN:
-                    return !enumerateQueenSliderMoves<Me, InCheck, Type>(*this, src, [move](Move m, auto doMove, auto undoMove){ return move != m; });
+                    return !enumerateQueenSliderMoves<Me, InCheck, Type>(*this, src, [move](Move m){ return move != m; });
                 case KING:
-                    return !enumerateKingMoves<Me, Type>(*this, from, [move](Move m, auto doMove, auto undoMove){ return move != m; });
+                    return !enumerateKingMoves<Me, Type>(*this, from, [move](Move m){ return move != m; });
                 default:
                     return false;
             }
         case CASTLING:
             if (nbCheckers() > 0) return false; // No castling when in check
 
-            return !enumerateCastlingMoves<Me>(*this, [move](Move m, auto doMove, auto undoMove) { return move != m; });
+            return !enumerateCastlingMoves<Me>(*this, [move](Move m) { return move != m; });
         case PROMOTION:
             if (nbCheckers() > 1) return false; // Only king move when in double check
             if (pt != PAWN) return false;
 
-            return !enumeratePawnPromotionMoves<Me, InCheck, ALL_MOVES>(*this, src, [move](Move m, auto doMove, auto undoMove) { return (move != m); });
+            return !enumeratePawnPromotionMoves<Me, InCheck, ALL_MOVES>(*this, src, [move](Move m) { return (move != m); });
         case EN_PASSANT:
             if (nbCheckers() > 1) return false; // Only king move when in double check
             if (getEpSquare() == SQ_NONE || getEpSquare() != moveTo(move)) return false;
             if (pt != PAWN) return false;
 
-            return !enumeratePawnEnpassantMoves<Me, InCheck>(*this, src, [move](Move m, auto doMove, auto undoMove){ return move != m; });
-        break;
+            return !enumeratePawnEnpassantMoves<Me, InCheck>(*this, src, [move](Move m){ return move != m; });
+        default: break;
     }
 
     return false;
@@ -365,30 +364,8 @@ inline void Position::movePiece(Square from, Square to) {
     piecesBB[p] ^= fromTo;
 }
 
-template<Side Me>
-inline void Position::doMove(Move m) {
-    switch(moveType(m)) {
-        case NORMAL:
-            {
-                const Square from = moveFrom(m);
-
-                if (getPieceAt(from) == piece(Me, PAWN)) {
-                    const Square to = moveTo(m);
-                    (int(from) ^ int(to)) == int(UP+UP) ? doMove<Me, NORMAL, true, true>(m) : doMove<Me, NORMAL, true, false>(m);
-                } else {
-                    doMove<Me, NORMAL, false, false>(m);
-                }
-
-                return;
-            }
-        case CASTLING:    doMove<Me, CASTLING, false, false>(m); return;
-        case PROMOTION:   doMove<Me, PROMOTION, true, false>(m); return;
-        case EN_PASSANT:  doMove<Me, EN_PASSANT, true, false>(m); return;
-    }
-}
-
-template<Side Me, MoveType Mt, bool IsPawn, bool IsDoublePush>
-inline void Position::doMove(Move m) {
+template<Side Me, MoveType Mt>
+void Position::doMove(Move m) {
     assert(m != MOVE_NONE);
     assert(getSideToMove() == Me);
     const Square from = moveFrom(m); 
@@ -433,11 +410,11 @@ inline void Position::doMove(Move m) {
         state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
         h ^= Zobrist::castlingKeys[state->castlingRights];
 
-        if constexpr (IsPawn) {
+        if (p == piece(Me, PAWN)) {
             state->fiftyMoveRule = 0;
 
             // Set epSquare on double push
-            if constexpr (IsDoublePush) {
+            if ((int(from) ^ int(to)) == int(UP+UP)) {
                 const Square epsq = to - pawnDirection(Me);
 
                 // Only if opponent pawn can do enpassant
@@ -507,18 +484,17 @@ inline void Position::doMove(Move m) {
     updateBitboards<~Me>();
 }
 
-template<Side Me>
-inline void Position::undoMove(Move m) {
-    switch(moveType(m)) {
-        case NORMAL:      undoMove<Me, NORMAL>(m); return;
-        case CASTLING:    undoMove<Me, CASTLING>(m); return;
-        case PROMOTION:   undoMove<Me, PROMOTION>(m); return;
-        case EN_PASSANT:  undoMove<Me, EN_PASSANT>(m); return;
-    }
-}
+template void Position::doMove<WHITE, NORMAL>(Move m);
+template void Position::doMove<WHITE, PROMOTION>(Move m);
+template void Position::doMove<WHITE, EN_PASSANT>(Move m);
+template void Position::doMove<WHITE, CASTLING>(Move m);
+template void Position::doMove<BLACK, NORMAL>(Move m);
+template void Position::doMove<BLACK, PROMOTION>(Move m);
+template void Position::doMove<BLACK, EN_PASSANT>(Move m);
+template void Position::doMove<BLACK, CASTLING>(Move m);
 
 template<Side Me, MoveType Mt>
-inline void Position::undoMove(Move m) {
+void Position::undoMove(Move m) {
     assert(getSideToMove() == ~Me);
 
     const Square from = moveFrom(m);
@@ -556,10 +532,14 @@ inline void Position::undoMove(Move m) {
     }
 }
 
-template void Position::doMove<WHITE>(Move m);
-template void Position::doMove<BLACK>(Move m);
-template void Position::undoMove<WHITE>(Move m);
-template void Position::undoMove<BLACK>(Move m);
+template void Position::undoMove<WHITE, NORMAL>(Move m);
+template void Position::undoMove<WHITE, PROMOTION>(Move m);
+template void Position::undoMove<WHITE, EN_PASSANT>(Move m);
+template void Position::undoMove<WHITE, CASTLING>(Move m);
+template void Position::undoMove<BLACK, NORMAL>(Move m);
+template void Position::undoMove<BLACK, PROMOTION>(Move m);
+template void Position::undoMove<BLACK, EN_PASSANT>(Move m);
+template void Position::undoMove<BLACK, CASTLING>(Move m);
 
 inline void Position::updateBitboards() { 
     sideToMove == WHITE ? updateBitboards<WHITE>() : updateBitboards<BLACK>(); 

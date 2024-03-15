@@ -185,7 +185,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
     MoveList childPv;
     MovePicker<MAIN, Me> mp(pos, ttHit ? tte->move() : MOVE_NONE, sd->killerMoves[ply][0], sd->killerMoves[ply][1], sd->getCounter());
     
-    mp.enumerate([&](Move move, auto doMove, auto undoMove) -> bool {
+    mp.enumerate([&](Move move) -> bool {
         // Honor UCI searchmoves
         if (RootNode && sd->limits.searchMoves.size() > 0 && !sd->limits.searchMoves.contains(move))
             return true; // continue
@@ -197,7 +197,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
         sd->nbNodes++;
 
         // Do move
-        doMove(pos, move);
+        pos.doMove<Me>(move);
 
         Score score;
 
@@ -211,7 +211,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
         }
 
         // Undo move
-        undoMove(pos, move);
+        pos.undoMove<Me>(move);
 
         if (searchAborted()) return false; // break
 
@@ -328,13 +328,13 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv)
     bool useTTMove = ttHit && isValidMove(ttMove) && (depth >= -7 || pos.inCheck() || pos.isTactical(ttMove));
     MovePicker<QUIESCENCE, Me> mp(pos, useTTMove ? ttMove : MOVE_NONE);
 
-    mp.enumerate([&](Move move, auto doMove, auto undoMove) -> bool {
+    mp.enumerate([&](Move move) -> bool {
         nbMoves++;
         sd->nbNodes++;
 
-        doMove(pos, move);
+        pos.doMove<Me>(move);
         Score score = -qSearch<~Me, NT>(-beta, -alpha, depth-1, ply+1, childPv);
-        undoMove(pos, move);
+        pos.undoMove<Me>(move);
 
         if (searchAborted()) return false; // break
 
