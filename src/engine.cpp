@@ -192,6 +192,13 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
         }
     }
 
+    // Reverse futility pruning
+    if (!PvNode && !inCheck && depth <= 4
+        && eval - (100 * depth) >= beta)
+    {
+        return eval;
+    }
+
     // Null move pruning
     if (!PvNode && !inCheck
         && pos.previousMove() != MOVE_NULL && pos.hasNonPawnMateriel<Me>() && eval >= beta)
