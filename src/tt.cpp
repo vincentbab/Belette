@@ -79,6 +79,7 @@ std::tuple<bool, TTEntry *> TranspositionTable::get(uint64_t hash) {
 void TranspositionTable::set(TTEntry *tte, uint64_t hash, int depth, int ply, Bound bound, Move move, Score eval, Score score, bool pv) {
     assert(depth >= 0);
     assert(tte != nullptr);
+    assert(move != MOVE_NULL);
 
     if (move != MOVE_NONE || !tte->hashEquals(hash)) {
         tte->move16 = move;

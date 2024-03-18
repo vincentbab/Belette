@@ -72,7 +72,7 @@ struct SearchData {
 
     inline void updateCounter(Move move) {
         Move prevMove = position.previousMove();
-        if (prevMove != MOVE_NONE)
+        if (isValidMove(prevMove))
             counterMoves[position.getPieceAt(moveTo(prevMove))][moveTo(prevMove)] = move;
     }
 

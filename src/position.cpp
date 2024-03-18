@@ -366,8 +366,9 @@ inline void Position::movePiece(Square from, Square to) {
 
 template<Side Me, MoveType Mt>
 void Position::doMove(Move m) {
-    assert(m != MOVE_NONE);
+    assert(isValidMove(m));
     assert(getSideToMove() == Me);
+
     const Square from = moveFrom(m); 
     const Square to = moveTo(m);
     const Piece p = getPieceAt(from);
@@ -541,19 +542,58 @@ template void Position::undoMove<BLACK, PROMOTION>(Move m);
 template void Position::undoMove<BLACK, EN_PASSANT>(Move m);
 template void Position::undoMove<BLACK, CASTLING>(Move m);
 
+template<Side Me> void Position::doNullMove() {
+    assert(!inCheck());
+    assert(getSideToMove() == Me);
+    
+    uint64_t h = state->hash;
+
+    // Reset epSquare (branchless)
+    h ^= Zobrist::enpassantKeys[fileOf(state->epSquare) + NB_FILE*(state->epSquare == SQ_NONE)];
+
+    State *oldState = state++;
+    state->epSquare = SQ_NONE;
+    state->castlingRights = oldState->castlingRights;
+    state->fiftyMoveRule = oldState->fiftyMoveRule + 1;
+    state->halfMoves = oldState->halfMoves + 1;
+    state->capture = NO_PIECE;
+    state->move = MOVE_NULL;
+
+    sideToMove = ~Me;
+    h ^= Zobrist::sideToMoveKey;
+
+    state->hash = h;
+    assert(computeHash() == hash());
+
+    updateThreatenedSquares<~Me>();
+    state->checkers = EmptyBB; // Null move cannot gives check
+    updatePinsAndCheckMask<~Me, false>();
+}
+
+template void Position::doNullMove<WHITE>();
+template void Position::doNullMove<BLACK>();
+
+template<Side Me> void Position::undoNullMove() {
+    state--;
+    sideToMove = Me;
+}
+
+template void Position::undoNullMove<WHITE>();
+template void Position::undoNullMove<BLACK>();
+
 inline void Position::updateBitboards() { 
     sideToMove == WHITE ? updateBitboards<WHITE>() : updateBitboards<BLACK>(); 
 }
 
 template<Side Me>
 inline void Position::updateBitboards() {
-    updateCheckedSquares<Me>();
+    updateThreatenedSquares<Me>();
     updateCheckers<Me>();
     checkers() ? updatePinsAndCheckMask<Me, true>() : updatePinsAndCheckMask<Me, false>();
 }
 
 template<Side Me>
-inline void Position::updateCheckedSquares() {
+inline void Position::updateThreatenedSquares() {
     constexpr Side Opp = ~Me;
 
     // Pawns

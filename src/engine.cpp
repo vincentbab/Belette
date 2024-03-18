@@ -154,6 +154,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
     Move bestMove = MOVE_NONE;
     Position &pos = sd->position;
     bool inCheck = pos.inCheck();
+    Score eval = SCORE_NONE;
+    MoveList childPv;
 
     if (pos.isFiftyMoveDraw() || pos.isMaterialDraw() || pos.isRepetitionDraw()) {
         // "Random" either -1 or 1, avoid blindness to 3-fold repetitions
@@ -168,10 +170,42 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
     // Query Transposition Table
     auto&&[ttHit, tte] = tt.get(pos.hash());
     Score ttScore = tte->score(ply);
+    bool ttPv = PvNode || (ttHit && tte->isPv());
 
     // Transposition Table cutoff
     if (!PvNode && ttHit && tte->depth() >= depth && tte->canCutoff(ttScore, beta)) {
         return ttScore;
+    }
+
+    // Static eval
+    if (!inCheck) {
+        if (ttHit) {
+            eval = (tte->eval() != SCORE_NONE ? tte->eval() : evaluate<Me>(pos));
+
+            // Use score instead of eval if available. 
+            if (tte->canCutoff(ttScore, eval)) {
+                eval = tte->score(ply);
+            }
+        } else {
+            eval = evaluate<Me>(pos);
+            tt.set(tte, pos.hash(), 0, ply, BOUND_NONE, MOVE_NONE, eval, SCORE_NONE, ttPv);
+        }
+    }
+
+    // Null move pruning
+    if (!PvNode && !inCheck
+        && pos.previousMove() != MOVE_NULL && pos.hasNonPawnMateriel<Me>() && eval >= beta)
+    {
+        int R = 4 + depth / 4;
+
+        pos.doNullMove<Me>();
+        Score score = -pvSearch<~Me, NodeType::NonPV>(-beta, -beta+1, depth-R, ply+1, childPv);
+        pos.undoNullMove<Me>();
+
+        if (score >= beta) {
+            // TODO: verification search ?
+            return score >= SCORE_MATE_MAX_PLY ? beta : score;
+        }
     }
 
     // Check extension
@@ -182,7 +216,6 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
     sd->clearKillers(ply+1);
 
     int nbMoves = 0;
-    MoveList childPv;
     MovePicker<MAIN, Me> mp(pos, ttHit ? tte->move() : MOVE_NONE, sd->killerMoves[ply][0], sd->killerMoves[ply][1], sd->getCounter());
     
     mp.enumerate([&](Move move) -> bool {
@@ -245,7 +278,6 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
     // Update Transposition Table
     Bound ttBound =         bestScore >= beta         ? BOUND_LOWER : 
                     !PvNode || bestScore <= alphaOrig ? BOUND_UPPER : BOUND_EXACT;
-    bool ttPv = PvNode || (ttHit && tte->isPv());
     tt.set(tte, pos.hash(), depth, ply, ttBound, bestMove, SCORE_NONE, bestScore, ttPv);
 
     return bestScore;

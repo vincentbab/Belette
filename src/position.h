@@ -55,6 +55,9 @@ public:
     inline void undoMove(Move m) { getSideToMove() == WHITE ? undoMove<WHITE>(m) : undoMove<BLACK>(m); }
     template<Side Me> inline void undoMove(Move m);
 
+    template<Side Me> void doNullMove();
+    template<Side Me> void undoNullMove();
+
     //bool givesCheck(Move m);
 
     inline Side getSideToMove() const { return sideToMove; }
@@ -120,6 +123,7 @@ public:
 
     inline bool isFiftyMoveDraw() const { return state->fiftyMoveRule > 99; }
     inline bool isMaterialDraw() const;
+    template<Side Me> inline bool hasNonPawnMateriel() { return getPiecesBB(Me, PAWN, KING) != getPiecesBB(Me); }
 
     template<Side Me> bool isLegal(Move m) const;
     inline bool isLegal(Move m) const { return getSideToMove() == WHITE ? isLegal<WHITE>(m) : isLegal<BLACK>(m); };
@@ -144,7 +148,7 @@ private:
     template<Side Me> inline void unsetPiece(Square sq);
     template<Side Me> inline void movePiece(Square from, Square to);
 
-    template<Side Me> inline void updateCheckedSquares();
+    template<Side Me> inline void updateThreatenedSquares();
     template<Side Me> inline void updateCheckers();
     template<Side Me, bool InCheck> inline void updatePinsAndCheckMask();
 
