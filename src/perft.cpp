@@ -1,6 +1,6 @@
 #include <iostream>
 #include "perft.h"
-#include "move.h"
+#include "movegen.h"
 #include "uci.h"
 #include "utils.h"
 #include "movepicker.h"

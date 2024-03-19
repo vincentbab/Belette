@@ -6,7 +6,7 @@
 #include "fixed_vector.h"
 #include "chess.h"
 #include "position.h"
-#include "move.h"
+#include "movegen.h"
 #include "evaluate.h"
 
 namespace Belette {

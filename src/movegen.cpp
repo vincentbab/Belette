@@ -1,5 +1,5 @@
 #include <iostream>
-#include "move.h"
+#include "movegen.h"
 #include "uci.h"
 
 using namespace std;

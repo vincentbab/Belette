@@ -1,5 +1,5 @@
-#ifndef MOVE_H_INCLUDED
-#define MOVE_H_INCLUDED
+#ifndef MOVEGEN_H_INCLUDED
+#define MOVEGEN_H_INCLUDED
 
 #include "chess.h"
 #include "position.h"
@@ -411,4 +411,4 @@ inline void generateLegalMoves(const Position &pos, MoveList &moves) {
 
 } /* namespace Belette */
 
-#endif /* MOVE_H_INCLUDED */
+#endif /* MOVEGEN_H_INCLUDED */

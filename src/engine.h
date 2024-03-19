@@ -5,7 +5,7 @@
 #include "chess.h"
 #include "position.h"
 #include "evaluate.h"
-#include "move.h"
+#include "movegen.h"
 #include "tt.h"
 #include "utils.h"
 

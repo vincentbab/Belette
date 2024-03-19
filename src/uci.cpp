@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <ctime>
 #include "uci.h"
-#include "move.h"
+#include "movegen.h"
 #include "test.h"
 #include "perft.h"
 #include "utils.h"
