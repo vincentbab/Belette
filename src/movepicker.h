@@ -7,6 +7,7 @@
 #include "chess.h"
 #include "position.h"
 #include "movegen.h"
+#include "movehistory.h"
 #include "evaluate.h"
 
 namespace Belette {
@@ -29,10 +30,14 @@ enum MovePickerType {
 template<MovePickerType Type, Side Me>
 class MovePicker {
 public:
-    MovePicker(const Position &pos_, Move ttMove_ = MOVE_NONE, Move killer1_ = MOVE_NONE, Move killer2_ = MOVE_NONE, Move counter_ = MOVE_NONE)
-    : pos(pos_), ttMove(ttMove_), refutations{killer1_, killer2_, counter_} 
-    { 
-        assert(killer1_ != killer2_ || killer1_ == MOVE_NONE);
+    MovePicker(const Position &pos_, Move ttMove_ = MOVE_NONE)
+    : pos(pos_), ttMove(ttMove_), refutations{MOVE_NONE, MOVE_NONE, MOVE_NONE} 
+    { }
+
+    MovePicker(const Position &pos_, Move ttMove_, const MoveHistory& history, int ply)
+    : pos(pos_), ttMove(ttMove_), refutations{history.getKiller<0>(ply), history.getKiller<1>(ply), history.getCounter(pos)} 
+    {
+        assert(refutations[0] != refutations[1] || refutations[0] == MOVE_NONE);
     }
 
     template<typename Handler>
@@ -76,7 +81,6 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
         });
 
         for (auto m : moves) {
-            if (m.move == ttMove) continue;
             CALL_HANDLER(m.move);
         }
 

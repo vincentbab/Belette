@@ -220,10 +220,10 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
         depth++;
     }
 
-    sd->clearKillers(ply+1);
+    sd->moveHistory.clearKillers(ply+1);
 
     int nbMoves = 0;
-    MovePicker<MAIN, Me> mp(pos, ttHit ? tte->move() : MOVE_NONE, sd->killerMoves[ply][0], sd->killerMoves[ply][1], sd->getCounter());
+    MovePicker<MAIN, Me> mp(pos, ttHit ? tte->move() : MOVE_NONE, sd->moveHistory, ply);
     
     mp.enumerate([&](Move move) -> bool {
         // Honor UCI searchmoves
@@ -265,10 +265,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
                     updatePv(pv, move, childPv);
 
                 if (alpha >= beta) {
-                    if (!pos.isTactical(bestMove)) {
-                        sd->updateKillers(bestMove, ply);
-                        sd->updateCounter(bestMove);
-                    }
+                    sd->moveHistory.update(pos, bestMove, ply);
                     return false; // break
                 }
             }

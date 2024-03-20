@@ -6,6 +6,7 @@
 #include "position.h"
 #include "evaluate.h"
 #include "movegen.h"
+#include "movehistory.h"
 #include "tt.h"
 #include "utils.h"
 
@@ -23,7 +24,7 @@ struct SearchLimits {
 
 struct SearchData {
     SearchData(const Position& pos_, const SearchLimits& limits_)
-    : position(pos_), limits(limits_), nbNodes(0), killerMoves{MOVE_NONE}, counterMoves{MOVE_NONE} { 
+    : position(pos_), limits(limits_), nbNodes(0) {
         start();
     }
 
@@ -56,33 +57,6 @@ struct SearchData {
         return false;
     }
 
-    inline void clearKillers(int ply) {
-        assert(ply < MAX_PLY);
-        killerMoves[ply][0] = killerMoves[ply][1] = MOVE_NONE;
-    }
-
-    inline void updateKillers(Move move, int ply) {
-        assert(ply < MAX_PLY);
-
-        if (killerMoves[ply][0] != move) {
-            killerMoves[ply][1] = killerMoves[ply][0];
-            killerMoves[ply][0] = move;
-        }
-    }
-
-    inline void updateCounter(Move move) {
-        Move prevMove = position.previousMove();
-        if (isValidMove(prevMove))
-            counterMoves[position.getPieceAt(moveTo(prevMove))][moveTo(prevMove)] = move;
-    }
-
-    inline Move getCounter() const {
-        Move prevMove = position.previousMove();
-        if (prevMove == MOVE_NONE) return MOVE_NONE;
-
-        return counterMoves[position.getPieceAt(moveTo(prevMove))][moveTo(prevMove)];
-    }
-
     Position position;
     SearchLimits limits;
     size_t nbNodes;
@@ -92,8 +66,7 @@ struct SearchData {
     TimeMs lastCheck;
     TimeMs allocatedTime;
 
-    Move killerMoves[MAX_PLY][2];
-    Move counterMoves[NB_PIECE][NB_SQUARE];
+    MoveHistory moveHistory;
 };
 
 struct SearchEvent {
