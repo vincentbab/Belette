@@ -1,10 +1,16 @@
 #ifndef MOVEHISTORY_H_INCLUDED
 #define MOVEHISTORY_H_INCLUDED
 
+#include <cstdint>
 #include "chess.h"
 #include "position.h"
+#include "fixed_vector.h"
 
 namespace Belette {
+
+using MoveScore = int32_t;
+
+using PartialMoveList = fixed_vector<Move, 32, uint8_t>;
 
 class MoveHistory {
 public:
@@ -28,16 +34,33 @@ public:
         return counterMoves[pos.getPieceAt(moveTo(prevMove))][moveTo(prevMove)];
     }
 
-    inline void update(const Position& pos, Move bestMove, int ply) {
+    template<Side Me>
+    inline MoveScore getHistory(Move m) const {
+        return history[Me][moveFromTo(m)];
+    }
+
+    template<Side Me>
+    inline void update(const Position& pos, Move bestMove, int ply, int depth, const PartialMoveList& quietMoves) {
         if (!pos.isTactical(bestMove)) {
             updateKiller(bestMove, ply);
             updateCounter(pos, bestMove);
+
+            MoveScore bonus = historyBonus(depth);
+            updateHistoryEntry(history[Me][moveFromTo(bestMove)], bonus);
+
+            for (auto m : quietMoves) {
+                updateHistoryEntry(history[Me][moveFromTo(m)], -bonus);
+            }
         }
     }
 private:
     Move counterMoves[NB_PIECE][NB_SQUARE];
     Move killerMoves[MAX_PLY][2];
-    //Move history[NB_SIDE][NB_SQUARE*NB_SQUARE];
+    MoveScore history[NB_SIDE][NB_SQUARE*NB_SQUARE];
+
+    inline MoveScore historyBonus(int depth) {
+        return std::min(1536, 8*depth*depth);
+    }
 
     inline void updateKiller(Move move, int ply) {
         assert(ply >= 0 && ply < MAX_PLY);
@@ -52,6 +75,10 @@ private:
         Move prevMove = pos.previousMove();
         if (isValidMove(prevMove))
             counterMoves[pos.getPieceAt(moveTo(prevMove))][moveTo(prevMove)] = move;
+    }
+
+    inline void updateHistoryEntry(MoveScore &entry, MoveScore bonus) {
+        entry += bonus - entry * std::abs(bonus) / 8192;
     }
 };
 

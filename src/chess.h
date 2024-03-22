@@ -323,6 +323,10 @@ constexpr Square moveFrom(Move m) {
     return Square((m >> 6) & 0x3F);
 }
 
+constexpr uint16_t moveFromTo(Move m) {
+    return m & 0xFFF;
+}
+
 constexpr MoveType moveType(Move m) {
     return MoveType(m & (3 << 14));
 }

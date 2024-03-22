@@ -371,7 +371,7 @@ bool Uci::cmdTest(istringstream& is) {
 }
 
 bool Uci::cmdBench(istringstream& is) {
-    int depth = 9;
+    int depth = 11;
     is >> depth;
 
     bench(depth);

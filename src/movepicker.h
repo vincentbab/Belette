@@ -14,10 +14,13 @@ namespace Belette {
 
 struct ScoredMove {
     ScoredMove() { };
-    inline ScoredMove(Move move_, int16_t score_) 
-        : move(move_), score(score_) { }
+
+    inline ScoredMove(Move move_, MoveScore score_) 
+    : score(score_), move(move_)/*, next(1)*/ { }
+
+    MoveScore score;
     Move move;
-    int16_t score;
+    //uint16_t next; // Increment to the next move in the list. Default = 1
 };
 
 using ScoredMoveList = fixed_vector<ScoredMove, MAX_MOVE, uint8_t>;
@@ -31,28 +34,32 @@ template<MovePickerType Type, Side Me>
 class MovePicker {
 public:
     MovePicker(const Position &pos_, Move ttMove_ = MOVE_NONE)
-    : pos(pos_), ttMove(ttMove_), refutations{MOVE_NONE, MOVE_NONE, MOVE_NONE} 
+    : pos(pos_), ttMove(ttMove_), moveHistory(nullptr), refutations{MOVE_NONE}
     { }
 
-    MovePicker(const Position &pos_, Move ttMove_, const MoveHistory& history, int ply)
-    : pos(pos_), ttMove(ttMove_), refutations{history.getKiller<0>(ply), history.getKiller<1>(ply), history.getCounter(pos)} 
+    MovePicker(const Position &pos_, Move ttMove_, const MoveHistory* moveHistory_, int ply_)
+    : pos(pos_), ttMove(ttMove_), moveHistory(moveHistory_), ply(ply_),
+      refutations{moveHistory->getKiller<0>(ply), moveHistory->getKiller<1>(ply), moveHistory->getCounter(pos)}
     {
         assert(refutations[0] != refutations[1] || refutations[0] == MOVE_NONE);
     }
-
+    
     template<typename Handler>
     inline bool enumerate(const Handler &handler);
 
 private:
     const Position &pos;
     Move ttMove;
+
+    const MoveHistory *moveHistory;
+    int ply;
     Move refutations[3];
 
     Bitboard threatenedPieces;
 
-    inline int16_t scoreEvasion(Move m);
-    inline int16_t scoreTactical(Move m);
-    inline int16_t scoreQuiet(Move m);
+    inline MoveScore scoreEvasion(Move m);
+    inline MoveScore scoreTactical(Move m);
+    inline MoveScore scoreQuiet(Move m);
 };
 
 
@@ -88,24 +95,39 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     }
 
     // Tacticals
+    //moves.emplace_back(MOVE_NONE, 0); // Dummy move to allow access to (i-1)
     enumerateLegalMoves<Me, TACTICAL_MOVES>(pos, [&](Move m) {
         if (m == ttMove) return true; // continue;
-
-        if constexpr(Type == QUIESCENCE) {
-            if (!pos.see(m, 0)) return true; // continue;
-        }
         
         moves.emplace_back(m, scoreTactical(m));
         return true;
     });
 
-    std::sort(moves.begin(), moves.end(), [](const ScoredMove &a, const ScoredMove &b) {
+    std::sort(moves.begin() /*+ 1*/, moves.end(), [](const ScoredMove &a, const ScoredMove &b) {
         return a.score > b.score;
     });
 
+    /*uint16_t nbTacticals = moves.size();
+    uint16_t beginGoodTactical = nbTacticals, endGoodTactical = 0, 
+             beginBadTactical = nbTacticals, endBadTactical = 0;*/
+
     // Good tacticals
+    /*for (int i=0; i<nbTacticals; i++) {
+        if constexpr(Type == MAIN) { // For quiescence, prunning of bad captures is done in search
+            if (!pos.see(current->move, -50)) { // Allow Bishop takes Knight
+                beginBadTactical = beginBadTactical * (beginBadTactical==nbTacticals);
+                endBadTactical = i+1;
+                continue;
+            } else {
+                beginGoodTactical = beginGoodTactical * (beginGoodTactical==nbTacticals);
+                endGoodTactical = i+1;
+            }
+        }
+
+        CALL_HANDLER(current->move);
+    }*/
     for (current = endBadTacticals = moves.begin(); current != moves.end(); current++) {
-        if constexpr(Type == MAIN) { // For quiescence bad moves are already pruned in move enumeration
+        if constexpr(Type == MAIN) { // For quiescence prunning of bad captures is done in search
             if (!pos.see(current->move, -50)) { // Allow Bishop takes Knight
                 *endBadTacticals++ = *current;
                 continue;
@@ -118,20 +140,24 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     // Stop here for Quiescence
     if constexpr(Type == QUIESCENCE) return true;
 
-    // Killer 1
-    if (refutations[0] != ttMove && !pos.isTactical(refutations[0]) && pos.isLegal<Me>(refutations[0])) {
-        CALL_HANDLER(refutations[0]);
+    if (moveHistory != nullptr) [[likely]] {
+        // Killer 1
+        if (refutations[0] != ttMove && !pos.isTactical(refutations[0]) && pos.isLegal<Me>(refutations[0])) {
+            CALL_HANDLER(refutations[0]);
+        }
+
+        // Killer 2
+        if (refutations[1] != ttMove && !pos.isTactical(refutations[1]) && pos.isLegal<Me>(refutations[1])) {
+            CALL_HANDLER(refutations[1]);
+        }
+
+        // Counter
+        if (refutations[2] != ttMove && !pos.isTactical(refutations[2]) && refutations[2] != refutations[0] && refutations[2] != refutations[1] && pos.isLegal<Me>(refutations[2])) {
+            CALL_HANDLER(refutations[2]);
+        }
     }
 
-    // Killer 2
-    if (refutations[1] != ttMove && !pos.isTactical(refutations[1]) && pos.isLegal<Me>(refutations[1])) {
-        CALL_HANDLER(refutations[1]);
-    }
-
-    // Counter
-    if (refutations[2] != ttMove && !pos.isTactical(refutations[2]) && refutations[2] != refutations[0] && refutations[2] != refutations[1] && pos.isLegal<Me>(refutations[2])) {
-        CALL_HANDLER(refutations[2]);
-    }
+    //int firstGoodQuiet, lastGoodQuiet, firstBadQuiet, lastBadQuiet;
 
     // Quiets
     moves.resize(endBadTacticals - moves.begin()); // Keep only bad tacticals
@@ -154,7 +180,7 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
 
     // Good quiets
     for (current = endBadQuiets = beginQuiets; current != moves.end(); current++) {
-        if (current->score < 0) {
+        if (current->score < -4000) {
             *endBadQuiets++ = *current;
             continue;
         }
@@ -176,7 +202,7 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
 }
 
 template<MovePickerType Type, Side Me>
-int16_t MovePicker<Type, Me>::scoreEvasion(Move m) {
+MoveScore MovePicker<Type, Me>::scoreEvasion(Move m) {
     if (pos.isCapture(m)) {
         return scoreTactical(m);
     }
@@ -185,49 +211,54 @@ int16_t MovePicker<Type, Me>::scoreEvasion(Move m) {
 }
 
 template<MovePickerType Type, Side Me>
-int16_t MovePicker<Type, Me>::scoreTactical(Move m) {
+MoveScore MovePicker<Type, Me>::scoreTactical(Move m) {
     return PieceValue<MG>(pos.getPieceAt(moveTo(m))) - (int)pieceType(pos.getPieceAt(moveFrom(m))); // MVV-LVA
 }
 
 template<MovePickerType Type, Side Me>
-int16_t MovePicker<Type, Me>::scoreQuiet(Move m) {
+MoveScore MovePicker<Type, Me>::scoreQuiet(Move m) {
+    assert(movePromotionType(m) != QUEEN);
+
     Square from = moveFrom(m), to = moveTo(m);
     PieceType pt = pieceType(pos.getPieceAt(from));
     Score score = NB_PIECE_TYPE-(int)pt;
 
     if (moveType(m) == PROMOTION) [[unlikely]]
-        return -100;
+        return -10000;
 
     if (threatenedPieces & from) {
-        score += pt == QUEEN && !(to & pos.threatenedByRooks()) ? 1000
-             : pt == ROOK && !(to & pos.threatenedByMinors()) ? 500
-             : (pt == BISHOP || pt == KNIGHT) && !(to & pos.threatenedByPawns()) ? 300
+        score += pt == QUEEN && !(to & pos.threatenedByRooks()) ? 50000
+             : pt == ROOK && !(to & pos.threatenedByMinors()) ? 25000
+             : (pt == BISHOP || pt == KNIGHT) && !(to & pos.threatenedByPawns()) ? 15000
              : 0;
     }
+
+    if (moveHistory != nullptr) [[likely]]
+        score += moveHistory->getHistory<Me>(m);
 
     // TODO: refactor this!
     switch (pt) {
         case PAWN:
             if (pawnAttacks<Me>(bb(to)) & pos.getPiecesBB(~Me, KING)) {
-                score += 10;
+                score += 10000;
             }
             break;
         case KNIGHT:
             if (attacks<KNIGHT>(to, pos.getPiecesBB()) & pos.getPiecesBB(~Me, KING)) {
-                score += 10;
+                score += 10000;
             }
             break;
         case BISHOP:
             if (attacks<BISHOP>(to, pos.getPiecesBB()) & pos.getPiecesBB(~Me, KING)) {
-                score += 10;
+                score += 10000;
             }
         case ROOK:
             if (attacks<ROOK>(to, pos.getPiecesBB()) & pos.getPiecesBB(~Me, KING)) {
-                score += 10;
+                score += 10000;
             }
         case QUEEN:
             if (attacks<QUEEN>(to, pos.getPiecesBB()) & pos.getPiecesBB(~Me, KING)) {
-                score += 10;
+                score += 10000;
             }
         default:
             break;
