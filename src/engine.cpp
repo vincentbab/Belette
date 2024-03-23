@@ -171,6 +171,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
     auto&&[ttHit, tte] = tt.get(pos.hash());
     Score ttScore = tte->score(ply);
     bool ttPv = PvNode || (ttHit && tte->isPv());
+    Move ttMove = ttHit ? tte->move() : MOVE_NONE;
 
     // Transposition Table cutoff
     if (!PvNode && ttHit && tte->depth() >= depth && tte->canCutoff(ttScore, beta)) {
@@ -192,14 +193,14 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
         }
     }
 
-    // Reverse futility pruning
+    // Reverse futility pruning (RFP)
     if (!PvNode && !inCheck && depth <= 4
         && eval - (100 * depth) >= beta)
     {
         return eval;
     }
 
-    // Null move pruning
+    // Null move pruning (NMP)
     if (!PvNode && !inCheck
         && pos.previousMove() != MOVE_NULL && pos.hasNonPawnMateriel<Me>() && eval >= beta)
     {
@@ -215,6 +216,11 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
         }
     }
 
+    // Internal Iterative Reduction (IIR)
+    if (depth >= 4 && ttMove == MOVE_NONE) {
+        depth--;
+    }
+
     // Check extension
     if (PvNode && inCheck && depth <= 2) {
         depth++;
@@ -223,7 +229,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
     sd->moveHistory.clearKillers(ply+1);
 
     int nbMoves = 0;
-    MovePicker<MAIN, Me> mp(pos, ttHit ? tte->move() : MOVE_NONE, &sd->moveHistory, ply);
+    MovePicker<MAIN, Me> mp(pos, ttMove, &sd->moveHistory, ply);
     PartialMoveList quietMoves;
     
     mp.enumerate([&](Move move) -> bool {
