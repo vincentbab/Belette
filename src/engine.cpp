@@ -193,6 +193,11 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
         }
     }
 
+    // Internal Iterative Reduction (IIR)
+    if (depth >= 4 && ttMove == MOVE_NONE) {
+        depth--;
+    }
+
     // Reverse futility pruning (RFP)
     if (!PvNode && !inCheck && depth <= 4
         && eval - (100 * depth) >= beta)
@@ -214,11 +219,6 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
             // TODO: verification search ?
             return score >= SCORE_MATE_MAX_PLY ? beta : score;
         }
-    }
-
-    // Internal Iterative Reduction (IIR)
-    if (depth >= 4 && ttMove == MOVE_NONE) {
-        depth--;
     }
 
     // Check extension
