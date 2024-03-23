@@ -12,6 +12,10 @@
 
 namespace Belette {
 
+constexpr MoveScore PieceThreatenedValue[NB_PIECE_TYPE] = {
+    0, 0, 15000, 15000, 25000, 50000, 0
+};
+
 struct ScoredMove {
     ScoredMove() { };
 
@@ -54,8 +58,6 @@ private:
     const MoveHistory *moveHistory;
     int ply;
     Move refutations[3];
-
-    Bitboard threatenedPieces;
 
     inline MoveScore scoreEvasion(Move m);
     inline MoveScore scoreTactical(Move m);
@@ -162,9 +164,6 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     // Quiets
     moves.resize(endBadTacticals - moves.begin()); // Keep only bad tacticals
     beginQuiets = endBadTacticals;
-    threatenedPieces = (pos.getPiecesBB(Me, KNIGHT, BISHOP) & pos.threatenedByPawns())
-                     | (pos.getPiecesBB(Me, ROOK) & pos.threatenedByMinors())
-                     | (pos.getPiecesBB(Me, QUEEN) & pos.threatenedByRooks());
 
     enumerateLegalMoves<Me, QUIET_MOVES>(pos, [&](Move move) {
         if (move == ttMove) return true; // continue;
@@ -203,8 +202,11 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
 
 template<MovePickerType Type, Side Me>
 MoveScore MovePicker<Type, Me>::scoreEvasion(Move m) {
-    if (pos.isCapture(m)) {
-        return scoreTactical(m);
+    if (pos.isTactical(m)) {
+        return scoreTactical(m) + 1000000;
+    } else {
+        if (moveHistory != nullptr) [[likely]]
+            return moveHistory->getHistory<Me>(m);
     }
 
     return 0;
@@ -221,17 +223,13 @@ MoveScore MovePicker<Type, Me>::scoreQuiet(Move m) {
 
     Square from = moveFrom(m), to = moveTo(m);
     PieceType pt = pieceType(pos.getPieceAt(from));
-    Score score = NB_PIECE_TYPE-(int)pt;
+    MoveScore score = NB_PIECE_TYPE-(int)pt;
 
     if (moveType(m) == PROMOTION) [[unlikely]]
         return -10000;
 
-    if (threatenedPieces & from) {
-        score += pt == QUEEN && !(to & pos.threatenedByRooks()) ? 50000
-             : pt == ROOK && !(to & pos.threatenedByMinors()) ? 25000
-             : (pt == BISHOP || pt == KNIGHT) && !(to & pos.threatenedByPawns()) ? 15000
-             : 0;
-    }
+    Bitboard threatened = pos.threatsFor(pt);
+    score += ((threatened & from) && !(threatened & to)) * PieceThreatenedValue[pt];
 
     if (moveHistory != nullptr) [[likely]]
         score += moveHistory->getHistory<Me>(m);

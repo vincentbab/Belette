@@ -22,11 +22,7 @@ struct State {
     Piece capture;
 
     uint64_t hash;
-    Bitboard checkedSquares;
-    Bitboard threatenedByPawns;
-    Bitboard threatenedByKnights;
-    Bitboard threatenedByMinors;
-    Bitboard threatenedByRooks;
+    Bitboard threatsFor[NB_PIECE_TYPE];
     Bitboard checkers;
     Bitboard checkMask;
     Bitboard pinDiag;
@@ -100,11 +96,8 @@ public:
 
     inline Bitboard getAttackers(Square sq, Bitboard occupied) const;
 
-    inline Bitboard checkedSquares() const { return state->checkedSquares; }
-    inline Bitboard threatenedByPawns() const { return state->threatenedByPawns; }
-    inline Bitboard threatenedByKnights() const { return state->threatenedByKnights; }
-    inline Bitboard threatenedByMinors() const { return state->threatenedByMinors; }
-    inline Bitboard threatenedByRooks() const { return state->threatenedByRooks; }
+    inline Bitboard threatsFor(PieceType pt) const { return state->threatsFor[pt]; }
+    inline Bitboard checkedSquares() const { return threatsFor(KING); }
     inline Bitboard checkers() const { return state->checkers; }
     inline Bitboard nbCheckers() const { return popcount(state->checkers); }
     inline bool inCheck() const { return !!state->checkers; }

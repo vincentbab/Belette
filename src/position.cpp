@@ -42,6 +42,7 @@ void Position::reset() {
     state->epSquare = SQ_NONE;
     state->castlingRights = NO_CASTLING;
     state->move = MOVE_NONE;
+    for(int i=0; i<NB_PIECE_TYPE; i++) state->threatsFor[i] = EmptyBB;
 
     for(int i=0; i<NB_SQUARE; i++) pieces[i] = NO_PIECE;
     for(int i=0; i<NB_PIECE; i++) piecesBB[i] = EmptyBB;
@@ -596,16 +597,17 @@ template<Side Me>
 inline void Position::updateThreatenedSquares() {
     constexpr Side Opp = ~Me;
 
+    assert(state->threatsFor[PAWN] == EmptyBB);
+
     // Pawns
     Bitboard threatened = pawnAttacks<Opp>(getPiecesBB(Opp, PAWN));
-    state->threatenedByPawns = threatened;
+    state->threatsFor[BISHOP] = state->threatsFor[KNIGHT] = threatened;
 
     // Knights
     Bitboard enemies = getPiecesBB(Opp, KNIGHT);
     bitscan_loop(enemies) {
         threatened |= attacks<KNIGHT>(bitscan(enemies), getPiecesBB());
     }
-    state->threatenedByKnights = threatened;
 
     Bitboard occupied = getPiecesBB() ^ getPiecesBB(Me, KING); // x-ray through king
 
@@ -614,14 +616,14 @@ inline void Position::updateThreatenedSquares() {
     bitscan_loop(enemies) {
         threatened |= attacks<BISHOP>(bitscan(enemies), occupied); // x-ray through king
     }
-    state->threatenedByMinors = threatened;
+    state->threatsFor[ROOK] = threatened;
 
     // Rooks
     enemies = getPiecesBB(Opp, ROOK);
     bitscan_loop(enemies) {
         threatened |= attacks<ROOK>(bitscan(enemies), occupied);
     }
-    state->threatenedByRooks = threatened;
+    state->threatsFor[QUEEN] = threatened;
 
     // Queens
     enemies = getPiecesBB(Opp, QUEEN);
@@ -634,7 +636,7 @@ inline void Position::updateThreatenedSquares() {
     // King
     threatened |= attacks<KING>(getKingSquare(Opp));
 
-    state->checkedSquares = threatened;
+    state->threatsFor[KING] = threatened;
 }
 
 template<Side Me, bool InCheck>
