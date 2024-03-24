@@ -37,6 +37,7 @@ Uci::Uci(int argc, char* argv[])  {
     options["Hash"] = UciOption(16, 1, 1048576, [&] (const UciOption &opt) { 
         engine.setHashSize(int64_t(opt)*1024*1024);
     });
+    options["Threads"] = UciOption(1, 1, 1);
 
     commands["uci"] = &Uci::cmdUci;
     commands["isready"] = &Uci::cmdIsReady;
