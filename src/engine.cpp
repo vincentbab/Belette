@@ -183,6 +183,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
     Score ttScore = tte->score(ply);
     bool ttPv = PvNode || (ttHit && tte->isPv());
     Move ttMove = ttHit ? tte->move() : MOVE_NONE;
+    bool ttTactical = ttHit ? pos.isTactical(ttMove) : false;
 
     // Transposition Table cutoff
     if (!PvNode && ttHit && tte->depth() >= depth && tte->canCutoff(ttScore, beta)) {
@@ -263,8 +264,10 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
         if (depth >= 2 && nbMoves > 1) {
             int R = LMRTable[depth][nbMoves];
 
-            R -= 1*(PvNode);
-            R += 1*(!ttPv);
+            R -= PvNode;
+            R += !ttPv;
+            R += ttTactical;
+            R -= sd->moveHistory.getHistory<Me>(move) / 2048;
 
             R = std::min(depth - 1, std::max(1, R));
 
