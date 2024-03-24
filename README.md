@@ -28,6 +28,9 @@ Log every input and output of the engine to the specified file
 ### Hash
 Specify the hash table size in megabytes
 
+### Threads
+For now this option doesn't do anything. It's only for compatibility purpose
+
 ## Internals
 
 ### Board & Move generation
@@ -48,15 +51,21 @@ Time: 3455ms
  - Negamax
  - Transpositation Table
  - Check extension
+ - Null move pruning (NMP)
+ - Reverse futility pruning (RFP)
+ - Internal iterative reduction (IIR)
+ - Late move reduction (LMR)
  - Quiescence
  - SEE pruning (Quiescence)
 
  ### Move ordering
-  - Hash move
+  - Hash move (TT Move)
   - MVV-LVA
   - Killer moves
   - Counter move
   - Threats
+  - Checks
+  - Butterfly history heuristic
   - Staged move generation (good captures, good quiets, bad captures, bad quiets)
 
 ### Evaluation
