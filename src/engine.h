@@ -90,6 +90,8 @@ enum class NodeType {
 
 class Engine {
 public:
+    static void init();
+    
     Engine() = default;
     virtual ~Engine() = default;
 
@@ -109,6 +111,8 @@ protected:
     virtual void onSearchFinish(const SearchEvent &event) = 0;
 
 private:
+    static int LMRTable[MAX_PLY][MAX_MOVE];
+
     std::unique_ptr<SearchData> sd;
     Position rootPosition;
     TranspositionTable tt;

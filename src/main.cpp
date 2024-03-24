@@ -13,6 +13,7 @@ using namespace Belette;
 
 int main(int argc, char* argv[])
 {
+    Engine::init();
     BB::init();
     Zobrist::init();
 

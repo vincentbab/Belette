@@ -1,5 +1,6 @@
 #include <iostream>
 #include <thread>
+#include <cmath>
 #include "engine.h"
 #include "movegen.h"
 #include "evaluate.h"
@@ -8,6 +9,16 @@
 using namespace std;
 
 namespace Belette {
+
+int Engine::LMRTable[MAX_PLY][MAX_MOVE];
+
+void Engine::init() {
+    for (int d=1; d<MAX_PLY; d++) {
+        for (int m=1; m<MAX_PLY; m++) {
+            LMRTable[d][m] = int(0.25 + 0.46 * std::log(d) * std::log(m));
+        }
+    }
+}
 
 void updatePv(MoveList &pv, Move move, const MoveList &childPv) {
     pv.clear();
@@ -248,12 +259,30 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
 
         Score score;
 
-        // PVS
-        if (!PvNode || nbMoves > 1) {
+        // Late move reduction (LMR)
+        if (depth >= 2 && nbMoves > 1) {
+            int R = LMRTable[depth][nbMoves];
+
+            R -= 1*(PvNode);
+            R += 1*(!ttPv);
+
+            R = std::min(depth - 1, std::max(1, R));
+
+            // Reduced depth, Zero window
+            score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, depth-R, ply+1, childPv);
+
+            if (score > alpha && R != 1) {
+                // Full depth, Zero window
+                score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, depth-1, ply+1, childPv);
+            }
+
+        } else if (!PvNode || nbMoves > 1) {
+            // Zero window (PVS)
             score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, depth-1, ply+1, childPv);
         }
 
         if (PvNode && (nbMoves == 1 || (score > alpha && (RootNode || score < beta)))) {
+            // Full window (PVS)
             score = -pvSearch<~Me, NodeType::PV>(-beta, -alpha, depth-1, ply+1, childPv);
         }
 
