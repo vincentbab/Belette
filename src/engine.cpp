@@ -251,10 +251,17 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
 
         nbMoves++;
 
+        bool moveIsTactical = pos.isTactical(move);
+
         // Late move pruning
         if (!RootNode && bestScore > -SCORE_MATE_MAX_PLY) {
             // Move count pruning
             skipQuiets = (nbMoves >= 3 + depth*depth);
+
+            // SEE Pruning
+            if (depth <= 8 && !pos.see(move, moveIsTactical ? -100*depth : -60*depth)) {
+                return true; // continue;
+            }
         }
 
         sd->nbNodes++;
