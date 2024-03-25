@@ -279,6 +279,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
             int R = LMRTable[depth][nbMoves];
 
             R -= PvNode;
+            R -= pos.inCheck();
             R += !ttPv;
             R += ttTactical;
             R -= sd->moveHistory.getHistory<Me>(move) / 2048;
