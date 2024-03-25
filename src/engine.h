@@ -124,7 +124,7 @@ private:
 
     template<Side Me, NodeType NT> Score pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv);
 
-    template<Side Me, NodeType NT> Score qSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv);
+    template<Side Me, NodeType NT> Score qSearch(Score alpha, Score beta, int depth, int ply);
 };
 
 } /* namespace Belette */

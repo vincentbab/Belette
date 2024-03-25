@@ -134,7 +134,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
     // Quiescence
     if (depth <= 0) {
         constexpr NodeType QNodeType = PvNode ? NodeType::PV : NodeType::NonPV;
-        return qSearch<Me, QNodeType>(alpha, beta, depth, ply, pv);
+        return qSearch<Me, QNodeType>(alpha, beta, depth, ply);
     }
 
     // Update selDepth
@@ -346,10 +346,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
 
 // Quiescence search
 template<Side Me, NodeType NT>
-Score Engine::qSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv) {
+Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
     constexpr bool PvNode = (NT != NodeType::NonPV);
-    if (PvNode)
-        pv.clear();
 
     // Check if we should stop according to limits
     if (sd->shouldStop()) [[unlikely]] {
@@ -415,7 +413,6 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv)
     }
 
     int nbMoves = 0;
-    MoveList childPv;
     Move ttMove = tte->move();
     // If ttMove is quiet we don't want to use it past a certain depth to allow qSearch to stabilize
     bool useTTMove = ttHit && isValidMove(ttMove) && (depth >= -7 || pos.inCheck() || pos.isTactical(ttMove));
@@ -424,12 +421,13 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv)
     mp.enumerate([&](Move move, /*unused*/bool& skipQuiets) -> bool {
         nbMoves++;
 
+        // SEE Pruning
         if (!pos.see(move, 0)) return true; // continue;
 
         sd->nbNodes++;
 
         pos.doMove<Me>(move);
-        Score score = -qSearch<~Me, NT>(-beta, -alpha, depth-1, ply+1, childPv);
+        Score score = -qSearch<~Me, NT>(-beta, -alpha, depth-1, ply+1);
         pos.undoMove<Me>(move);
 
         if (searchAborted()) return false; // break
