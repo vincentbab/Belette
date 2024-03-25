@@ -300,14 +300,14 @@ bool Uci::cmdDebug(istringstream& is) {
         if (engine.position().getSideToMove() == WHITE) {
             MovePicker<MAIN, WHITE> mp(engine.position());
 
-            mp.enumerate([&] (Move m) {
+            mp.enumerate([&] (Move m, bool& skipQuiets) {
                 console << Uci::formatMove(m) << endl;
                 return true;
             });
         } else {
             MovePicker<MAIN, BLACK> mp(engine.position());
 
-            mp.enumerate([&] (Move m) {
+            mp.enumerate([&] (Move m, bool& skipQuiets) {
                 console << Uci::formatMove(m) << endl;
                 return true;
             });

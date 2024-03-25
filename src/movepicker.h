@@ -68,9 +68,11 @@ private:
 template<MovePickerType Type, Side Me>
 template<typename Handler>
 bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
+    bool skipQuiets = false;
+
     // TT Move
     if (pos.isLegal<Me>(ttMove)) {
-        CALL_HANDLER(ttMove);
+        CALL_HANDLER(ttMove, skipQuiets);
     }
     
     ScoredMoveList moves;
@@ -90,7 +92,7 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
         });
 
         for (auto m : moves) {
-            CALL_HANDLER(m.move);
+            CALL_HANDLER(m.move, skipQuiets);
         }
 
         return true;
@@ -136,7 +138,7 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
             }
         }
 
-        CALL_HANDLER(current->move);
+        CALL_HANDLER(current->move, skipQuiets);
     }
 
     // Stop here for Quiescence
@@ -145,17 +147,17 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     if (moveHistory != nullptr) [[likely]] {
         // Killer 1
         if (refutations[0] != ttMove && !pos.isTactical(refutations[0]) && pos.isLegal<Me>(refutations[0])) {
-            CALL_HANDLER(refutations[0]);
+            CALL_HANDLER(refutations[0], skipQuiets);
         }
 
         // Killer 2
         if (refutations[1] != ttMove && !pos.isTactical(refutations[1]) && pos.isLegal<Me>(refutations[1])) {
-            CALL_HANDLER(refutations[1]);
+            CALL_HANDLER(refutations[1], skipQuiets);
         }
 
         // Counter
         if (refutations[2] != ttMove && !pos.isTactical(refutations[2]) && refutations[2] != refutations[0] && refutations[2] != refutations[1] && pos.isLegal<Me>(refutations[2])) {
-            CALL_HANDLER(refutations[2]);
+            CALL_HANDLER(refutations[2], skipQuiets);
         }
     }
 
@@ -178,23 +180,23 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     });
 
     // Good quiets
-    for (current = endBadQuiets = beginQuiets; current != moves.end(); current++) {
+    for (current = endBadQuiets = beginQuiets; current != moves.end() && !skipQuiets; current++) {
         if (current->score < -4000) {
             *endBadQuiets++ = *current;
             continue;
         }
 
-        CALL_HANDLER(current->move);
+        CALL_HANDLER(current->move, skipQuiets);
     }
 
     // Bad tacticals
     for (current = moves.begin(); current != endBadTacticals; current++) {
-        CALL_HANDLER(current->move);
+        CALL_HANDLER(current->move, skipQuiets);
     }
 
     // Bad quiets
-    for (current = beginQuiets; current != endBadQuiets; current++) {
-        CALL_HANDLER(current->move);
+    for (current = beginQuiets; current != endBadQuiets && !skipQuiets; current++) {
+        CALL_HANDLER(current->move, skipQuiets);
     }
 
     return true;

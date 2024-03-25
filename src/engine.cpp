@@ -244,16 +244,23 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
     MovePicker<MAIN, Me> mp(pos, ttMove, &sd->moveHistory, ply);
     PartialMoveList quietMoves;
     
-    mp.enumerate([&](Move move) -> bool {
+    mp.enumerate([&](Move move, bool& skipQuiets) -> bool {
         // Honor UCI searchmoves
         if (RootNode && sd->limits.searchMoves.size() > 0 && !sd->limits.searchMoves.contains(move))
             return true; // continue
 
+        nbMoves++;
+
+        // Late move pruning
+        if (!RootNode && bestScore > -SCORE_MATE_MAX_PLY) {
+            // Move count pruning
+            skipQuiets = (nbMoves >= 3 + depth*depth);
+        }
+
+        sd->nbNodes++;
+
         if (PvNode)
             childPv.clear();
-
-        nbMoves++;
-        sd->nbNodes++;
 
         // Do move
         pos.doMove<Me>(move);
@@ -407,7 +414,7 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv)
     bool useTTMove = ttHit && isValidMove(ttMove) && (depth >= -7 || pos.inCheck() || pos.isTactical(ttMove));
     MovePicker<QUIESCENCE, Me> mp(pos, useTTMove ? ttMove : MOVE_NONE);
 
-    mp.enumerate([&](Move move) -> bool {
+    mp.enumerate([&](Move move, /*unused*/bool& skipQuiets) -> bool {
         nbMoves++;
 
         if (!pos.see(move, 0)) return true; // continue;
