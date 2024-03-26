@@ -85,6 +85,8 @@ void Engine::idSearch() {
         }
 
         while (true) {
+            if (alpha < -1000) alpha = -SCORE_INFINITE;
+            if (beta > 1000) beta = SCORE_INFINITE;
             //std::cout << "  depth=" << searchDepth << " d=" << delta << std::endl;
             score = pvSearch<Me, NodeType::Root>(alpha, beta, searchDepth, 0, pv);
 
@@ -94,11 +96,12 @@ void Engine::idSearch() {
                 //std::cout << "  Fail Low: a=" << alpha << " b=" << beta << " score=" << score << std::endl;
                 beta = (alpha + beta) / 2;
                 alpha = std::max(score - delta, -SCORE_INFINITE);
-                //searchDepth = depth;
+                searchDepth = depth;
             } else if (score >= beta) { // Fail high
                 //std::cout << "  Fail High: a=" << alpha << " b=" << beta << " score=" << score << std::endl;
                 beta = std::min(score + delta, SCORE_INFINITE);
                 //searchDepth = std::max(std::max(1, depth - 4), searchDepth - 1);
+                searchDepth -= (std::abs(score) < 1000);
             } else {
                 break;
             }
