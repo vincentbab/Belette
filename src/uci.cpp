@@ -30,7 +30,7 @@ void Console::setLogFile(const std::string &filename) {
     file = new std::ofstream(filename, std::ios::app);
 }
 
-Uci::Uci(int argc, char* argv[])  {
+Uci::Uci()  {
     cout << "Belette " << VERSION << " by Vincent Bab" << endl;
     
     options["Debug Log File"] = UciOption("", [&] (const UciOption &opt) { console.setLogFile(opt); });
@@ -119,7 +119,17 @@ Move Uci::parseMove(std::string str) const {
     return move;
 }
 
-void Uci::loop() {
+void Uci::loop(int argc, char* argv[]) {
+    if (argc > 1 && std::string(argv[1]) == "bench") {
+        int depth = 12;
+        if (argc > 2) depth = parseInt(std::string(argv[2]));
+
+        bench(depth);
+        
+        return;
+    }
+
+
     string line, token;
 
     while(console.getline(line)) {

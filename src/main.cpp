@@ -16,15 +16,9 @@ int main(int argc, char* argv[])
     Engine::init();
     BB::init();
     Zobrist::init();
-
-#ifdef PROFILING
-    Position pos;
-    //pos.setFromFEN(STARTPOS_FEN);
-    perft(pos, 6);
-#else
-    Uci uci(argc, argv);
-    uci.loop();
-#endif
+    
+    Uci uci;
+    uci.loop(argc, argv);
 
     return 0;
 }

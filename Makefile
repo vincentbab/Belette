@@ -6,7 +6,7 @@ export SRC_DIR := ./src
 CPPFLAGS := -Wall -std=c++20 -fno-rtti -mbmi -mbmi2 -mpopcnt -msse2 -msse3 -msse4.1 -mavx2
 DEBUG_CPPFLAGS := $(CPPFLAGS) -g -O0 -DDEBUG
 RELEASE_CPPFLAGS := $(CPPFLAGS) -O3 -funroll-loops -finline -fomit-frame-pointer -flto -DNDEBUG
-PROFILE_CPPFLAGS := $(CPPFLAGS) -O3 -funroll-loops -finline -fomit-frame-pointer -flto -DNDEBUG -g -DPROFILING
+PROFILE_CPPFLAGS := $(CPPFLAGS) $(RELEASE_CPPFLAGS) -g
 
 LDFLAGS := -Wall -std=c++20 -fno-rtti -mbmi -mbmi2 -mpopcnt -msse2 -msse3 -msse4.1 -mavx2
 DEBUG_LDFLAGS := $(LDFLAGS)

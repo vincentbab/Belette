@@ -82,9 +82,9 @@ protected:
 
 class Uci {
 public:
-    Uci(int argc, char* argv[]);
+    Uci();
     ~Uci() = default;
-    void loop();
+    void loop(int argc, char* argv[]);
 
     Move parseMove(std::string str) const;
 
