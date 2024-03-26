@@ -130,10 +130,10 @@ template<Side Me, NodeType NT>
 Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv) {
     constexpr bool PvNode = (NT != NodeType::NonPV);
     constexpr bool RootNode = (NT == NodeType::Root);
+    constexpr NodeType QNodeType = PvNode ? NodeType::PV : NodeType::NonPV;
 
     // Quiescence
     if (depth <= 0) {
-        constexpr NodeType QNodeType = PvNode ? NodeType::PV : NodeType::NonPV;
         return qSearch<Me, QNodeType>(alpha, beta, depth, ply);
     }
 
@@ -215,6 +215,15 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
         && eval - (100 * depth) >= beta)
     {
         return eval;
+    }
+
+    // Razoring
+    if (!PvNode && !inCheck && depth <= 2
+        && eval + (400 * depth) <= alpha)
+    {
+        Score score = qSearch<Me, QNodeType>(alpha, beta, depth, ply);
+        if (score <= alpha)
+            return score;
     }
 
     // Null move pruning (NMP)
