@@ -82,6 +82,8 @@ public:
     TTResult get(uint64_t hash);
     void set(TTEntry *tte, uint64_t hash, int depth, int ply, Bound bound, Move move, Score eval, Score score, bool pv);
 
+    inline void prefetch(uint64_t hash) { __builtin_prefetch(&buckets[index(hash)]); }
+
     size_t usage() const;
     inline size_t size() const { return nbBuckets; }
 

@@ -370,8 +370,7 @@ void Position::doMove(Move m) {
     assert(isValidMove(m));
     assert(getSideToMove() == Me);
 
-    const Square from = moveFrom(m); 
-    const Square to = moveTo(m);
+    const Square from = moveFrom(m), to = moveTo(m);
     const Piece p = getPieceAt(from);
     const Piece capture = getPieceAt(to);
 

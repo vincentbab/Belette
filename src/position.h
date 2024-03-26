@@ -6,6 +6,7 @@
 #include <vector>
 #include "chess.h"
 #include "bitboard.h"
+#include "zobrist.h"
 
 #define STARTPOS_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 #define KIWIPETE_FEN "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
@@ -104,6 +105,8 @@ public:
 
     inline uint64_t hash() const { return state->hash; }
     uint64_t computeHash() const;
+    inline uint64_t getHashAfter(Move m) const;
+    inline uint64_t getHashAfterNullMove() const { return hash() ^ Zobrist::sideToMoveKey; };
 
     inline Bitboard checkMask() const { return state->checkMask; }
     inline Bitboard pinDiag() const { return state->pinDiag; }
@@ -233,6 +236,22 @@ inline void Position::undoMove(Move m) {
         case PROMOTION:  undoMove<Me, PROMOTION>(m); return;
         case EN_PASSANT: undoMove<Me, EN_PASSANT>(m); return;
     }
+}
+
+inline uint64_t Position::getHashAfter(Move m) const {
+    assert(isValidMove(m));
+
+    uint64_t h = hash();
+    const Square from = moveFrom(m), to = moveTo(m);
+    const Piece p = getPieceAt(from);
+    const Piece capture = getPieceAt(to);
+
+    h ^= Zobrist::sideToMoveKey;
+    h ^= Zobrist::keys[p][from] ^ Zobrist::keys[p][to];
+    if (capture != NO_PIECE) 
+        h ^= Zobrist::keys[capture][to];
+
+    return h;
 }
 
 } /* namespace Belette */

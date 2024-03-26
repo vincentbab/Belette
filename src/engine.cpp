@@ -221,6 +221,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
     if (!PvNode && !inCheck
         && pos.previousMove() != MOVE_NULL && pos.hasNonPawnMateriel<Me>() && eval >= beta)
     {
+        tt.prefetch(pos.getHashAfterNullMove());
         int R = 4 + depth / 4;
 
         pos.doNullMove<Me>();
@@ -263,6 +264,9 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
                 return true; // continue;
             }
         }
+
+        // Prefetch TT
+        tt.prefetch(pos.getHashAfter(move));
 
         sd->nbNodes++;
 
@@ -425,6 +429,9 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
         // SEE Pruning
         if (!pos.see(move, 0)) return true; // continue;
 
+        // Prefetch TT
+        tt.prefetch(pos.getHashAfter(move));
+        
         sd->nbNodes++;
 
         pos.doMove<Me>(move);
