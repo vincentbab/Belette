@@ -88,7 +88,7 @@ void Engine::idSearch() {
             if (alpha < -1000) alpha = -SCORE_INFINITE;
             if (beta > 1000) beta = SCORE_INFINITE;
             //std::cout << "  depth=" << searchDepth << " d=" << delta << std::endl;
-            score = pvSearch<Me, NodeType::Root>(alpha, beta, searchDepth, 0, pv);
+            score = pvSearch<Me, NodeType::Root>(alpha, beta, searchDepth, 0, pv, false);
 
             if (searchAborted()) break;
 
@@ -130,7 +130,7 @@ void Engine::idSearch() {
 
 // Negamax search
 template<Side Me, NodeType NT>
-Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv) {
+Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv, bool cutNode) {
     constexpr bool PvNode = (NT != NodeType::NonPV);
     constexpr bool RootNode = (NT == NodeType::Root);
     constexpr NodeType QNodeType = PvNode ? NodeType::PV : NodeType::NonPV;
@@ -237,7 +237,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
         int R = 4 + depth / 4;
 
         pos.doNullMove<Me>();
-        Score score = -pvSearch<~Me, NodeType::NonPV>(-beta, -beta+1, depth-R, ply+1, childPv);
+        Score score = -pvSearch<~Me, NodeType::NonPV>(-beta, -beta+1, depth-R, ply+1, childPv, !cutNode);
         pos.undoNullMove<Me>();
 
         if (score >= beta) {
@@ -298,26 +298,28 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
             R -= pos.inCheck();
             R += !ttPv;
             R += ttTactical;
+            R += 2*cutNode;
             R -= sd->moveHistory.getHistory<Me>(move) / 2048;
+
 
             R = std::min(depth - 1, std::max(1, R));
 
             // Reduced depth, Zero window
-            score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, depth-R, ply+1, childPv);
+            score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, depth-R, ply+1, childPv, true);
 
             if (score > alpha && R != 1) {
                 // Full depth, Zero window
-                score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, depth-1, ply+1, childPv);
+                score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, depth-1, ply+1, childPv, !cutNode);
             }
 
         } else if (!PvNode || nbMoves > 1) {
             // Zero window (PVS)
-            score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, depth-1, ply+1, childPv);
+            score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, depth-1, ply+1, childPv, !cutNode);
         }
 
         if (PvNode && (nbMoves == 1 || (score > alpha && (RootNode || score < beta)))) {
             // Full window (PVS)
-            score = -pvSearch<~Me, NodeType::PV>(-beta, -alpha, depth-1, ply+1, childPv);
+            score = -pvSearch<~Me, NodeType::PV>(-beta, -alpha, depth-1, ply+1, childPv, false);
         }
 
         // Undo move
