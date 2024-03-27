@@ -8,7 +8,6 @@
 #include "perft.h"
 #include "zobrist.h"
 
-using namespace std;
 using namespace Belette;
 
 int main(int argc, char* argv[])
@@ -16,7 +15,7 @@ int main(int argc, char* argv[])
     Engine::init();
     BB::init();
     Zobrist::init();
-    
+
     Uci uci;
     uci.loop(argc, argv);
 

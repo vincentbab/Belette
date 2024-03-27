@@ -7,17 +7,15 @@
 #include "position.h"
 #include "perft.h"
 
-using namespace std;
-
 namespace Belette::Test {
 
 struct TestCase {
-    string fen;
+    std::string fen;
     int depth;
     size_t nbNodes;
 };
 
-vector<TestCase> ALL_TESTS = {
+std::vector<TestCase> ALL_TESTS = {
     {"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, 119060324},             // Startpos
     {"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, 193690690}, // Kiwipete
     {"8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -", 6, 11030083},                                 // En passant & pins
@@ -35,32 +33,32 @@ void run() {
     int i = 1, nbTest = ALL_TESTS.size(), nbSuccess = 0, nbFailed = 0;
 
     for(auto t : ALL_TESTS) {
-        cout << "[Test " << i << "/" << nbTest << "] \"" << t.fen << "\"" << endl;
+        console << "[Test " << i << "/" << nbTest << "] \"" << t.fen << "\"" << std::endl;
 
         pos.setFromFEN(t.fen);
         size_t result = perft<false>(pos, t.depth);
 
         if (result == t.nbNodes) {
-            cout << "  SUCCESS - " << t.nbNodes << " == " << result << endl;
+            console << "  SUCCESS - " << t.nbNodes << " == " << result << std::endl;
             nbSuccess++;
         } else {
-            cout << "  FAILED! - " << t.nbNodes << " != " << result << endl;
+            console << "  FAILED! - " << t.nbNodes << " != " << result << std::endl;
             nbFailed++;
         }
 
         i++;
     }
 
-    cout << endl << endl;
+    console << std::endl << std::endl;
 
     if (nbFailed > 0) {    
-        cout << "##############################" << endl;
-        cout << "/!\\ Some tests failed :( /!\\" << endl;
-        cout << "##############################" << endl;
+        console << "##############################" << std::endl;
+        console << "/!\\ Some tests failed :( /!\\" << std::endl;
+        console << "##############################" << std::endl;
     } else {
-        cout << "----------------------------------------" << endl;
-        cout << " Congratulations! All tests succeeded ! " << endl;
-        cout << "----------------------------------------" << endl;
+        console << "----------------------------------------" << std::endl;
+        console << " Congratulations! All tests succeeded ! " << std::endl;
+        console << "----------------------------------------" << std::endl;
     }
     
 }

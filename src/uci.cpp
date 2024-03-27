@@ -9,8 +9,6 @@
 #include "movepicker.h"
 #include "bench.h"
 
-using namespace std;
-
 namespace Belette {
 
 Console console;
@@ -31,7 +29,7 @@ void Console::setLogFile(const std::string &filename) {
 }
 
 Uci::Uci()  {
-    cout << "Belette " << VERSION << " by Vincent Bab" << endl;
+    console << "Belette " << VERSION << " by Vincent Bab" << std::endl;
     
     options["Debug Log File"] = UciOption("", [&] (const UciOption &opt) { console.setLogFile(opt); });
     options["Hash"] = UciOption(16, 1, 1048576, [&] (const UciOption &opt) { 
@@ -76,7 +74,7 @@ std::string Uci::formatSquare(Square sq) {
 }
 
 std::string Uci::formatScore(Score score) {
-    stringstream ss;
+    std::stringstream ss;
 
     if (abs(score) >= SCORE_MATE_MAX_PLY) {
         ss << "mate " << (score > 0 ? SCORE_MATE - score + 1 : -SCORE_MATE - score) / 2;
@@ -121,7 +119,7 @@ Move Uci::parseMove(std::string str) const {
 
 void Uci::loop(int argc, char* argv[]) {
     if (argc > 1 && std::string(argv[1]) == "bench") {
-        int depth = 12;
+        int depth = DEFAULT_BENCH_DEPTH;
         if (argc > 2) depth = parseInt(std::string(argv[2]));
 
         bench(depth);
@@ -130,15 +128,15 @@ void Uci::loop(int argc, char* argv[]) {
     }
 
 
-    string line, token;
+    std::string line, token;
 
     while(console.getline(line)) {
-        istringstream parser(line);
+        std::istringstream parser(line);
 
         if (line.empty()) continue;
 
         token.clear();
-        parser >> skipws >> token;
+        parser >> std::skipws >> token;
 
         bool unknowCommand = true, exit = false;
         for (auto const& [cmd, handler] : commands) {
@@ -154,7 +152,7 @@ void Uci::loop(int argc, char* argv[]) {
         }
 
         if (unknowCommand) {
-            console << "Unknow command '" << token << "'" << endl;
+            console << "Unknow command '" << token << "'" << std::endl;
         }
 
         if (exit) {
@@ -163,37 +161,37 @@ void Uci::loop(int argc, char* argv[]) {
     }
 
     // cleanup
-    console << "Exiting UCI loop" << endl;
+    console << "Exiting UCI loop" << std::endl;
 }
 
-bool Uci::cmdUci(istringstream &is) {
-    console << "id name Belette " << VERSION << endl;
-    console << "id author Vincent Bab" << endl;
+bool Uci::cmdUci(std::istringstream &is) {
+    console << "id name Belette " << VERSION << std::endl;
+    console << "id author Vincent Bab" << std::endl;
 
-    console << endl;
+    console << std::endl;
 
     for (auto const& [name, option] : options) {
-        console << "option name " << name << " " << option << endl;
+        console << "option name " << name << " " << option << std::endl;
     }
 
-    console << "uciok" << endl;
+    console << "uciok" << std::endl;
 
     return true;
 }
 
-bool Uci::cmdIsReady(istringstream& is) {
-    console << "readyok" << endl;
+bool Uci::cmdIsReady(std::istringstream& is) {
+    console << "readyok" << std::endl;
 
     return true;
 }
 
-bool Uci::cmdUciNewGame(istringstream& is) {
+bool Uci::cmdUciNewGame(std::istringstream& is) {
     engine.newGame();
     return true;
 }
 
-bool Uci::cmdSetOption(istringstream& is) {
-    string token, name, value;
+bool Uci::cmdSetOption(std::istringstream& is) {
+    std::string token, name, value;
 
     // name
     is >> token;
@@ -206,15 +204,15 @@ bool Uci::cmdSetOption(istringstream& is) {
     }
 
     if (!options.count(name))
-        console << "Unknow option '" << name << "'" << endl;
+        console << "Unknow option '" << name << "'" << std::endl;
         
     options[name] = value;
 
     return true;
 }
 
-bool Uci::cmdPosition(istringstream& is) {
-    string token, fen;
+bool Uci::cmdPosition(std::istringstream& is) {
+    std::string token, fen;
 
     is >> token;
 
@@ -231,7 +229,7 @@ bool Uci::cmdPosition(istringstream& is) {
     }
 
     if (!engine.position().setFromFEN(fen)) {
-        console << "Invalid FEN position" << endl;
+        console << "Invalid FEN position" << std::endl;
         return true;
     }
 
@@ -246,8 +244,8 @@ bool Uci::cmdPosition(istringstream& is) {
     return true;
 }
 
-bool Uci::cmdGo(istringstream& is) {
-    string token;
+bool Uci::cmdGo(std::istringstream& is) {
+    std::string token;
     SearchLimits params;
 
     while (is >> token) {
@@ -297,13 +295,13 @@ bool Uci::cmdGo(istringstream& is) {
     return true;
 }
 
-bool Uci::cmdDebug(istringstream& is) {
-    string token;
+bool Uci::cmdDebug(std::istringstream& is) {
+    std::string token;
     is >> token;
 
     if (token == "moves") {
         enumerateLegalMoves(engine.position(), [&] (Move m) {
-            console << Uci::formatMove(m) << endl;
+            console << Uci::formatMove(m) << std::endl;
             return true;
         });
     } else if (token == "movepicker") {
@@ -311,14 +309,14 @@ bool Uci::cmdDebug(istringstream& is) {
             MovePicker<MAIN, WHITE> mp(engine.position());
 
             mp.enumerate([&] (Move m, bool& skipQuiets) {
-                console << Uci::formatMove(m) << endl;
+                console << Uci::formatMove(m) << std::endl;
                 return true;
             });
         } else {
             MovePicker<MAIN, BLACK> mp(engine.position());
 
             mp.enumerate([&] (Move m, bool& skipQuiets) {
-                console << Uci::formatMove(m) << endl;
+                console << Uci::formatMove(m) << std::endl;
                 return true;
             });
         }
@@ -328,27 +326,27 @@ bool Uci::cmdDebug(istringstream& is) {
         Move m = Uci::parseMove(token);
 
         if (m == MOVE_NONE) {
-            console << "Invalid move " << token << endl;
+            console << "Invalid move " << token << std::endl;
             return true;
         }
 
         is >> token;
         int threshold = parseInt(token);
 
-        console << Uci::formatMove(m) << "/" << threshold << " => " << (engine.position().see(m, threshold) ? "PASS" : "FAIL") << endl;
+        console << Uci::formatMove(m) << "/" << threshold << " => " << (engine.position().see(m, threshold) ? "PASS" : "FAIL") << std::endl;
     } else {
-        console << engine.position() << endl;
+        console << engine.position() << std::endl;
     }
     
     return true;
 }
 
-bool Uci::cmdEval(istringstream& is) {
-    console << "Static eval: " << evaluate(engine.position()) << endl;
+bool Uci::cmdEval(std::istringstream& is) {
+    console << "Static eval: " << evaluate(engine.position()) << std::endl;
     return true;
 }
 
-bool Uci::cmdPerft(istringstream& is) {
+bool Uci::cmdPerft(std::istringstream& is) {
     int depth = 1;
     is >> depth;
 
@@ -357,7 +355,7 @@ bool Uci::cmdPerft(istringstream& is) {
     return true;
 }
 
-bool Uci::cmdPerftmp(istringstream& is) {
+bool Uci::cmdPerftmp(std::istringstream& is) {
     int depth = 1;
     is >> depth;
 
@@ -366,23 +364,23 @@ bool Uci::cmdPerftmp(istringstream& is) {
     return true;
 }
 
-bool Uci::cmdStop(istringstream& is) {
+bool Uci::cmdStop(std::istringstream& is) {
     engine.stop();
     return true;
 }
 
-bool Uci::cmdQuit(istringstream& is) {
+bool Uci::cmdQuit(std::istringstream& is) {
     return false;
 }
 
-bool Uci::cmdTest(istringstream& is) {
+bool Uci::cmdTest(std::istringstream& is) {
     Test::run();
     
     return true;
 }
 
-bool Uci::cmdBench(istringstream& is) {
-    int depth = 13;
+bool Uci::cmdBench(std::istringstream& is) {
+    int depth = DEFAULT_BENCH_DEPTH;
     is >> depth;
 
     bench(depth);
@@ -405,14 +403,14 @@ void UciEngine::onSearchProgress(const SearchEvent &event) {
     if (!event.pv.empty()) 
         console << " pv " << event.pv;
     
-    console << endl;
+    console << std::endl;
 }
 
 void UciEngine::onSearchFinish(const SearchEvent &event) {
     Move bestMove = MOVE_NONE;
     if (!event.pv.empty()) bestMove = event.pv.front();
 
-    console << "bestmove " << Uci::formatMove(bestMove) << endl;
+    console << "bestmove " << Uci::formatMove(bestMove) << std::endl;
 }
 
 

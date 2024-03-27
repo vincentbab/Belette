@@ -4,11 +4,9 @@
 #include "uci.h"
 #include "zobrist.h"
 
-using namespace std;
-
 namespace Belette {
 
-const string PIECE_TO_CHAR(" PNBRQK  pnbrqk");
+const std::string PIECE_TO_CHAR(" PNBRQK  pnbrqk");
 
 char pieceToChar(Piece p) {
     assert(p>= NO_PIECE && p<= NB_PIECE);
@@ -98,11 +96,11 @@ std::string Position::fen() const {
 bool Position::setFromFEN(const std::string &fen) {
     reset();
 
-    istringstream parser(fen);
-    string token;
+    std::istringstream parser(fen);
+    std::string token;
 
     // Pieces
-    parser >> skipws >> token;
+    parser >> std::skipws >> token;
     int f=0, r=7;
     for(auto c : token) {
         if (c == '/') {
@@ -124,7 +122,7 @@ bool Position::setFromFEN(const std::string &fen) {
     }
 
     // Side to Move
-    parser >> skipws >> token;
+    parser >> std::skipws >> token;
     if (token[0] != 'w' && token[0] != 'b') {
         reset();
         return false;
@@ -132,7 +130,7 @@ bool Position::setFromFEN(const std::string &fen) {
     sideToMove = ((token[0] == 'w') ? WHITE : BLACK);
 
     // Casteling
-    parser >> skipws >> token;
+    parser >> std::skipws >> token;
     for(auto c : token) {
         if (c == 'K') setCastlingRights(WHITE_KING_SIDE);
         else if (c == 'Q') setCastlingRights(WHITE_QUEEN_SIDE);
@@ -146,7 +144,7 @@ bool Position::setFromFEN(const std::string &fen) {
     }
 
     // En passant
-    parser >> skipws >> token;
+    parser >> std::skipws >> token;
     state->epSquare = Uci::parseSquare(token);
     if (state->epSquare != SQ_NONE && !isValidSq(state->epSquare)) {
         reset();
@@ -161,14 +159,14 @@ bool Position::setFromFEN(const std::string &fen) {
     }
 
     // Rule 50 half move
-    parser >> skipws >> state->fiftyMoveRule;
+    parser >> std::skipws >> state->fiftyMoveRule;
     if (state->fiftyMoveRule < 0) {
         reset();
         return false;
     }
 
     // Full move
-    parser >> skipws >> state->halfMoves;
+    parser >> std::skipws >> state->halfMoves;
     state->halfMoves = std::max(2 * (state->halfMoves - 1), 0) + (sideToMove == BLACK);
     if (state->halfMoves < 0) {
         reset();
@@ -193,15 +191,15 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 
     os << "   a   b   c   d   e   f   g   h" << std::endl << std::endl;
     os << "Side to move: " << (pos.getSideToMove() == WHITE ? "White" : "Black") << std::endl;
-    os << "FEN: " << pos.fen() << endl;
-    os << "Hash: " << pos.computeHash() << endl;
+    os << "FEN: " << pos.fen() << std::endl;
+    os << "Hash: " << pos.computeHash() << std::endl;
     os << "Checkers:";
     Bitboard checkers = pos.checkers(); 
     bitscan_loop(checkers) {
         Square sq = bitscan(checkers);
         os << " " << Uci::formatSquare(sq);
     }
-    os << endl;
+    os << std::endl;
 
     if (pos.isFiftyMoveDraw())
         os << "[Draw by fifty move rule]" << std::endl;
@@ -214,7 +212,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 }
 
 std::string Position::debugHistory() {
-    stringstream ss;
+    std::stringstream ss;
 
     assert(this->state - this->history < MAX_HISTORY && this->state - this->history >= 0);
 

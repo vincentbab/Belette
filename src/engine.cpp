@@ -6,8 +6,6 @@
 #include "evaluate.h"
 #include "movepicker.h"
 
-using namespace std;
-
 namespace Belette {
 
 int Engine::LMRTable[MAX_PLY][MAX_MOVE];

@@ -5,8 +5,6 @@
 #include "utils.h"
 #include "movepicker.h"
 
-using namespace std;
-
 namespace Belette {
 
 /**
@@ -42,7 +40,7 @@ size_t perftmp(Position &pos, int depth) {
         total += n;
 
         if (Div && n > 0)
-            cout << Uci::formatMove(move) << ": " << n << endl;
+            console << Uci::formatMove(move) << ": " << n << std::endl;
 
         return true;
     });
@@ -64,7 +62,7 @@ template size_t perftmp<true>(Position &pos, int depth);
 template size_t perftmp<false>(Position &pos, int depth);
 
 void perftmp(Position &pos, int depth) {
-    console << "perft depth=" << depth << endl;
+    console << "perft depth=" << depth << std::endl;
     auto begin = now();
     size_t n = perftmp<true>(pos, depth);
     auto end = now();
@@ -106,7 +104,7 @@ size_t perft(Position &pos, int depth) {
         total += n;
 
         if (Div && n > 0)
-            cout << Uci::formatMove(move) << ": " << n << endl;
+            console << Uci::formatMove(move) << ": " << n << std::endl;
 
         return true;
     });
@@ -128,7 +126,7 @@ template size_t perft<true>(Position &pos, int depth);
 template size_t perft<false>(Position &pos, int depth);
 
 void perft(Position &pos, int depth) {
-    console << "perft depth=" << depth << endl;
+    console << "perft depth=" << depth << std::endl;
     auto begin = now();
     size_t n = perft<true>(pos, depth);
     auto end = now();

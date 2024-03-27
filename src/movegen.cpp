@@ -2,8 +2,6 @@
 #include "movegen.h"
 #include "uci.h"
 
-using namespace std;
-
 namespace Belette {
 
 std::ostream& operator<<(std::ostream& os, const MoveList& moves) {
@@ -13,7 +11,6 @@ std::ostream& operator<<(std::ostream& os, const MoveList& moves) {
         if (!first) os << " ";
         os << Uci::formatMove(m);
         first = false;
-        
     }
 
     return os;

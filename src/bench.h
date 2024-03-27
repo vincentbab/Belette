@@ -3,6 +3,8 @@
 
 namespace Belette {
 
+constexpr int DEFAULT_BENCH_DEPTH = 13;
+
 void bench(int depth);
     
 } /* namespace Belette */

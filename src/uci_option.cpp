@@ -1,7 +1,5 @@
 #include "uci_option.h"
 
-using namespace std;
-
 namespace Belette {
 
 UciOption::UciOption(OnUpdate onUpdate_) : type("button"), onUpdate(onUpdate_) { }
@@ -43,7 +41,7 @@ std::ostream &operator<<(std::ostream &s, const UciOption &option) {
     return s;
 }
 
-UciOption& UciOption::operator=(const string& newValue)
+UciOption& UciOption::operator=(const std::string& newValue)
 {
     if (!isButton() && newValue.empty()) return *this;
     if (isCheck() && newValue != "true" && newValue != "false") return *this;

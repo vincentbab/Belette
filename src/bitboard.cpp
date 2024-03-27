@@ -1,8 +1,6 @@
 #include "bitboard.h"
 #include <iostream>
 
-using namespace std;
-
 namespace Belette {
 
 Bitboard PAWN_ATTACK[NB_SIDE][NB_SQUARE];
@@ -74,18 +72,18 @@ void init_pext(Bitboard table[], PextEntry magics[]) {
 
 void debug(Bitboard bb)
 {
-	cout << "Bitboard:" << endl;
+	std::cout << "Bitboard:" << std::endl;
 	int sq = 0;
 	for (; sq != 64; ++sq) {
 		if (sq && !(sq & 7))
-			cout << endl;
+			std::cout << std::endl;
 
 		if ((1ULL << (sq ^ 56)) & bb)
-			cout << "X  ";
+			std::cout << "X  ";
 		else
-			cout << "-  ";
+			std::cout << "-  ";
 	}
-	cout << endl;
+	std::cout << std::endl;
 }
 
 
