@@ -99,8 +99,7 @@ void bench(int depth) {
 
     console << std::endl << "-----------------------------" << std::endl;
     console << "Elapsed: " << engine.elapsed << std::endl;
-    console << "Nodes: " << engine.nbNodes << std::endl;
-    console << "NPS: " << engine.nps() << std::endl;
+    console << engine.nbNodes << " nodes " << engine.nps() << " nps" << std::endl;
 }
 
 } /* namespace Belette  */
