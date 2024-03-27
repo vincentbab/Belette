@@ -115,7 +115,6 @@ private:
 
     std::unique_ptr<SearchData> sd;
     Position rootPosition;
-    TranspositionTable tt;
     bool aborted = true;
     bool searching = false;
 

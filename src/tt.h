@@ -82,7 +82,7 @@ public:
     TTResult get(uint64_t hash);
     void set(TTEntry *tte, uint64_t hash, int depth, int ply, Bound bound, Move move, Score eval, Score score, bool pv);
 
-    inline void prefetch(uint64_t hash) { __builtin_prefetch(&buckets[index(hash)]); }
+    inline void prefetch(uint64_t hash) const { __builtin_prefetch(&buckets[index(hash)]); }
 
     size_t usage() const;
     inline size_t size() const { return nbBuckets; }
@@ -101,8 +101,10 @@ private:
     uint8_t age;
 
     //inline uint64_t index(uint64_t hash) { return hash % nbBuckets; }
-    inline uint64_t index(uint64_t hash) { return ((unsigned __int128)hash * (unsigned __int128)nbBuckets) >> 64; }
+    inline uint64_t index(uint64_t hash) const { return ((unsigned __int128)hash * (unsigned __int128)nbBuckets) >> 64; }
 };
+
+extern TranspositionTable tt;
 
 } /* namespace Belette */
 

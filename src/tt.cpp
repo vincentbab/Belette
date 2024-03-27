@@ -4,6 +4,8 @@
 
 namespace Belette {
 
+// Global Transposition Table
+TranspositionTable tt;
 
 TranspositionTable::TranspositionTable(size_t defaultSize): buckets(nullptr), nbBuckets(0), age(0) {
     resize(defaultSize);

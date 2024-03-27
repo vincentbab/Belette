@@ -9,6 +9,7 @@
 #include "movegen.h"
 #include "movehistory.h"
 #include "evaluate.h"
+#include "tt.h"
 
 namespace Belette {
 
@@ -70,6 +71,7 @@ template<typename Handler>
 bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     bool skipQuiets = false;
 
+    tt.prefetch(pos.getHashAfter(ttMove));
     // TT Move
     if (pos.isLegal<Me>(ttMove)) {
         CALL_HANDLER(ttMove, skipQuiets);
@@ -82,6 +84,8 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     if (pos.inCheck()) {
         enumerateLegalMoves<Me, ALL_MOVES>(pos, [&](Move m) {
             if (m == ttMove) return true; // continue;
+
+            tt.prefetch(pos.getHashAfter(m));
 
             moves.emplace_back(m, scoreEvasion(m));
             return true;
@@ -103,6 +107,8 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     enumerateLegalMoves<Me, TACTICAL_MOVES>(pos, [&](Move m) {
         if (m == ttMove) return true; // continue;
         
+        tt.prefetch(pos.getHashAfter(m));
+
         moves.emplace_back(m, scoreTactical(m));
         return true;
     });
@@ -145,6 +151,10 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     if constexpr(Type == QUIESCENCE) return true;
 
     if (moveHistory != nullptr) [[likely]] {
+        tt.prefetch(refutations[0]);
+        tt.prefetch(refutations[1]);
+        tt.prefetch(refutations[2]);
+
         // Killer 1
         if (refutations[0] != ttMove && !pos.isTactical(refutations[0]) && pos.isLegal<Me>(refutations[0])) {
             CALL_HANDLER(refutations[0], skipQuiets);
@@ -170,6 +180,8 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     enumerateLegalMoves<Me, QUIET_MOVES>(pos, [&](Move move) {
         if (move == ttMove) return true; // continue;
         if (refutations[0] == move || refutations[1] == move || refutations[2] == move) return true; // continue
+
+        tt.prefetch(pos.getHashAfter(move));
 
         moves.emplace_back(move, scoreQuiet(move));
         return true;
