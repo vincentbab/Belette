@@ -125,7 +125,7 @@ void Uci::loop(int argc, char* argv[]) {
         if (argc > 2) depth = parseInt(std::string(argv[2]));
 
         bench(depth);
-        
+
         return;
     }
 
@@ -382,7 +382,7 @@ bool Uci::cmdTest(istringstream& is) {
 }
 
 bool Uci::cmdBench(istringstream& is) {
-    int depth = 11;
+    int depth = 13;
     is >> depth;
 
     bench(depth);
