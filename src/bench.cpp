@@ -67,7 +67,7 @@ public:
     size_t nbNodes = 0;
     TimeMs elapsed = 0;
 
-    size_t nps() { return 1000ull * nbNodes / std::max((uint64_t)elapsed, 1ull); }
+    size_t nps() { return 1000ull * nbNodes / std::max((uint64_t)elapsed, (uint64_t)1); }
 
 private:
     virtual void onSearchProgress(const SearchEvent &event) {
