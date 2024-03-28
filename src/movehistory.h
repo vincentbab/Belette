@@ -14,7 +14,7 @@ using PartialMoveList = fixed_vector<Move, 32, uint8_t>;
 
 class MoveHistory {
 public:
-    MoveHistory(): counterMoves{MOVE_NONE}, killerMoves{MOVE_NONE}, history{0} { }
+    MoveHistory(): counterMoves{}, killerMoves{}, history{} { }
 
     inline void clearKillers(int ply) {
         assert(ply >= 0 && ply < MAX_PLY);

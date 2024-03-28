@@ -429,14 +429,14 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
         bestScore = eval;
     }
 
-    int nbMoves = 0;
+    //int nbMoves = 0;
     Move ttMove = tte->move();
     // If ttMove is quiet we don't want to use it past a certain depth to allow qSearch to stabilize
     bool useTTMove = ttHit && isValidMove(ttMove) && (depth >= -7 || pos.inCheck() || pos.isTactical(ttMove));
     MovePicker<QUIESCENCE, Me> mp(pos, useTTMove ? ttMove : MOVE_NONE);
 
     mp.enumerate([&](Move move, /*unused*/bool& skipQuiets) -> bool {
-        nbMoves++;
+        //nbMoves++;
 
         // SEE Pruning
         if (!pos.see(move, 0)) return true; // continue;

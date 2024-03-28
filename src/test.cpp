@@ -30,7 +30,7 @@ std::vector<TestCase> ALL_TESTS = {
 
 void run() {
     Position pos;
-    int i = 1, nbTest = ALL_TESTS.size(), nbSuccess = 0, nbFailed = 0;
+    int i = 1, nbTest = ALL_TESTS.size(), nbFailed = 0;
 
     for(auto t : ALL_TESTS) {
         console << "[Test " << i << "/" << nbTest << "] \"" << t.fen << "\"" << std::endl;
@@ -40,7 +40,6 @@ void run() {
 
         if (result == t.nbNodes) {
             console << "  SUCCESS - " << t.nbNodes << " == " << result << std::endl;
-            nbSuccess++;
         } else {
             console << "  FAILED! - " << t.nbNodes << " != " << result << std::endl;
             nbFailed++;
@@ -51,7 +50,7 @@ void run() {
 
     console << std::endl << std::endl;
 
-    if (nbFailed > 0) {    
+    if (nbFailed > 0) {
         console << "##############################" << std::endl;
         console << "/!\\ Some tests failed :( /!\\" << std::endl;
         console << "##############################" << std::endl;

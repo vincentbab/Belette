@@ -38,7 +38,7 @@ template<MovePickerType Type, Side Me>
 class MovePicker {
 public:
     MovePicker(const Position &pos_, Move ttMove_ = MOVE_NONE)
-    : pos(pos_), ttMove(ttMove_), moveHistory(nullptr), refutations{MOVE_NONE}
+    : pos(pos_), ttMove(ttMove_), moveHistory(nullptr), refutations{}
     { }
 
     MovePicker(const Position &pos_, Move ttMove_, const MoveHistory* moveHistory_, int ply_)
