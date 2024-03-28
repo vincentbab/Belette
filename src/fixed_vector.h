@@ -60,6 +60,18 @@ public:
         return end();
     }
 
+    template<typename Compare>
+    inline void insert_sorted(const T& e, Compare comp) {
+        T *cur = end();
+
+        for (; cur != begin() && comp(e, *(cur - 1)); cur--) {
+            *cur = *(cur - 1);
+        }
+
+        *cur = e;
+        count++;
+    }
+
     template<typename... Args> inline void emplace_back(Args&&... args) {
         assert(count < N);
         new(&elements[count++]) T(std::forward<Args>(args)...);

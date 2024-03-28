@@ -21,11 +21,10 @@ struct ScoredMove {
     ScoredMove() { };
 
     inline ScoredMove(Move move_, MoveScore score_) 
-    : score(score_), move(move_)/*, next(1)*/ { }
+    : score(score_), move(move_) { }
 
     MoveScore score;
     Move move;
-    //uint16_t next; // Increment to the next move in the list. Default = 1
 };
 
 using ScoredMoveList = fixed_vector<ScoredMove, MAX_MOVE, uint8_t>;
@@ -80,6 +79,8 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     ScoredMoveList moves;
     ScoredMove *current, *endBadTacticals, *beginQuiets, *endBadQuiets;
 
+    auto compare = [](const ScoredMove& a, const ScoredMove& b) { return a.score > b.score; };
+
     // Evasions
     if (pos.inCheck()) {
         enumerateLegalMoves<Me, ALL_MOVES>(pos, [&](Move m) {
@@ -87,12 +88,10 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
 
             tt.prefetch(pos.getHashAfter(m));
 
-            moves.emplace_back(m, scoreEvasion(m));
+            ScoredMove newMove = ScoredMove(m, scoreEvasion(m));
+            moves.insert_sorted(newMove, compare);
+            
             return true;
-        });
-
-        std::sort(moves.begin(), moves.end(), [](const ScoredMove &a, const ScoredMove &b) {
-            return a.score > b.score;
         });
 
         for (auto m : moves) {
@@ -103,39 +102,17 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     }
 
     // Tacticals
-    //moves.emplace_back(MOVE_NONE, 0); // Dummy move to allow access to (i-1)
     enumerateLegalMoves<Me, TACTICAL_MOVES>(pos, [&](Move m) {
         if (m == ttMove) return true; // continue;
         
         tt.prefetch(pos.getHashAfter(m));
 
-        moves.emplace_back(m, scoreTactical(m));
+        ScoredMove newMove = ScoredMove(m, scoreTactical(m));
+        moves.insert_sorted(newMove, compare);
+
         return true;
     });
 
-    std::sort(moves.begin() /*+ 1*/, moves.end(), [](const ScoredMove &a, const ScoredMove &b) {
-        return a.score > b.score;
-    });
-
-    /*uint16_t nbTacticals = moves.size();
-    uint16_t beginGoodTactical = nbTacticals, endGoodTactical = 0, 
-             beginBadTactical = nbTacticals, endBadTactical = 0;*/
-
-    // Good tacticals
-    /*for (int i=0; i<nbTacticals; i++) {
-        if constexpr(Type == MAIN) { // For quiescence, prunning of bad captures is done in search
-            if (!pos.see(current->move, -50)) { // Allow Bishop takes Knight
-                beginBadTactical = beginBadTactical * (beginBadTactical==nbTacticals);
-                endBadTactical = i+1;
-                continue;
-            } else {
-                beginGoodTactical = beginGoodTactical * (beginGoodTactical==nbTacticals);
-                endGoodTactical = i+1;
-            }
-        }
-
-        CALL_HANDLER(current->move);
-    }*/
     for (current = endBadTacticals = moves.begin(); current != moves.end(); current++) {
         if constexpr(Type == MAIN) { // For quiescence prunning of bad captures is done in search
             if (!pos.see(current->move, -50)) { // Allow Bishop takes Knight
@@ -171,24 +148,20 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
         }
     }
 
-    //int firstGoodQuiet, lastGoodQuiet, firstBadQuiet, lastBadQuiet;
-
     // Quiets
     moves.resize(endBadTacticals - moves.begin()); // Keep only bad tacticals
     beginQuiets = endBadTacticals;
 
-    enumerateLegalMoves<Me, QUIET_MOVES>(pos, [&](Move move) {
-        if (move == ttMove) return true; // continue;
-        if (refutations[0] == move || refutations[1] == move || refutations[2] == move) return true; // continue
+    enumerateLegalMoves<Me, QUIET_MOVES>(pos, [&](Move m) {
+        if (m == ttMove) return true; // continue;
+        if (refutations[0] == m || refutations[1] == m || refutations[2] == m) return true; // continue
 
-        tt.prefetch(pos.getHashAfter(move));
+        tt.prefetch(pos.getHashAfter(m));
 
-        moves.emplace_back(move, scoreQuiet(move));
+        ScoredMove newMove = ScoredMove(m, scoreQuiet(m));
+        moves.insert_sorted(newMove, compare);
+        
         return true;
-    });
-
-    std::sort(beginQuiets, moves.end(), [](const ScoredMove &a, const ScoredMove &b) {
-        return a.score > b.score;
     });
 
     // Good quiets
