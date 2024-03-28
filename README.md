@@ -55,8 +55,9 @@ Time: 3455ms
  - Reverse futility pruning (RFP)
  - Internal iterative reduction (IIR)
  - Late move reduction (LMR)
+ - Late move pruning (LMP)
+ - SEE pruning
  - Quiescence
- - SEE pruning (Quiescence)
 
  ### Move ordering
   - Hash move (TT Move)
