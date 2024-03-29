@@ -71,7 +71,7 @@ public:
 
 private:
     virtual void onSearchProgress(const SearchEvent &event) {
-        UciEngine::onSearchProgress(event);
+        //UciEngine::onSearchProgress(event);
     }
     virtual void onSearchFinish(const SearchEvent &event) {
         UciEngine::onSearchFinish(event);
