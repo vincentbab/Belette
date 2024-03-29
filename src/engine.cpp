@@ -67,7 +67,7 @@ void Engine::idSearch() {
 
     for (depth = 1; depth < MAX_PLY; depth++) {
         Score alpha = -SCORE_INFINITE, beta = SCORE_INFINITE;
-        Score delta, score;
+        Score delta = 0, score = -SCORE_INFINITE;
         MoveList pv;
 
         // Reset selDepth
