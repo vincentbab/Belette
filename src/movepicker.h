@@ -70,7 +70,7 @@ template<typename Handler>
 bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     bool skipQuiets = false;
 
-    tt.prefetch(pos.getHashAfter(ttMove));
+    //tt.prefetch(pos.getHashAfter(ttMove));
     // TT Move
     if (pos.isLegal<Me>(ttMove)) {
         CALL_HANDLER(ttMove, skipQuiets);
@@ -86,7 +86,7 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
         enumerateLegalMoves<Me, ALL_MOVES>(pos, [&](Move m) {
             if (m == ttMove) return true; // continue;
 
-            tt.prefetch(pos.getHashAfter(m));
+            //tt.prefetch(pos.getHashAfter(m));
 
             ScoredMove newMove = ScoredMove(m, scoreEvasion(m));
             moves.insert_sorted(newMove, compare);
@@ -105,7 +105,7 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     enumerateLegalMoves<Me, TACTICAL_MOVES>(pos, [&](Move m) {
         if (m == ttMove) return true; // continue;
         
-        tt.prefetch(pos.getHashAfter(m));
+        //tt.prefetch(pos.getHashAfter(m));
 
         ScoredMove newMove = ScoredMove(m, scoreTactical(m));
         moves.insert_sorted(newMove, compare);
@@ -128,9 +128,9 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     if constexpr(Type == QUIESCENCE) return true;
 
     if (moveHistory != nullptr) [[likely]] {
-        tt.prefetch(refutations[0]);
-        tt.prefetch(refutations[1]);
-        tt.prefetch(refutations[2]);
+        //tt.prefetch(refutations[0]);
+        //tt.prefetch(refutations[1]);
+        //tt.prefetch(refutations[2]);
 
         // Killer 1
         if (refutations[0] != ttMove && !pos.isTactical(refutations[0]) && pos.isLegal<Me>(refutations[0])) {
@@ -156,7 +156,7 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
         if (m == ttMove) return true; // continue;
         if (refutations[0] == m || refutations[1] == m || refutations[2] == m) return true; // continue
 
-        tt.prefetch(pos.getHashAfter(m));
+        //tt.prefetch(pos.getHashAfter(m));
 
         ScoredMove newMove = ScoredMove(m, scoreQuiet(m));
         moves.insert_sorted(newMove, compare);
