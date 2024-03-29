@@ -71,6 +71,7 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     bool skipQuiets = false;
 
     tt.prefetch(pos.getHashAfter(ttMove));
+
     // TT Move
     if (pos.isLegal<Me>(ttMove)) {
         CALL_HANDLER(ttMove, skipQuiets);
@@ -105,7 +106,8 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     enumerateLegalMoves<Me, TACTICAL_MOVES>(pos, [&](Move m) {
         if (m == ttMove) return true; // continue;
         
-        tt.prefetch(pos.getHashAfter(m));
+        if (moves.size() < 16)
+            tt.prefetch(pos.getHashAfter(m));
 
         ScoredMove newMove = ScoredMove(m, scoreTactical(m));
         moves.insert_sorted(newMove, compare);
@@ -128,10 +130,10 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
     if constexpr(Type == QUIESCENCE) return true;
 
     if (moveHistory != nullptr) [[likely]] {
-        tt.prefetch(refutations[0]);
-        tt.prefetch(refutations[1]);
-        tt.prefetch(refutations[2]);
-
+        tt.prefetch(pos.getHashAfter(refutations[0]));
+        tt.prefetch(pos.getHashAfter(refutations[1]));
+        tt.prefetch(pos.getHashAfter(refutations[2]));
+        
         // Killer 1
         if (refutations[0] != ttMove && !pos.isTactical(refutations[0]) && pos.isLegal<Me>(refutations[0])) {
             CALL_HANDLER(refutations[0], skipQuiets);
@@ -156,7 +158,8 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
         if (m == ttMove) return true; // continue;
         if (refutations[0] == m || refutations[1] == m || refutations[2] == m) return true; // continue
 
-        tt.prefetch(pos.getHashAfter(m));
+        if (moves.size() < 48)
+            tt.prefetch(pos.getHashAfter(m));
 
         ScoredMove newMove = ScoredMove(m, scoreQuiet(m));
         moves.insert_sorted(newMove, compare);
@@ -176,11 +179,13 @@ bool MovePicker<Type, Me>::enumerate(const Handler &handler) {
 
     // Bad tacticals
     for (current = moves.begin(); current != endBadTacticals; current++) {
+        tt.prefetch(pos.getHashAfter(current->move));
         CALL_HANDLER(current->move, skipQuiets);
     }
 
     // Bad quiets
     for (current = beginQuiets; current != endBadQuiets && !skipQuiets; current++) {
+        tt.prefetch(pos.getHashAfter(current->move));
         CALL_HANDLER(current->move, skipQuiets);
     }
 

@@ -275,9 +275,6 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, MoveList &pv
             }
         }
 
-        // Prefetch TT
-        tt.prefetch(pos.getHashAfter(move));
-
         sd->nbNodes++;
 
         if (PvNode)
@@ -440,9 +437,6 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
 
         // SEE Pruning
         if (!pos.see(move, 0)) return true; // continue;
-
-        // Prefetch TT
-        tt.prefetch(pos.getHashAfter(move));
         
         sd->nbNodes++;
 

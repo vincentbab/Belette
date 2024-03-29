@@ -239,8 +239,6 @@ inline void Position::undoMove(Move m) {
 }
 
 inline uint64_t Position::getHashAfter(Move m) const {
-    //assert(isValidMove(m));
-
     uint64_t h = hash();
     const Square from = moveFrom(m), to = moveTo(m);
     const Piece p = getPieceAt(from);
