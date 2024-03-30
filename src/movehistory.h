@@ -17,7 +17,7 @@ public:
     MoveHistory(): counterMoves{}, killerMoves{}, history{} { }
 
     inline void clearKillers(int ply) {
-        assert(ply >= 0 && ply < MAX_PLY);
+        assert(ply >= 0 && ply < MAX_PLY + 1);
         killerMoves[ply][0] = killerMoves[ply][1] = MOVE_NONE;
     }
 
@@ -55,7 +55,7 @@ public:
     }
 private:
     Move counterMoves[NB_PIECE][NB_SQUARE];
-    Move killerMoves[MAX_PLY][2];
+    Move killerMoves[MAX_PLY+1][2];
     MoveScore history[NB_SIDE][NB_SQUARE*NB_SQUARE];
 
     inline MoveScore historyBonus(int depth) {

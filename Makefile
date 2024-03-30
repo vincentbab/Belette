@@ -11,7 +11,7 @@ PROFILE_CPPFLAGS := $(CPPFLAGS) $(RELEASE_CPPFLAGS) -g
 LDFLAGS := -Wall -std=c++20 -fno-rtti -mbmi -mbmi2 -mpopcnt -msse2 -msse3 -msse4.1 -mavx2
 DEBUG_LDFLAGS := $(LDFLAGS)
 RELEASE_LDFLAGS := $(LDFLAGS) -flto -s -static
-PROFILE_LDFLAGS := $(LDFLAGS) -flto -g
+PROFILE_LDFLAGS := $(LDFLAGS) -flto -g -static
 
 .PHONY: all debug release profile
 

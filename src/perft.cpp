@@ -16,8 +16,8 @@ size_t perftmp(Position &pos, int depth) {
     MoveList moves;
     
     if (!Div && depth <= 1) {
-        MovePicker<MAIN, Me> mp(pos);
-        mp.enumerate([&](Move m, bool& skipQuiets) {
+        MovePicker mp(pos);
+        mp.enumerate<MAIN, Me>([&](Move m, bool& skipQuiets) {
             total += 1;
             return true;
         });
@@ -25,8 +25,8 @@ size_t perftmp(Position &pos, int depth) {
         return total;
     }
     
-    MovePicker<MAIN, Me> mp(pos);
-    mp.enumerate([&](Move move, bool& skipQuiets) {
+    MovePicker mp(pos);
+    mp.enumerate<MAIN, Me>([&](Move move, bool& skipQuiets) {
         size_t n = 0;
 
         if (Div && depth == 1) {

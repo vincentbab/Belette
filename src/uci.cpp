@@ -305,22 +305,12 @@ bool Uci::cmdDebug(std::istringstream& is) {
             return true;
         });
     } else if (token == "movepicker") {
-        if (engine.position().getSideToMove() == WHITE) {
-            MovePicker<MAIN, WHITE> mp(engine.position());
+        MovePicker mp(engine.position());
 
-            mp.enumerate([&] (Move m, bool& skipQuiets) {
-                console << Uci::formatMove(m) << std::endl;
-                return true;
-            });
-        } else {
-            MovePicker<MAIN, BLACK> mp(engine.position());
-
-            mp.enumerate([&] (Move m, bool& skipQuiets) {
-                console << Uci::formatMove(m) << std::endl;
-                return true;
-            });
-        }
-        
+        mp.enumerate<MAIN>([&] (Move m, bool& skipQuiets) {
+            console << Uci::formatMove(m) << std::endl;
+            return true;
+        });
     } else if (token == "see") {
         is >> token;
         Move m = Uci::parseMove(token);
