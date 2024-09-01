@@ -171,7 +171,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     Position &pos = sd->position;
     bool inCheck = pos.inCheck();
     Score eval;
-    bool improving;
+    bool improving = false;
 
     if (RootNode) {
         node.pv.clear();
@@ -220,7 +220,6 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             improving = (node.staticEval > sd->node(ply - 4).staticEval);
     } else {
         node.staticEval = eval = SCORE_NONE;
-        improving = false;
     }
 
     // Internal Iterative Reduction (IIR)
