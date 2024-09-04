@@ -25,10 +25,11 @@ void updatePv(MoveList &pv, Move move, const MoveList &childPv) {
 }
 
 void SearchData::initAllocatedTime() {
-    int64_t moves = limits.movesToGo > 0 ? limits.movesToGo : 40;
+    int64_t moves = limits.movesToGo > 0 ? limits.movesToGo + 5 : 30;
     Side stm = position.getSideToMove();
 
-    allocatedTime = limits.timeLeft[stm] / moves + limits.increment[stm];
+    hardTimeLimit = 0.49 * limits.timeLeft[stm];
+    softTimeLimit = std::min<TimeMs>(hardTimeLimit, limits.timeLeft[stm] / moves + 0.9 * limits.increment[stm]);
 }
 
 void Engine::waitForSearchFinish() {
@@ -115,6 +116,8 @@ void Engine::idSearch() {
         onSearchProgress(SearchEvent(depth, sd->selDepth, bestPv, bestScore, sd->nbNodes, sd->getElapsed(), tt.usage()));
 
         if (sd->limits.maxDepth > 0 && depth >= sd->limits.maxDepth) break;
+
+        if (sd->shouldStopSoft()) break;
     }
 
     SearchEvent event(depth, sd->selDepth, bestPv, bestScore, sd->nbNodes, sd->getElapsed(), tt.usage());
@@ -314,7 +317,6 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             //R += !improving;
             R -= sd->moveHistory.getHistory<Me>(move) / 2048;
 
-
             R = std::min(depth - 1, std::max(1, R));
 
             // Reduced depth, Zero window
@@ -445,7 +447,6 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
         bestScore = eval;
     }
 
-    //int nbMoves = 0;
     Move ttMove = tte->move();
     // If ttMove is quiet we don't want to use it past a certain depth to allow qSearch to stabilize
     bool useTTMove = ttHit && isValidMove(ttMove) && (depth >= -7 || pos.inCheck() || pos.isTactical(ttMove));
@@ -453,8 +454,6 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
     //MovePicker *mp = new (&node.mp) MovePicker(pos, useTTMove ? ttMove : MOVE_NONE);
 
     mp.enumerate<QUIESCENCE, Me>([&](Move move, /*unused*/bool& skipQuiets) -> bool {
-        //nbMoves++;
-
         // SEE Pruning
         if (!pos.see(move, 0)) return true; // continue;
         

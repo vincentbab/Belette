@@ -54,13 +54,22 @@ struct SearchData {
         
         TimeMs elapsed = now() - startTime;
 
-        if (useTournamentTime() && elapsed >= allocatedTime)
+        if (useTournamentTime() && elapsed >= hardTimeLimit)
             return true;
         if (useFixedTime() && (elapsed > limits.maxTime))
             return true;
         if (useNodeCountLimit() && nbNodes >= limits.maxNodes)
             return true;
         
+        return false;
+    }
+
+    inline bool shouldStopSoft() {
+        TimeMs elapsed = now() - startTime;
+        
+        if (useTournamentTime() && elapsed >= softTimeLimit)
+            return true;
+
         return false;
     }
 
@@ -73,7 +82,8 @@ struct SearchData {
 
     TimeMs startTime;
     TimeMs lastCheck;
-    TimeMs allocatedTime;
+    TimeMs softTimeLimit;
+    TimeMs hardTimeLimit;
 
     MoveHistory moveHistory;
 
