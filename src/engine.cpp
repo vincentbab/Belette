@@ -314,7 +314,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             R += !ttPv;
             R += ttTactical;
             R += 2*cutNode;
-            //R += !improving;
+            R += !improving;
             R -= sd->moveHistory.getHistory<Me>(move) / 2048;
 
             R = std::min(depth - 1, std::max(1, R));
