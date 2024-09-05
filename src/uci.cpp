@@ -32,7 +32,7 @@ Uci::Uci()  {
     console << "Belette " << VERSION << " by Vincent Bab" << std::endl;
     
     options["Debug Log File"] = UciOption("", [&] (const UciOption &opt) { console.setLogFile(opt); });
-    options["Hash"] = UciOption(16, 1, 1048576, [&] (const UciOption &opt) { 
+    options["Hash"] = UciOption(64, 1, 1048576, [&] (const UciOption &opt) { 
         engine.setHashSize(int64_t(opt)*1024*1024);
     });
     options["Threads"] = UciOption(1, 1, 1);
