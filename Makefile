@@ -1,33 +1,48 @@
+TARGET_NAME := belette
+TARGET_BIN_DIR := ./build
+SRC_DIR := ./src
+CXX := clang++
 
-export TARGET_EXEC := belette
-export BUILD_DIR := ./build
-export SRC_DIR := ./src
+TARGET_SUFFIX =
+ifeq ($(OS), Windows_NT)
+	TARGET_SUFFIX = .exe
+endif
 
-CPPFLAGS := -Wall -std=c++20 -fno-rtti -mbmi -mbmi2 -mpopcnt -msse2 -msse3 -msse4.1 -mavx2
-DEBUG_CPPFLAGS := $(CPPFLAGS) -g -O0 -DDEBUG
-RELEASE_CPPFLAGS := $(CPPFLAGS) -O3 -funroll-loops -finline -fomit-frame-pointer -flto -DNDEBUG
-PROFILE_CPPFLAGS := $(CPPFLAGS) $(RELEASE_CPPFLAGS) -g
+SRCS := $(wildcard $(SRC_DIR)/*.cpp)
 
-LDFLAGS := -Wall -std=c++20 -fno-rtti -mbmi -mbmi2 -mpopcnt -msse2 -msse3 -msse4.1 -mavx2
-DEBUG_LDFLAGS := $(LDFLAGS)
-RELEASE_LDFLAGS := $(LDFLAGS) -flto -s -static
-PROFILE_LDFLAGS := $(LDFLAGS) -flto -g -static
+# idea from Stormphrax
+PGO_EXEC := profile-belette
+PGO_GENERATE := -fprofile-instr-generate
+PGO_DATA := belette.profdata
+PGO_MERGE := llvm-profdata merge -output=$(PGO_DATA) *.profraw
+PGO_USE := -fprofile-instr-use=$(PGO_DATA)
+
+CPPFLAGS := -Wall -std=c++20 -fno-rtti -mbmi -mbmi2 -mpopcnt -msse2 -msse3 -msse4.1 -mavx2 -D_CRT_SECURE_NO_WARNINGS
+CPPFLAGS_DEBUG := $(CPPFLAGS) -g -O0 -DDEBUG
+CPPFLAGS_RELEASE := $(CPPFLAGS) -O3 -funroll-loops -finline -fomit-frame-pointer -flto -DNDEBUG
+
+LDFLAGS := -Wall -std=c++20 -fno-rtti -mbmi -mbmi2 -mpopcnt -msse2 -msse3 -msse4.1 -mavx2 -fuse-ld=lld
+LDFLAGS_DEBUG := $(LDFLAGS)
+LDFLAGS_RELEASE := $(LDFLAGS) -flto -static
 
 .PHONY: all debug release profile
 
-all: debug release
+all: pgo release
 
-release:
-	$(MAKE) -f build.mk clean TARGET=Release
-	$(MAKE) -f build.mk TARGET=Release CPPFLAGS="$(RELEASE_CPPFLAGS)" LDFLAGS="$(RELEASE_LDFLAGS)"
+pgo: $(SRCS)
+# idea from Stormphrax
+	$(eval TARGET_EXEC = $(TARGET_NAME)-pgo)
+	$(CXX) $(CPPFLAGS_RELEASE) $(LDFLAGS_RELEASE) $(PGO_GENERATE) -o $(TARGET_BIN_DIR)/$(TARGET_PROFILE_EXEC)$(TARGET_SUFFIX) $^
+	$(TARGET_BIN_DIR)/$(TARGET_PROFILE_EXEC)$(TARGET_SUFFIX) bench
+	$(RM) $(TARGET_BIN_DIR)/$(TARGET_PROFILE_EXEC)$(TARGET_SUFFIX)
+	$(PGO_MERGE)
+	$(CXX) $(CPPFLAGS_RELEASE) $(LDFLAGS_RELEASE) $(PGO_USE) -o $(TARGET_BIN_DIR)/$(TARGET_EXEC)$(TARGET_SUFFIX) $^
+	$(RM) *.profraw $(PGO_DATA)
 
-profile:
-	$(MAKE) -f build.mk clean TARGET=Profile
-	$(MAKE) -f build.mk TARGET=Profile CPPFLAGS="$(PROFILE_CPPFLAGS)" LDFLAGS="$(PROFILE_LDFLAGS)"
+release: $(SRCS)
+	$(eval TARGET_EXEC = $(TARGET_NAME)-release)
+	$(CXX) $(CPPFLAGS_RELEASE) $(LDFLAGS_RELEASE) -o $(TARGET_BIN_DIR)/$(TARGET_EXEC)$(TARGET_SUFFIX) $^
 
-debug:
-	$(MAKE) -f build.mk TARGET=Debug CPPFLAGS="$(DEBUG_CPPFLAGS)" LDFLAGS="$(DEBUG_LDFLAGS)"
-
-clean:
-	$(MAKE) -f build.mk clean TARGET=Debug
-	$(MAKE) -f build.mk clean TARGET=Release
+debug: $(SRCS)
+	$(eval TARGET_EXEC = $(TARGET_NAME)-debug)
+	$(CXX) $(CPPFLAGS_DEBUG) $(LDFLAGS_DEBUG) -o $(TARGET_BIN_DIR)/$(TARGET_EXEC)$(TARGET_SUFFIX) $^

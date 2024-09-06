@@ -1,4 +1,6 @@
-build
+build/*
 .vscode
 tmp
 *.log
+
+!/**/.gitkeep
