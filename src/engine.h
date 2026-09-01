@@ -43,9 +43,9 @@ struct SearchData {
         initAllocatedTime();
     }
     
-    inline bool useTournamentTime() { return !!(limits.timeLeft[WHITE] | limits.timeLeft[WHITE]); }
+    inline bool useTournamentTime() { return !!(limits.timeLeft[WHITE] | limits.timeLeft[BLACK]); }
     inline bool useFixedTime() { return limits.maxTime > 0; }
-    inline bool useTimeLimit() { return useTournamentTime() || useTimeLimit(); }
+    inline bool useTimeLimit() { return useTournamentTime() || useFixedTime(); }
     inline bool useNodeCountLimit() { return limits.maxNodes > 0; }
 
     inline bool shouldStop() {
