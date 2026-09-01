@@ -10,6 +10,15 @@ ifeq ($(OS), Windows_NT)
 	TARGET_SUFFIX = .exe
 endif
 
+# Portable rm
+ifeq ($(shell echo "x"),"x")
+	RM := del /q
+	FixPath = $(subst /,\,$1)
+else
+	RM := rm -f
+	FixPath = $1
+endif
+
 SRCS := $(wildcard $(SRC_DIR)/*.cpp)
 
 # idea from Stormphrax
@@ -23,7 +32,7 @@ CPPFLAGS := -Wall -std=c++20 -fno-rtti -mbmi -mbmi2 -mpopcnt -msse2 -msse3 -msse
 CPPFLAGS_DEBUG := $(CPPFLAGS) -g -O0 -DDEBUG
 CPPFLAGS_RELEASE := $(CPPFLAGS) -O3 -funroll-loops -finline -fomit-frame-pointer -flto -DNDEBUG
 
-LDFLAGS := -Wall -std=c++20 -fno-rtti -mbmi -mbmi2 -mpopcnt -msse2 -msse3 -msse4.1 -mavx2 -fuse-ld=lld
+LDFLAGS := -Wall -std=c++20 -fno-rtti -mbmi -mbmi2 -mpopcnt -msse2 -msse3 -msse4.1 -mavx2 -fuse-ld=lld -static
 LDFLAGS_DEBUG := $(LDFLAGS)
 LDFLAGS_RELEASE := $(LDFLAGS) -flto -static
 
@@ -40,12 +49,12 @@ endif
 pgo: $(SRCS)
 # idea from Stormphrax
 	$(eval TARGET_EXEC = $(TARGET_NAME)-pgo)
-	$(CXX) $(CPPFLAGS_RELEASE) $(LDFLAGS_RELEASE) $(PGO_GENERATE) -o $(TARGET_BIN_DIR)/$(TARGET_PROFILE_EXEC)$(TARGET_SUFFIX) $^
-	$(TARGET_BIN_DIR)/$(TARGET_PROFILE_EXEC)$(TARGET_SUFFIX) bench
-	$(RM) $(TARGET_BIN_DIR)/$(TARGET_PROFILE_EXEC)$(TARGET_SUFFIX)
+	$(CXX) $(CPPFLAGS_RELEASE) $(LDFLAGS_RELEASE) $(PGO_GENERATE) -o $(TARGET_BIN_DIR)/$(PGO_EXEC)$(TARGET_SUFFIX) $^
+	$(call FixPath,$(TARGET_BIN_DIR)/$(PGO_EXEC)$(TARGET_SUFFIX)) bench
+	-$(RM) $(call FixPath,$(TARGET_BIN_DIR)/$(PGO_EXEC)$(TARGET_SUFFIX))
 	$(PGO_MERGE)
 	$(CXX) $(CPPFLAGS_RELEASE) $(LDFLAGS_RELEASE) $(PGO_USE) -o $(OUT) $^
-	$(RM) *.profraw $(PGO_DATA)
+	-$(RM) *.profraw $(PGO_DATA)
 
 release: $(SRCS)
 	$(eval TARGET_EXEC = $(TARGET_NAME)-release)

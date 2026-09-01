@@ -21,12 +21,12 @@ Position::Position() {
 }
 
 Position::Position(const Position &other) {
-    std::memcpy(this, &other, sizeof(Position));
+    std::memcpy(static_cast<void*>(this), &other, sizeof(Position));
     this->state = this->history + (other.state - other.history);
 }
 
 Position& Position::operator=(const Position &other) {
-    std::memcpy(this, &other, sizeof(Position));
+    std::memcpy(static_cast<void*>(this), &other, sizeof(Position));
     this->state = this->history + (other.state - other.history);
 
     return *this;
