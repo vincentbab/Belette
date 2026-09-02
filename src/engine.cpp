@@ -12,7 +12,7 @@ int Engine::LMRTable[MAX_PLY][MAX_MOVE];
 
 void Engine::init() {
     for (int d=1; d<MAX_PLY; d++) {
-        for (int m=1; m<MAX_PLY; m++) {
+        for (int m=1; m<MAX_MOVE; m++) {
             LMRTable[d][m] = int(0.25 + 0.46 * std::log(d) * std::log(m));
         }
     }
