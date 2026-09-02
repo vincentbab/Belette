@@ -393,8 +393,8 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
         return -SCORE_INFINITE;
     }
 
-    // Default bestScore for mate detection, if InCheck and there is no move this score will be returned
-    Score bestScore = -SCORE_MATE + ply;
+    // bestScore stays at -SCORE_INFINITE until a move is actually searched. That's what makes the mate detection trustworthy.
+    Score bestScore = -SCORE_INFINITE;
     Move bestMove = MOVE_NONE;
     Position &pos = sd->position;
     //Node& node = sd->node(ply);
@@ -454,8 +454,10 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
     //MovePicker *mp = new (&node.mp) MovePicker(pos, useTTMove ? ttMove : MOVE_NONE);
 
     mp.enumerate<QUIESCENCE, Me>([&](Move move, /*unused*/bool& skipQuiets) -> bool {
-        // SEE Pruning
-        if (!pos.see(move, 0)) return true; // continue;
+        // SEE Pruning. Gated on bestScore no longer being a loss so that the first evasion
+        // is always searched: otherwise every evasion could be pruned and the mate detection
+        // below would report a mate that does not exist.
+        if (bestScore > -SCORE_MATE_MAX_PLY && !pos.see(move, 0)) return true; // continue;
         
         sd->nbNodes++;
 
@@ -480,6 +482,12 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
 
         return true;
     }); if (searchAborted()) return bestScore;
+
+    // Checkmate detection. Only reachable when no evasion was searched at all, ie there is
+    // no legal move: the pruning above cannot produce this state.
+    if (inCheck && bestScore == -SCORE_INFINITE) {
+        bestScore = -SCORE_MATE + ply;
+    }
 
     // Update Transposition Table
     Bound ttBound = bestScore >= beta ? BOUND_LOWER : BOUND_UPPER;
