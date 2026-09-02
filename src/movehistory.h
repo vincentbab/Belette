@@ -2,6 +2,7 @@
 #define MOVEHISTORY_H_INCLUDED
 
 #include <cstdint>
+#include <cstring>
 #include "chess.h"
 #include "position.h"
 #include "fixed_vector.h"
@@ -15,6 +16,16 @@ using PartialMoveList = fixed_vector<Move, 32, uint8_t>;
 class MoveHistory {
 public:
     MoveHistory(): counterMoves{}, killerMoves{}, history{} { }
+
+    inline void clear() {
+        std::memset(counterMoves, 0, sizeof(counterMoves));
+        std::memset(killerMoves, 0, sizeof(killerMoves));
+        std::memset(history, 0, sizeof(history));
+    }
+
+    inline void clearAllKillers() {
+        std::memset(killerMoves, 0, sizeof(killerMoves));
+    }
 
     inline void clearKillers(int ply) {
         assert(ply >= 0 && ply < MAX_PLY + 1);

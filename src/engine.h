@@ -30,8 +30,8 @@ struct Node {
 };
 
 struct SearchData {
-    SearchData(const Position& pos_, const SearchLimits& limits_)
-    : position(pos_), limits(limits_), nbNodes(0) {
+    SearchData(const Position& pos_, const SearchLimits& limits_, MoveHistory& moveHistory_)
+    : position(pos_), limits(limits_), nbNodes(0), moveHistory(moveHistory_) {
         start();
     }
 
@@ -85,7 +85,7 @@ struct SearchData {
     TimeMs softTimeLimit;
     TimeMs hardTimeLimit;
 
-    MoveHistory moveHistory;
+    MoveHistory& moveHistory;
 
     Node nodes[MAX_PLY+1];
 };
@@ -125,7 +125,7 @@ public:
     inline bool isSearching() { return searching; }
     inline bool searchAborted() { return aborted; }
     inline void setHashSize(size_t size) { tt.resize(size); }
-    inline void newGame() { tt.clear(); }
+    inline void newGame() { tt.clear(); moveHistory.clear(); }
 
 protected:
     virtual void onSearchProgress(const SearchEvent &event) = 0;
@@ -134,6 +134,7 @@ protected:
 private:
     static int LMRTable[MAX_PLY][MAX_MOVE];
 
+    MoveHistory moveHistory;
     std::unique_ptr<SearchData> sd;
     Position rootPosition;
     bool aborted = true;
