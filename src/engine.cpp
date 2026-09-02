@@ -83,8 +83,8 @@ void Engine::idSearch() {
         }
 
         while (true) {
-            if (alpha < -1000) alpha = -SCORE_INFINITE;
-            if (beta > 1000) beta = SCORE_INFINITE;
+            if (alpha < -SCORE_MATE_MAX_PLY) alpha = -SCORE_INFINITE;
+            if (beta > SCORE_MATE_MAX_PLY) beta = SCORE_INFINITE;
             //std::cout << "  depth=" << searchDepth << " d=" << delta << std::endl;
             score = pvSearch<Me, NodeType::Root>(alpha, beta, searchDepth, 0, false);
 
