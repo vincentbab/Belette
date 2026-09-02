@@ -373,7 +373,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     // Update Transposition Table
     Bound ttBound =         bestScore >= beta         ? BOUND_LOWER : 
                     !PvNode || bestScore <= alphaOrig ? BOUND_UPPER : BOUND_EXACT;
-    tt.set(tte, pos.hash(), depth, ply, ttBound, bestMove, SCORE_NONE, bestScore, ttPv);
+    tt.set(tte, pos.hash(), depth, ply, ttBound, bestMove, node.staticEval, bestScore, ttPv);
 
     return bestScore;
 }
