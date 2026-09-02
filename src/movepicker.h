@@ -244,14 +244,17 @@ MoveScore MovePicker::scoreQuiet(Move m) {
             if (attacks<BISHOP>(to, pos->getPiecesBB()) & pos->getPiecesBB(~Me, KING)) {
                 score += 10000;
             }
+            break;
         case ROOK:
             if (attacks<ROOK>(to, pos->getPiecesBB()) & pos->getPiecesBB(~Me, KING)) {
                 score += 10000;
             }
+            break;
         case QUEEN:
             if (attacks<QUEEN>(to, pos->getPiecesBB()) & pos->getPiecesBB(~Me, KING)) {
                 score += 10000;
             }
+            break;
         default:
             break;
     }
