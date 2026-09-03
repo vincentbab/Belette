@@ -187,12 +187,6 @@ inline bool Position::isMaterialDraw() const {
     if (popcount(getPiecesTypeBB(KNIGHT) | getPiecesTypeBB(BISHOP)) > 1)
         return false;
 
-    if (!getPiecesTypeBB(BISHOP))
-        return false;
-
-    if (popcount(getPiecesTypeBB(KNIGHT)) < 3)
-        return false;
-
     return true;
 }
 

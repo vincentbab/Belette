@@ -182,7 +182,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         node.pv.clear();
     }
 
-    if (pos.isFiftyMoveDraw() || pos.isMaterialDraw() || pos.isRepetitionDraw()) {
+    if (!RootNode && (pos.isFiftyMoveDraw() || pos.isMaterialDraw() || pos.isRepetitionDraw())) {
         // "Random" either -1 or 1, avoid blindness to 3-fold repetitions
         return 1-(sd->nbNodes & 2);
         //return SCORE_DRAW;
