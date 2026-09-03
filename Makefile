@@ -3,6 +3,8 @@ TARGET_BIN_DIR := ./build
 SRC_DIR := ./src
 CXX := clang++
 
+EXE :=
+
 TARGET_SUFFIX =
 ifeq ($(OS), Windows_NT)
 	TARGET_SUFFIX = .exe
@@ -25,9 +27,15 @@ LDFLAGS := -Wall -std=c++20 -fno-rtti -mbmi -mbmi2 -mpopcnt -msse2 -msse3 -msse4
 LDFLAGS_DEBUG := $(LDFLAGS)
 LDFLAGS_RELEASE := $(LDFLAGS) -flto -static
 
-.PHONY: all debug release profile
+OUT = $(if $(EXE),$(EXE),$(TARGET_BIN_DIR)/$(TARGET_EXEC)$(TARGET_SUFFIX))
 
+.PHONY: all pgo debug release
+
+ifeq ($(EXE),)
 all: pgo release
+else
+all: release
+endif
 
 pgo: $(SRCS)
 # idea from Stormphrax
@@ -36,13 +44,13 @@ pgo: $(SRCS)
 	$(TARGET_BIN_DIR)/$(TARGET_PROFILE_EXEC)$(TARGET_SUFFIX) bench
 	$(RM) $(TARGET_BIN_DIR)/$(TARGET_PROFILE_EXEC)$(TARGET_SUFFIX)
 	$(PGO_MERGE)
-	$(CXX) $(CPPFLAGS_RELEASE) $(LDFLAGS_RELEASE) $(PGO_USE) -o $(TARGET_BIN_DIR)/$(TARGET_EXEC)$(TARGET_SUFFIX) $^
+	$(CXX) $(CPPFLAGS_RELEASE) $(LDFLAGS_RELEASE) $(PGO_USE) -o $(OUT) $^
 	$(RM) *.profraw $(PGO_DATA)
 
 release: $(SRCS)
 	$(eval TARGET_EXEC = $(TARGET_NAME)-release)
-	$(CXX) $(CPPFLAGS_RELEASE) $(LDFLAGS_RELEASE) -o $(TARGET_BIN_DIR)/$(TARGET_EXEC)$(TARGET_SUFFIX) $^
+	$(CXX) $(CPPFLAGS_RELEASE) $(LDFLAGS_RELEASE) -o $(OUT) $^
 
 debug: $(SRCS)
 	$(eval TARGET_EXEC = $(TARGET_NAME)-debug)
-	$(CXX) $(CPPFLAGS_DEBUG) $(LDFLAGS_DEBUG) -o $(TARGET_BIN_DIR)/$(TARGET_EXEC)$(TARGET_SUFFIX) $^
+	$(CXX) $(CPPFLAGS_DEBUG) $(LDFLAGS_DEBUG) -o $(OUT) $^
