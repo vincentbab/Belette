@@ -41,7 +41,7 @@ void Engine::waitForSearchFinish() {
 
 // Search entry point
 void Engine::search(const SearchLimits &limits) {
-    if (searching) return;
+    waitForSearchFinish();
 
     moveHistory.clearAllKillers();
 

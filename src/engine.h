@@ -1,6 +1,7 @@
 #ifndef ENGINE_H_INCLUDED
 #define ENGINE_H_INCLUDED
 
+#include <atomic>
 #include <memory>
 #include "chess.h"
 #include "position.h"
@@ -137,8 +138,8 @@ private:
     MoveHistory moveHistory;
     std::unique_ptr<SearchData> sd;
     Position rootPosition;
-    bool aborted = true;
-    bool searching = false;
+    std::atomic<bool> aborted = true;
+    std::atomic<bool> searching = false;
 
     inline void idSearch() { rootPosition.getSideToMove() == WHITE ? idSearch<WHITE>() : idSearch<BLACK>(); }
     template<Side Me> void idSearch();
