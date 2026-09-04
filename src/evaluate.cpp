@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "evaluate.h"
 
 namespace Belette {
@@ -58,6 +59,7 @@ Score evaluate(const Position &pos) {
               + 2 * pos.nbPieceTypes(ROOK)
               + 1 * pos.nbPieceTypes(KNIGHT)
               + 1 * pos.nbPieceTypes(BISHOP);
+    phase = std::min(phase, PHASE_TOTAL);
 
     Score score = (mg*phase +  eg*(PHASE_TOTAL - phase)) / PHASE_TOTAL;
     score += Tempo;
