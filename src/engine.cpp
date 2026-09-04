@@ -32,10 +32,14 @@ void SearchData::initAllocatedTime() {
     softTimeLimit = std::min<TimeMs>(hardTimeLimit, limits.timeLeft[stm] / moves + 0.9 * limits.increment[stm]);
 }
 
+Engine::~Engine() {
+    stop();
+    waitForSearchFinish();
+}
+
 void Engine::waitForSearchFinish() {
-    // TODO: use condition variable ?
-    while (isSearching()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    if (searchThread.joinable()) {
+        searchThread.join();
     }
 }
 
@@ -51,10 +55,9 @@ void Engine::search(const SearchLimits &limits) {
     
     tt.newSearch();
 
-    std::thread th([&] { 
+    searchThread = std::thread([this] {
         this->idSearch();
     });
-    th.detach();
 }
 
 void Engine::stop() {

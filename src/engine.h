@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <memory>
+#include <thread>
 #include "chess.h"
 #include "position.h"
 #include "evaluate.h"
@@ -115,7 +116,7 @@ public:
     static void init();
     
     Engine() = default;
-    virtual ~Engine() = default;
+    virtual ~Engine();
 
     inline Position &position() { return rootPosition; }
     inline const Position &position() const { return rootPosition; }
@@ -138,10 +139,11 @@ private:
     MoveHistory moveHistory;
     std::unique_ptr<SearchData> sd;
     Position rootPosition;
+    std::thread searchThread;
     std::atomic<bool> aborted = true;
     std::atomic<bool> searching = false;
 
-    inline void idSearch() { rootPosition.getSideToMove() == WHITE ? idSearch<WHITE>() : idSearch<BLACK>(); }
+    inline void idSearch() { sd->position.getSideToMove() == WHITE ? idSearch<WHITE>() : idSearch<BLACK>(); }
     template<Side Me> void idSearch();
 
     template<Side Me, NodeType NT> Score pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode);

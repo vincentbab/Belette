@@ -360,6 +360,8 @@ bool Uci::cmdStop(std::istringstream& is) {
 }
 
 bool Uci::cmdQuit(std::istringstream& is) {
+    engine.stop();
+    engine.waitForSearchFinish();
     return false;
 }
 
