@@ -35,7 +35,7 @@ private:
     template <class T> Console &log(const T& x, bool isInput = false);
 
     std::stringstream buffer;
-    std::ofstream *file;
+    std::ofstream *file = nullptr;
 };
 
 extern Console console;

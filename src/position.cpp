@@ -41,6 +41,7 @@ void Position::reset() {
     state->castlingRights = NO_CASTLING;
     state->move = MOVE_NONE;
     for(int i=0; i<NB_PIECE_TYPE; i++) state->threatsFor[i] = EmptyBB;
+    for(int i=0; i<MAX_HISTORY; i++) history[i].threatsFor[PAWN] = EmptyBB;
 
     for(int i=0; i<NB_SQUARE; i++) pieces[i] = NO_PIECE;
     for(int i=0; i<NB_PIECE; i++) piecesBB[i] = EmptyBB;
@@ -367,6 +368,7 @@ template<Side Me, MoveType Mt>
 void Position::doMove(Move m) {
     assert(isValidMove(m));
     assert(getSideToMove() == Me);
+    assert(historySize() < MAX_HISTORY - 1);
 
     const Square from = moveFrom(m), to = moveTo(m);
     const Piece p = getPieceAt(from);
@@ -593,6 +595,8 @@ inline void Position::updateBitboards() {
 template<Side Me>
 inline void Position::updateThreatenedSquares() {
     constexpr Side Opp = ~Me;
+
+    assert(state->threatsFor[PAWN] == EmptyBB);
 
     // Pawns
     Bitboard threatened = pawnAttacks<Opp>(getPiecesBB(Opp, PAWN));

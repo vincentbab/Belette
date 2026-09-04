@@ -126,7 +126,7 @@ public:
     void waitForSearchFinish();
     inline bool isSearching() { return searching; }
     inline bool searchAborted() { return aborted; }
-    inline void setHashSize(size_t size) { tt.resize(size); }
+    inline void setHashSize(size_t size) { waitForSearchFinish(); tt.resize(size); }
     inline void newGame() { tt.clear(); moveHistory.clear(); }
 
 protected:

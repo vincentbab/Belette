@@ -203,9 +203,11 @@ bool Uci::cmdSetOption(std::istringstream& is) {
         value += (value.empty() ? "" : " ") + token;
     }
 
-    if (!options.count(name))
+    if (!options.count(name)) {
         console << "Unknow option '" << name << "'" << std::endl;
-        
+        return true;
+    }
+
     options[name] = value;
 
     return true;
@@ -235,8 +237,11 @@ bool Uci::cmdPosition(std::istringstream& is) {
 
     while (is >> token) {
         Move m = parseMove(token);
-        
+
         if (m == MOVE_NONE) continue;
+
+        if (engine.position().historySize() >= MAX_HISTORY - MAX_PLY - 8)
+            engine.position().setFromFEN(engine.position().fen());
 
         engine.position().doMove(m);
     }
@@ -256,7 +261,7 @@ bool Uci::cmdGo(std::istringstream& is) {
         } else if (token == "searchmoves") {
             while (is >> token) {
                 Move m = Uci::parseMove(token);
-                params.searchMoves.push_back(m);
+                if (m != MOVE_NONE) params.searchMoves.push_back(m);
             }
         } else if (token == "ponder") {
             // unsupported
@@ -280,7 +285,7 @@ bool Uci::cmdGo(std::istringstream& is) {
             params.maxDepth = parseInt(token);
         } else if (token == "nodes") {
             is >> token;
-            params.maxNodes = parseInt(token);
+            params.maxNodes = parseInt64(token);
         } else if (token == "mate") {
             // unsupported
         } else if (token == "movetime") {

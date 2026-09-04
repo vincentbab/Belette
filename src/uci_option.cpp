@@ -17,7 +17,7 @@ UciOption::UciOption(int defaultValue_, int min_, int max_, OnUpdate onUpdate_) 
     defaultValue = value = std::to_string(defaultValue_);
 }
 
-UciOption::UciOption(const std::string &defaultValue_, const OptionValues &allowedValues_, OnUpdate onUpdate_) : defaultValue(defaultValue_), value(defaultValue_), allowedValues(allowedValues_), onUpdate(onUpdate_)
+UciOption::UciOption(const std::string &defaultValue_, const OptionValues &allowedValues_, OnUpdate onUpdate_) : type("combo"), defaultValue(defaultValue_), value(defaultValue_), allowedValues(allowedValues_), onUpdate(onUpdate_)
 {
     assert(allowedValues.count(value) == 1);
 }

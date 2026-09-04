@@ -68,7 +68,7 @@ void Engine::stop() {
 template<Side Me>
 void Engine::idSearch() {
     MoveList bestPv;
-    Score bestScore;
+    Score bestScore = SCORE_DRAW;
     int depth, searchDepth, completedDepth = 0;
 
     for (depth = 1; depth < MAX_PLY; depth++) {
@@ -112,7 +112,7 @@ void Engine::idSearch() {
             delta += delta / 2;
         }
 
-        if (depth > 1 && searchAborted()) break;
+        if (searchAborted() && (depth > 1 || score == -SCORE_INFINITE)) break;
 
         bestPv = sd->node(0).pv;
         bestScore = score;
