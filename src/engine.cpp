@@ -101,7 +101,7 @@ void Engine::idSearch() {
                 //std::cout << "  Fail High: a=" << alpha << " b=" << beta << " score=" << score << std::endl;
                 beta = std::min(score + delta, SCORE_INFINITE);
                 //searchDepth = std::max(std::max(1, depth - 4), searchDepth - 1);
-                searchDepth -= (std::abs(score) < 1000);
+                searchDepth = std::max(1, searchDepth - (std::abs(score) < 1000));
             } else {
                 break;
             }

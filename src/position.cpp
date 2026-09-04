@@ -84,7 +84,7 @@ std::string Position::fen() const {
     if (canCastle(WHITE_KING_SIDE)) ss << 'K';
     if (canCastle(WHITE_QUEEN_SIDE)) ss << 'Q';
     if (canCastle(BLACK_KING_SIDE)) ss << 'k';
-    if (canCastle(BLACK_KING_SIDE)) ss << 'q';
+    if (canCastle(BLACK_QUEEN_SIDE)) ss << 'q';
     if (!canCastle(ANY_CASTLING)) ss << '-';
 
     ss << (getEpSquare() == SQ_NONE ? " - " : " " + Uci::formatSquare(getEpSquare()) + " ");
@@ -151,7 +151,7 @@ bool Position::setFromFEN(const std::string &fen) {
         return false;
     }
     if (state->epSquare != SQ_NONE && !(
-        pawnAttacks(~sideToMove, state->epSquare) && getPiecesBB(sideToMove, PAWN)
+        pawnAttacks(~sideToMove, state->epSquare) & getPiecesBB(sideToMove, PAWN)
         && (getPiecesBB(~sideToMove, PAWN) & (state->epSquare + pawnDirection(~sideToMove)))
         && !(getPiecesBB() & (state->epSquare | (state->epSquare + pawnDirection(sideToMove))))
     )) {
@@ -593,8 +593,6 @@ inline void Position::updateBitboards() {
 template<Side Me>
 inline void Position::updateThreatenedSquares() {
     constexpr Side Opp = ~Me;
-
-    assert(state->threatsFor[PAWN] == EmptyBB);
 
     // Pawns
     Bitboard threatened = pawnAttacks<Opp>(getPiecesBB(Opp, PAWN));

@@ -104,7 +104,7 @@ std::string Uci::formatMove(Move m) {
 Move Uci::parseMove(std::string str) const {
     if (str.length() == 5) str[4] = char(tolower(str[4]));
 
-    Move move;
+    Move move = MOVE_NONE;
     enumerateLegalMoves(engine.position(), [&](Move m) {
         if (str == formatMove(m)) {
             move = m;
@@ -398,7 +398,14 @@ void UciEngine::onSearchProgress(const SearchEvent &event) {
 
 void UciEngine::onSearchFinish(const SearchEvent &event) {
     Move bestMove = MOVE_NONE;
-    if (!event.pv.empty()) bestMove = event.pv.front();
+    if (!event.pv.empty()) {
+        bestMove = event.pv.front();
+    } else { // Fallback on first legal move
+        enumerateLegalMoves(position(), [&](Move m) {
+            bestMove = m;
+            return false;
+        });
+    }
 
     console << "bestmove " << Uci::formatMove(bestMove) << std::endl;
 }
