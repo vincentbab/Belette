@@ -40,11 +40,7 @@ OUT = $(if $(EXE),$(EXE),$(TARGET_BIN_DIR)/$(TARGET_EXEC)$(TARGET_SUFFIX))
 
 .PHONY: all pgo debug release
 
-ifeq ($(EXE),)
-all: pgo release
-else
 all: release
-endif
 
 pgo: $(SRCS)
 # idea from Stormphrax
