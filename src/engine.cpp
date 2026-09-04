@@ -434,7 +434,7 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
             eval = (tte->eval() != SCORE_NONE ? tte->eval() : evaluate<Me>(pos));
 
             // Use score instead of eval if available. 
-            if (tte->canCutoff(ttScore, beta)) {
+            if (tte->canCutoff(ttScore, eval)) {
                 eval = tte->score(ply);
             }
         } else {
