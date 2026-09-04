@@ -402,7 +402,7 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
     Score bestScore = -SCORE_INFINITE;
     Move bestMove = MOVE_NONE;
     Position &pos = sd->position;
-    //Node& node = sd->node(ply);
+    Node& node = sd->node(ply);
 
     if (pos.isFiftyMoveDraw() || pos.isMaterialDraw() || pos.isRepetitionDraw()) {
         // "Random" either -1 or 1, avoid blindness to 3-fold repetitions
@@ -466,6 +466,9 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
         
         sd->nbNodes++;
 
+        if (PvNode)
+            sd->node(ply+1).pv.clear();
+
         pos.doMove<Me>(move);
         Score score = -qSearch<~Me, NT>(-beta, -alpha, depth-1, ply+1);
         pos.undoMove<Me>(move);
@@ -474,10 +477,12 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
 
         if (score > bestScore) {
             bestScore = score;
-            
+
             if (bestScore > alpha) {
                 bestMove = move;
                 alpha = bestScore;
+                if (PvNode)
+                    updatePv(node.pv, move, sd->node(ply+1).pv);
 
                 if (alpha >= beta) {
                     return false; // break
