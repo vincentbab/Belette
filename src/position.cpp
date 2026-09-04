@@ -705,6 +705,10 @@ bool Position::see(Move move, int threshold) const {
     assert(isValidMove(move));
     assert(getSideToMove() == side(getPieceAt(moveFrom(move))));
 
+    // Ignore promotions
+    if (moveType(move) != NORMAL)
+        return 0 >= threshold;
+
     Square from = moveFrom(move);
     Square to = moveTo(move);
 
