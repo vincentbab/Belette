@@ -38,14 +38,17 @@ class MovePicker {
 public:
     MovePicker(): pos(nullptr), moveHistory(nullptr) { }
     MovePicker(const Position &pos_, Move ttMove_ = MOVE_NONE)
-    : pos(&pos_),  moveHistory(nullptr), ttMove(ttMove_), refutations{}
+    : pos(&pos_),  moveHistory(nullptr), ttMove(ttMove_), refutations{}, contHist(nullptr)
     { }
 
-    MovePicker(const Position &pos_, Move ttMove_, const MoveHistory* moveHistory_, int ply_)
+    MovePicker(const Position &pos_, Move ttMove_, const MoveHistory* moveHistory_, int ply_,
+               const PieceToHistory* const* contHist_)
     : pos(&pos_), moveHistory(moveHistory_), ttMove(ttMove_),
-      refutations{moveHistory->getKiller<0>(ply_), moveHistory->getKiller<1>(ply_), moveHistory->getCounter(pos_)}
+      refutations{moveHistory->getKiller<0>(ply_), moveHistory->getKiller<1>(ply_), moveHistory->getCounter(pos_)},
+      contHist(contHist_)
     {
         assert(refutations[0] != refutations[1] || refutations[0] == MOVE_NONE);
+        assert(contHist != nullptr);
     }
 
     template<MovePickerType Type, Side Me, typename Handler>
@@ -59,6 +62,7 @@ private:
     const MoveHistory* const moveHistory;
     Move ttMove;
     Move refutations[3];
+    const PieceToHistory* const* contHist;
 
     template<Side Me> inline MoveScore scoreEvasion(Move m);
     template<Side Me> inline MoveScore scoreTactical(Move m);
@@ -171,7 +175,7 @@ bool MovePicker::enumerate(const Handler &handler) {
 
     // Good quiets
     for (current = endBadQuiets = beginQuiets; current != moves.end() && !skipQuiets; current++) {
-        if (current->score < -4000) {
+        if (current->score < -16000) {
             *endBadQuiets++ = *current;
             continue;
         }
@@ -200,7 +204,7 @@ MoveScore MovePicker::scoreEvasion(Move m) {
         return scoreTactical<Me>(m) + 1000000;
     } else {
         if (moveHistory != nullptr) [[likely]]
-            return moveHistory->getHistory<Me>(m);
+            return moveHistory->getHistory<Me>(*pos, m, contHist);
     }
 
     return 0;
@@ -220,13 +224,13 @@ MoveScore MovePicker::scoreQuiet(Move m) {
     MoveScore score = NB_PIECE_TYPE-(int)pt;
 
     if (moveType(m) == PROMOTION) [[unlikely]]
-        return -10000;
+        return -40000;
 
     Bitboard threatened = pos->threatsFor(pt);
     score += ((threatened & from) && !(threatened & to)) * PieceThreatenedValue[pt];
 
     if (moveHistory != nullptr) [[likely]]
-        score += moveHistory->getHistory<Me>(m);
+        score += moveHistory->getHistory<Me>(*pos, m, contHist);
 
     // TODO: refactor this!
     switch (pt) {

@@ -28,12 +28,16 @@ struct SearchLimits {
 struct Node {
     Score staticEval;
     MoveList pv;
+    PieceToHistory* contHist;
     //MovePicker mp;
 };
 
 struct SearchData {
     SearchData(const Position& pos_, const SearchLimits& limits_, MoveHistory& moveHistory_)
     : position(pos_), limits(limits_), nbNodes(0), moveHistory(moveHistory_) {
+        for (int i = 1; i <= CONT_HIST_PLIES; i++)
+            node(-i).contHist = moveHistory.getDefaultContHist();
+
         start();
     }
 
@@ -75,7 +79,7 @@ struct SearchData {
         return false;
     }
 
-    inline Node &node(int ply) { assert(ply >= 0 && ply < MAX_PLY); return nodes[ply]; }
+    inline Node &node(int ply) { assert(ply >= -CONT_HIST_PLIES && ply < MAX_PLY); return nodes[ply + CONT_HIST_PLIES]; }
 
     Position position;
     SearchLimits limits;
@@ -89,7 +93,7 @@ struct SearchData {
 
     MoveHistory& moveHistory;
 
-    Node nodes[MAX_PLY+1];
+    Node nodes[MAX_PLY+1+CONT_HIST_PLIES];
 };
 
 struct SearchEvent {

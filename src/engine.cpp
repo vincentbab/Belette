@@ -191,6 +191,12 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     Score eval;
     bool improving = false;
 
+    // continuation history
+    PieceToHistory* contHist[CONT_HIST_PLIES] = {
+        sd->node(ply-1).contHist,
+        sd->node(ply-2).contHist
+    };
+
     if (RootNode) {
         node.pv.clear();
     }
@@ -262,6 +268,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         tt.prefetch(pos.getHashAfterNullMove());
         int R = 4 + depth / 4;
 
+        node.contHist = sd->moveHistory.getDefaultContHist();
         pos.doNullMove<Me>();
         Score score = -pvSearch<~Me, NodeType::NonPV>(-beta, -beta+1, depth-R, ply+1, !cutNode);
         pos.undoNullMove<Me>();
@@ -280,7 +287,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     sd->moveHistory.clearKillers(ply+1);
 
     int nbMoves = 0;
-    MovePicker mp(pos, ttMove, &sd->moveHistory, ply);
+    MovePicker mp(pos, ttMove, &sd->moveHistory, ply, contHist);
     //MovePicker *mp = new (&node.mp) MovePicker(pos, ttMove, &sd->moveHistory, ply);
     PartialMoveList quietMoves;
     
@@ -309,6 +316,12 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         if (PvNode)
             sd->node(ply+1).pv.clear();
 
+        // Combined quiet history, must be computed before the move is played
+        MoveScore statScore = sd->moveHistory.getHistory<Me>(pos, move, contHist);
+
+        // Continuation history
+        node.contHist = sd->moveHistory.getContHistEntry(pos, move);
+
         // Do move
         pos.doMove<Me>(move);
 
@@ -324,7 +337,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             R += ttTactical;
             R += 2*cutNode;
             R += !improving;
-            R -= sd->moveHistory.getHistory<Me>(move) / 2048;
+            R -= statScore / 4096;
 
             R = std::min(depth - 1, std::max(1, R));
 
@@ -361,7 +374,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
                     updatePv(node.pv, move, sd->node(ply+1).pv);
 
                 if (alpha >= beta) {
-                    sd->moveHistory.update<Me>(pos, bestMove, ply, depth, quietMoves);
+                    sd->moveHistory.update<Me>(pos, bestMove, ply, depth, quietMoves, contHist);
                     return false; // break
                 }
             }
