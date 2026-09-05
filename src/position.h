@@ -108,6 +108,7 @@ public:
     inline bool inCheck() const { return !!state->checkers; }
 
     inline uint64_t hash() const { return state->hash; }
+    inline uint64_t pawnHash() const;
     uint64_t computeHash() const;
     inline uint64_t getHashAfter(Move m) const;
     inline uint64_t getHashAfterNullMove() const { return hash() ^ Zobrist::sideToMoveKey; };
@@ -215,6 +216,20 @@ inline void Position::undoMove(Move m) {
         case PROMOTION:  undoMove<Me, PROMOTION>(m); return;
         case EN_PASSANT: undoMove<Me, EN_PASSANT>(m); return;
     }
+}
+
+inline uint64_t Position::pawnHash() const {
+    uint64_t h = 0;
+    Bitboard wp = getPiecesBB(WHITE, PAWN), bp = getPiecesBB(BLACK, PAWN);
+
+    bitscan_loop(wp) {
+        h ^= Zobrist::keys[W_PAWN][bitscan(wp)];
+    }
+    bitscan_loop(bp) {
+        h ^= Zobrist::keys[B_PAWN][bitscan(bp)];
+    }
+
+    return h;
 }
 
 inline uint64_t Position::getHashAfter(Move m) const {

@@ -218,17 +218,20 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     }
 
     // Static eval
+    Score rawEval = SCORE_NONE;
     if (!inCheck) {
         if (ttHit) {
-            node.staticEval = eval = (tte->eval() != SCORE_NONE ? tte->eval() : evaluate<Me>(pos));
-
-            // Use score instead of eval if available. 
-            if (tte->canCutoff(ttScore, eval)) {
-                eval = tte->score(ply);
-            }
+            rawEval = (tte->eval() != SCORE_NONE ? tte->eval() : evaluate<Me>(pos));
         } else {
-            node.staticEval = eval = evaluate<Me>(pos);
-            tt.set(tte, pos.hash(), 0, ply, BOUND_NONE, MOVE_NONE, eval, SCORE_NONE, ttPv);
+            rawEval = evaluate<Me>(pos);
+            tt.set(tte, pos.hash(), 0, ply, BOUND_NONE, MOVE_NONE, rawEval, SCORE_NONE, ttPv);
+        }
+
+        node.staticEval = eval = sd->moveHistory.correctEval<Me>(pos, rawEval);
+
+        // Use score instead of eval if available.
+        if (ttHit && tte->canCutoff(ttScore, eval)) {
+            eval = tte->score(ply);
         }
 
         // Improving
@@ -406,10 +409,17 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         return inCheck ? -SCORE_MATE + ply : SCORE_DRAW;
     }
 
+    // Update correction history
+    if (!inCheck && !(bestMove != MOVE_NONE && pos.isTactical(bestMove)) && std::abs(bestScore) < SCORE_MATE_MAX_PLY
+        && ((bestScore < node.staticEval && bestScore < beta) || (bestScore > node.staticEval && bestMove != MOVE_NONE)))
+    {
+        sd->moveHistory.updateCorrection<Me>(pos, bestScore, node.staticEval, depth);
+    }
+
     // Update Transposition Table
     Bound ttBound = bestScore >= beta                ? BOUND_LOWER :
                     PvNode && bestMove != MOVE_NONE  ? BOUND_EXACT : BOUND_UPPER;
-    tt.set(tte, pos.hash(), depth, ply, ttBound, bestMove, node.staticEval, bestScore, ttPv);
+    tt.set(tte, pos.hash(), depth, ply, ttBound, bestMove, rawEval, bestScore, ttPv);
 
     return bestScore;
 }
@@ -465,17 +475,20 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
     }
 
     // Standing Pat
+    Score rawEval = SCORE_NONE;
     if (!inCheck) {
         if (ttHit) {
-            eval = (tte->eval() != SCORE_NONE ? tte->eval() : evaluate<Me>(pos));
-
-            // Use score instead of eval if available. 
-            if (tte->canCutoff(ttScore, eval)) {
-                eval = tte->score(ply);
-            }
+            rawEval = (tte->eval() != SCORE_NONE ? tte->eval() : evaluate<Me>(pos));
         } else {
-            eval = evaluate<Me>(pos);
-            tt.set(tte, pos.hash(), ttDepth, ply, BOUND_NONE, MOVE_NONE, eval, SCORE_NONE, ttPv);
+            rawEval = evaluate<Me>(pos);
+            tt.set(tte, pos.hash(), ttDepth, ply, BOUND_NONE, MOVE_NONE, rawEval, SCORE_NONE, ttPv);
+        }
+
+        eval = sd->moveHistory.correctEval<Me>(pos, rawEval);
+
+        // Use score instead of eval if available.
+        if (ttHit && tte->canCutoff(ttScore, eval)) {
+            eval = tte->score(ply);
         }
 
         if (eval >= beta) {
@@ -532,7 +545,7 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
 
     // Update Transposition Table
     Bound ttBound = bestScore >= beta ? BOUND_LOWER : BOUND_UPPER;
-    tt.set(tte, pos.hash(), ttDepth, ply, ttBound, bestMove, eval, bestScore, ttPv);
+    tt.set(tte, pos.hash(), ttDepth, ply, ttBound, bestMove, rawEval, bestScore, ttPv);
 
     return bestScore;
 }

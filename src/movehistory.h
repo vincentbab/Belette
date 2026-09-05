@@ -1,6 +1,7 @@
 #ifndef MOVEHISTORY_H_INCLUDED
 #define MOVEHISTORY_H_INCLUDED
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstring>
@@ -23,15 +24,20 @@ using ContinuationHistory = std::array<std::array<PieceToHistory, NB_SQUARE>, NB
 
 constexpr int CONT_HIST_PLIES = 2;
 
+constexpr int CORR_HIST_SIZE = 16384;
+constexpr MoveScore CORR_HIST_GRAIN = 256;
+constexpr MoveScore CORR_HIST_LIMIT = 32 * CORR_HIST_GRAIN;
+
 class MoveHistory {
 public:
-    MoveHistory(): counterMoves{}, killerMoves{}, history{},
+    MoveHistory(): counterMoves{}, killerMoves{}, history{}, corrHist{},
         continuationHistory(std::make_unique<ContinuationHistory>()) { }
 
     inline void clear() {
         std::memset(counterMoves, 0, sizeof(counterMoves));
         std::memset(killerMoves, 0, sizeof(killerMoves));
         std::memset(history, 0, sizeof(history));
+        std::memset(corrHist, 0, sizeof(corrHist));
         std::memset(continuationHistory.get(), 0, sizeof(ContinuationHistory));
     }
 
@@ -83,6 +89,22 @@ public:
     }
 
     template<Side Me>
+    inline Score correctEval(const Position& pos, Score eval) const {
+        MoveScore correction = corrHist[Me][pos.pawnHash() & (CORR_HIST_SIZE - 1)];
+        return std::clamp<Score>(eval + correction / CORR_HIST_GRAIN, -SCORE_MATE_MAX_PLY + 1, SCORE_MATE_MAX_PLY - 1);
+    }
+
+    template<Side Me>
+    inline void updateCorrection(const Position& pos, Score bestScore, Score staticEval, int depth) {
+        MoveScore& entry = corrHist[Me][pos.pawnHash() & (CORR_HIST_SIZE - 1)];
+        MoveScore diff = (bestScore - staticEval) * CORR_HIST_GRAIN;
+        MoveScore weight = std::min(depth + 1, 16);
+
+        entry = (entry * (256 - weight) + diff * weight) / 256;
+        entry = std::clamp(entry, -CORR_HIST_LIMIT, CORR_HIST_LIMIT);
+    }
+
+    template<Side Me>
     inline void update(const Position& pos, Move bestMove, int ply, int depth, const PartialMoveList& quietMoves,
                        PieceToHistory* const* contHist) {
         if (!pos.isTactical(bestMove)) {
@@ -101,6 +123,7 @@ private:
     Move counterMoves[NB_PIECE][NB_SQUARE];
     Move killerMoves[MAX_PLY+1][2];
     MoveScore history[NB_SIDE][NB_SQUARE*NB_SQUARE];
+    MoveScore corrHist[NB_SIDE][CORR_HIST_SIZE];
     std::unique_ptr<ContinuationHistory> continuationHistory;
 
     inline MoveScore historyBonus(int depth) {
