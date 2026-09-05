@@ -300,10 +300,18 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         bool moveIsTactical = pos.isTactical(move);
 
+        // Combined quiet history, must be computed before the move is played
+        MoveScore statScore = moveIsTactical ? 0 : sd->moveHistory.getHistory<Me>(pos, move, contHist);
+
         // Late move pruning
         if (!RootNode && bestScore > -SCORE_MATE_MAX_PLY) {
             // Move count pruning
             skipQuiets = (nbMoves >= 3 + depth*depth/(improving ? 1 : 2));
+
+            // History pruning
+            if (!inCheck && !moveIsTactical && depth <= 4 && statScore < -4096 * depth) {
+                return true; // continue;
+            }
 
             // SEE Pruning
             if (depth <= 8 && !pos.see(move, moveIsTactical ? -100*depth : -60*depth)) {
@@ -315,9 +323,6 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         if (PvNode)
             sd->node(ply+1).pv.clear();
-
-        // Combined quiet history, must be computed before the move is played
-        MoveScore statScore = moveIsTactical ? 0 : sd->moveHistory.getHistory<Me>(pos, move, contHist);
 
         // Continuation history
         node.contHist = sd->moveHistory.getContHistEntry(pos, move);
