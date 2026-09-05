@@ -1,6 +1,8 @@
 #include <sstream>
 #include <cstring>
+#include <algorithm>
 #include "position.h"
+#include "movegen.h"
 #include "uci.h"
 #include "zobrist.h"
 
@@ -14,6 +16,111 @@ char pieceToChar(Piece p) {
 }
 Piece charToPiece(char c) {
     return Piece(PIECE_TO_CHAR.find(c));
+}
+
+namespace {
+
+uint64_t CuckooKeys[8192];
+Move CuckooMoves[8192];
+
+inline int cuckooH1(uint64_t h) { return h & 0x1FFF; }
+inline int cuckooH2(uint64_t h) { return (h >> 16) & 0x1FFF; }
+
+}
+
+void Position::init() {
+    std::memset(CuckooKeys, 0, sizeof(CuckooKeys));
+    std::memset(CuckooMoves, 0, sizeof(CuckooMoves));
+
+    [[maybe_unused]] int count = 0;
+
+    for (Piece pc : {W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING}) {
+        for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1) {
+            for (Square s2 = Square(s1 + 1); s2 <= SQ_H8; ++s2) {
+                Bitboard att;
+                switch (pieceType(pc)) {
+                    case KNIGHT: att = attacks<KNIGHT>(s1); break;
+                    case BISHOP: att = attacks<BISHOP>(s1, EmptyBB); break;
+                    case ROOK:   att = attacks<ROOK>(s1, EmptyBB); break;
+                    case QUEEN:  att = attacks<QUEEN>(s1, EmptyBB); break;
+                    default:     att = attacks<KING>(s1); break;
+                }
+
+                if (!(att & s2))
+                    continue;
+
+                Move m = makeMove(s1, s2);
+                uint64_t key = Zobrist::keys[pc][s1] ^ Zobrist::keys[pc][s2] ^ Zobrist::sideToMoveKey;
+                int j = cuckooH1(key);
+
+                while (true) {
+                    std::swap(CuckooKeys[j], key);
+                    std::swap(CuckooMoves[j], m);
+
+                    if (m == MOVE_NONE)
+                        break;
+
+                    j = (j == cuckooH1(key)) ? cuckooH2(key) : cuckooH1(key);
+                }
+
+                count++;
+            }
+        }
+    }
+
+    assert(count == 3668);
+}
+
+bool Position::hasUpcomingRepetition(int ply) const {
+    const int end = std::min(state->fiftyMoveRule, state->pliesFromNull);
+    assert(end <= (int)historySize());
+
+    if (end < 3)
+        return false;
+
+    const uint64_t originalHash = state->hash;
+    const State *stp = state - 1;
+    uint64_t other = originalHash ^ stp->hash ^ Zobrist::sideToMoveKey;
+
+    for (int i = 3; i <= end; i += 2) {
+        stp--;
+        other ^= stp->hash ^ (stp - 1)->hash ^ Zobrist::sideToMoveKey;
+        stp--;
+
+        if (other != 0)
+            continue;
+
+        const uint64_t moveHash = originalHash ^ stp->hash;
+
+        int j = cuckooH1(moveHash);
+        if (CuckooKeys[j] != moveHash) {
+            j = cuckooH2(moveHash);
+            if (CuckooKeys[j] != moveHash)
+                continue;
+        }
+
+        const Move m = CuckooMoves[j];
+        const Square s1 = moveFrom(m), s2 = moveTo(m);
+
+        if (betweenBB(s1, s2) & getPiecesBB())
+            continue;
+
+        if (ply > i)
+            return true;
+
+        const Square pieceSq = isEmpty(s1) ? s2 : s1;
+        if (side(getPieceAt(pieceSq)) != sideToMove)
+            continue;
+
+        if (stp->repetition)
+            return true;
+    }
+
+    return false;
+}
+
+bool Position::hasLegalMoves() const {
+    return !enumerateLegalMoves(*this, [](Move) { return false; });
 }
 
 Position::Position() {
@@ -37,6 +144,8 @@ void Position::reset() {
 
     state->fiftyMoveRule = 0;
     state->halfMoves = 0;
+    state->pliesFromNull = 0;
+    state->repetition = 0;
     state->epSquare = SQ_NONE;
     state->castlingRights = NO_CASTLING;
     state->move = MOVE_NONE;
@@ -392,6 +501,7 @@ void Position::doMove(Move m) {
     state->castlingRights = oldState->castlingRights;
     state->fiftyMoveRule = oldState->fiftyMoveRule + 1;
     state->halfMoves = oldState->halfMoves + 1;
+    state->pliesFromNull = oldState->pliesFromNull + 1;
     state->capture = capture;
     state->move = m;
 
@@ -481,7 +591,20 @@ void Position::doMove(Move m) {
 
     state->hash = h;
     assert(computeHash() == hash());
-    
+
+    state->repetition = 0;
+    const int end = std::min(state->fiftyMoveRule, state->pliesFromNull);
+    assert(end <= (int)historySize());
+    if (end >= 4) {
+        const State *stp = state - 4;
+        for (int i = 4; i <= end; i += 2, stp -= 2) {
+            if (stp->hash == state->hash) {
+                state->repetition = stp->repetition ? -i : i;
+                break;
+            }
+        }
+    }
+
     updateBitboards<~Me>();
 }
 
@@ -556,6 +679,8 @@ template<Side Me> void Position::doNullMove() {
     state->castlingRights = oldState->castlingRights;
     state->fiftyMoveRule = oldState->fiftyMoveRule + 1;
     state->halfMoves = oldState->halfMoves + 1;
+    state->pliesFromNull = 0;
+    state->repetition = 0;
     state->capture = NO_PIECE;
     state->move = MOVE_NULL;
 

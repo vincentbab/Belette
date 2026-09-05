@@ -172,23 +172,27 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         if (alpha >= beta) return alpha;
     }
 
+    Position &pos = sd->position;
+
+    if (!RootNode && pos.isDraw(ply)) {
+        return scoreDraw(sd->nbNodes);
+    }
+
+    if (!RootNode && alpha < SCORE_DRAW && pos.hasUpcomingRepetition(ply)) {
+        alpha = scoreDraw(sd->nbNodes);
+        if (alpha >= beta)
+            return alpha;
+    }
+
     Node& node = sd->node(ply);
-    Score alphaOrig = alpha;
     Score bestScore = -SCORE_INFINITE;
     Move bestMove = MOVE_NONE;
-    Position &pos = sd->position;
     bool inCheck = pos.inCheck();
     Score eval;
     bool improving = false;
 
     if (RootNode) {
         node.pv.clear();
-    }
-
-    if (!RootNode && (pos.isFiftyMoveDraw() || pos.isMaterialDraw() || pos.isRepetitionDraw())) {
-        // "Random" either -1 or 1, avoid blindness to 3-fold repetitions
-        return 1-(sd->nbNodes & 2);
-        //return SCORE_DRAW;
     }
 
     if (ply >= MAX_PLY) [[unlikely]] {
@@ -376,8 +380,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     }
 
     // Update Transposition Table
-    Bound ttBound =         bestScore >= beta         ? BOUND_LOWER : 
-                    !PvNode || bestScore <= alphaOrig ? BOUND_UPPER : BOUND_EXACT;
+    Bound ttBound = bestScore >= beta                ? BOUND_LOWER :
+                    PvNode && bestMove != MOVE_NONE  ? BOUND_EXACT : BOUND_UPPER;
     tt.set(tte, pos.hash(), depth, ply, ttBound, bestMove, node.staticEval, bestScore, ttPv);
 
     return bestScore;
@@ -398,17 +402,22 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
         return -SCORE_INFINITE;
     }
 
+    Position &pos = sd->position;
+
+    if (pos.isDraw(ply)) {
+        return scoreDraw(sd->nbNodes);
+    }
+
+    if (alpha < SCORE_DRAW && pos.hasUpcomingRepetition(ply)) {
+        alpha = scoreDraw(sd->nbNodes);
+        if (alpha >= beta)
+            return alpha;
+    }
+
     // bestScore stays at -SCORE_INFINITE until a move is actually searched. That's what makes the mate detection trustworthy.
     Score bestScore = -SCORE_INFINITE;
     Move bestMove = MOVE_NONE;
-    Position &pos = sd->position;
     //Node& node = sd->node(ply);
-
-    if (pos.isFiftyMoveDraw() || pos.isMaterialDraw() || pos.isRepetitionDraw()) {
-        // "Random" either -1 or 1, avoid blindness to 3-fold repetitions
-        return 1-(sd->nbNodes & 2);
-        //return SCORE_DRAW;
-    }
 
     if (ply >= MAX_PLY) [[unlikely]] {
         return evaluate<Me>(pos); // TODO: check if we are in check ?

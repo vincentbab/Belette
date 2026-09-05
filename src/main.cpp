@@ -15,6 +15,7 @@ int main(int argc, char* argv[])
     Engine::init();
     BB::init();
     Zobrist::init();
+    Position::init();
 
     Uci uci;
     uci.loop(argc, argv);

@@ -21,6 +21,9 @@ constexpr Score SCORE_MATE = 32000;
 constexpr Score SCORE_MATE_MAX_PLY = 32000 - MAX_PLY;
 constexpr Score SCORE_DRAW = 0;
 
+// "Random" either -1 or 1, avoid blindness to 3-fold repetitions
+constexpr Score scoreDraw(size_t nodes) { return Score(1 - int(nodes & 2)); }
+
 // bit  0- 5: destination square (from 0 to 63)
 // bit  6-11: origin square (from 0 to 63)
 // 

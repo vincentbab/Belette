@@ -18,6 +18,8 @@ struct State {
     Square epSquare;
     int fiftyMoveRule;
     int halfMoves;
+    int pliesFromNull;
+    int repetition;
     Move move;
 
     Piece capture;
@@ -38,6 +40,8 @@ struct State {
 
 class Position {
 public:
+    static void init();
+
     Position();
     Position(const Position &other);
     Position& operator=(const Position &other);
@@ -114,11 +118,13 @@ public:
 
     inline size_t historySize() const { return state - history; }
 
-    // Check if a position occurs 3 times in the game history
-    inline bool isRepetitionDraw() const;
+    inline bool isRepetitionDraw(int ply = 0) const { return state->repetition && state->repetition < ply; }
+    bool hasUpcomingRepetition(int ply) const;
+    bool hasLegalMoves() const;
 
-    inline bool isFiftyMoveDraw() const { return state->fiftyMoveRule > 99; }
+    inline bool isFiftyMoveDraw() const { return state->fiftyMoveRule > 99 && (!inCheck() || hasLegalMoves()); }
     inline bool isMaterialDraw() const;
+    inline bool isDraw(int ply) const { return isFiftyMoveDraw() || isRepetitionDraw(ply) || isMaterialDraw(); }
     template<Side Me> inline bool hasNonPawnMateriel() { return getPiecesBB(Me, PAWN, KING) != getPiecesBB(Me); }
 
     template<Side Me> bool isLegal(Move m) const;
@@ -178,36 +184,15 @@ inline bool Position::isMaterialDraw() const {
     if ((getPiecesTypeBB(PAWN) | getPiecesTypeBB(ROOK) | getPiecesTypeBB(QUEEN)) != 0)
         return false;
 
-    // Not accurate for KBxKB which should be insufficient materiel if bishops are opposite colors, 
-    // but it's too expensive to compute ^^
-    if (popcount(getPiecesBB(WHITE)) > 1 && popcount(getPiecesBB(BLACK)) > 1)
-        return false;
+    Bitboard knights = getPiecesTypeBB(KNIGHT);
+    Bitboard bishops = getPiecesTypeBB(BISHOP);
 
-    // Not accurate for KBBxK where the bishops are same color, which is extremly rare
-    if (popcount(getPiecesTypeBB(KNIGHT) | getPiecesTypeBB(BISHOP)) > 1)
-        return false;
+    if (popcount(knights | bishops) <= 1)
+        return true;
 
-    return true;
-}
-
-// Check if a position occurs 3 times in the game history
-inline bool Position::isRepetitionDraw() const {
-    if (getFiftyMoveRule() < 4)
-        return false;
-
-    int reps = 0;
-    //State *start = std::max(history + 2, state - getFiftyMoveRule());
-    const State *historyStart = history+2;
-    const State *fiftyMoveStart = state - getFiftyMoveRule();
-    const State *start = fiftyMoveStart > historyStart ? fiftyMoveStart : historyStart;
-
-    for (State *st = state - 2; st >= start; st -= 2) {
-        assert(st >= history && st <= state);
-
-        if (st->hash == state->hash && ++reps == 2) {
-            return true;
-        }
-    }
+    constexpr Bitboard DarkSquaresBB = 0xAA55AA55AA55AA55ULL;
+    if (!knights && ((bishops & DarkSquaresBB) == bishops || !(bishops & DarkSquaresBB)))
+        return true;
 
     return false;
 }
