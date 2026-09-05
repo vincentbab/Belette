@@ -317,7 +317,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             sd->node(ply+1).pv.clear();
 
         // Combined quiet history, must be computed before the move is played
-        MoveScore statScore = sd->moveHistory.getHistory<Me>(pos, move, contHist);
+        MoveScore statScore = moveIsTactical ? 0 : sd->moveHistory.getHistory<Me>(pos, move, contHist);
 
         // Continuation history
         node.contHist = sd->moveHistory.getContHistEntry(pos, move);
