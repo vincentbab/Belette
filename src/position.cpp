@@ -154,6 +154,7 @@ void Position::reset() {
 
     for(int i=0; i<NB_SQUARE; i++) pieces[i] = NO_PIECE;
     for(int i=0; i<NB_PIECE; i++) piecesBB[i] = EmptyBB;
+    pawnKey = 0;
     //for(int i=0; i<NB_PIECE_TYPE; i++) typeBB[i] = EmptyBB;
     //typeBB[ALL_PIECES] = EmptyBB;
     sideBB[WHITE] = sideBB[BLACK] = EmptyBB;
@@ -449,6 +450,7 @@ inline void Position::setPiece(Square sq, Piece p) {
     //typeBB[pieceType(p)] |= b;
     sideBB[Me] |= b;
     piecesBB[p] |= b;
+    if (pieceType(p) == PAWN) pawnKey ^= Zobrist::keys[p][sq];
 }
 template<Side Me>
 inline void Position::unsetPiece(Square sq) {
@@ -459,6 +461,7 @@ inline void Position::unsetPiece(Square sq) {
     //typeBB[pieceType(p)] &= ~b;
     sideBB[Me] &= ~b;
     piecesBB[p] &= ~b;
+    if (pieceType(p) == PAWN) pawnKey ^= Zobrist::keys[p][sq];
 }
 template<Side Me>
 inline void Position::movePiece(Square from, Square to) {
@@ -471,6 +474,7 @@ inline void Position::movePiece(Square from, Square to) {
     //typeBB[pieceType(p)] ^= fromTo;
     sideBB[Me] ^= fromTo;
     piecesBB[p] ^= fromTo;
+    if (pieceType(p) == PAWN) pawnKey ^= Zobrist::keys[p][from] ^ Zobrist::keys[p][to];
 }
 
 template<Side Me, MoveType Mt>
@@ -591,6 +595,7 @@ void Position::doMove(Move m) {
 
     state->hash = h;
     assert(computeHash() == hash());
+    assert(computePawnHash() == pawnHash());
 
     state->repetition = 0;
     const int end = std::min(state->fiftyMoveRule, state->pliesFromNull);
@@ -654,6 +659,8 @@ void Position::undoMove(Move m) {
         const Square epsq = to - pawnDirection(Me);
         setPiece<~Me>(epsq, piece(~Me, PAWN));
     }
+
+    assert(computePawnHash() == pawnHash());
 }
 
 template void Position::undoMove<WHITE, NORMAL>(Move m);

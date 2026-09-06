@@ -108,8 +108,9 @@ public:
     inline bool inCheck() const { return !!state->checkers; }
 
     inline uint64_t hash() const { return state->hash; }
-    inline uint64_t pawnHash() const;
+    inline uint64_t pawnHash() const { return pawnKey; }
     uint64_t computeHash() const;
+    inline uint64_t computePawnHash() const;
     inline uint64_t getHashAfter(Move m) const;
     inline uint64_t getHashAfterNullMove() const { return hash() ^ Zobrist::sideToMoveKey; };
 
@@ -162,6 +163,8 @@ private:
     //Bitboard typeBB[NB_PIECE_TYPE];
     Bitboard sideBB[NB_SIDE];
     Bitboard piecesBB[NB_PIECE];
+
+    uint64_t pawnKey;
 
     Side sideToMove;
 
@@ -218,7 +221,7 @@ inline void Position::undoMove(Move m) {
     }
 }
 
-inline uint64_t Position::pawnHash() const {
+inline uint64_t Position::computePawnHash() const {
     uint64_t h = 0;
     Bitboard wp = getPiecesBB(WHITE, PAWN), bp = getPiecesBB(BLACK, PAWN);
 
