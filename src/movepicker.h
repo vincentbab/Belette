@@ -212,7 +212,13 @@ MoveScore MovePicker::scoreEvasion(Move m) {
 
 template<Side Me>
 MoveScore MovePicker::scoreTactical(Move m) {
-    return PieceValue<MG>(pos->getPieceAt(moveTo(m))) - (int)pieceType(pos->getPieceAt(moveFrom(m))); // MVV-LVA
+    MoveScore score = 8*PieceValue<MG>(pos->getPieceAt(moveTo(m))) - (int)pieceType(pos->getPieceAt(moveFrom(m))); // MVV-LVA
+
+    // Capture history
+    if (moveHistory != nullptr) [[likely]]
+        score += moveHistory->getCaptureHistory(*pos, m);
+
+    return score;
 }
 
 template<Side Me>

@@ -292,8 +292,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     int nbMoves = 0;
     MovePicker mp(pos, ttMove, &sd->moveHistory, ply, contHist);
     //MovePicker *mp = new (&node.mp) MovePicker(pos, ttMove, &sd->moveHistory, ply);
-    PartialMoveList quietMoves;
-    
+    PartialMoveList quietMoves, captureMoves;
+
     mp.enumerate<MAIN, Me>([&](Move move, bool& skipQuiets) -> bool {
         // Honor UCI searchmoves
         if (RootNode && sd->limits.searchMoves.size() > 0 && !sd->limits.searchMoves.contains(move))
@@ -391,14 +391,19 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
                     updatePv(node.pv, move, sd->node(ply+1).pv);
 
                 if (alpha >= beta) {
-                    sd->moveHistory.update<Me>(pos, bestMove, ply, depth, quietMoves, contHist);
+                    sd->moveHistory.update<Me>(pos, bestMove, ply, depth, quietMoves, captureMoves, contHist);
                     return false; // break
                 }
             }
         }
 
-        if (move != bestMove && quietMoves.size() < quietMoves.capacity() && !pos.isTactical(move)) {
-            quietMoves.push_back(move);
+        if (move != bestMove) {
+            if (moveIsTactical) {
+                if (captureMoves.size() < captureMoves.capacity())
+                    captureMoves.push_back(move);
+            } else if (quietMoves.size() < quietMoves.capacity()) {
+                quietMoves.push_back(move);
+            }
         }
 
         return true;
