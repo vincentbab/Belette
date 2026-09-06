@@ -294,7 +294,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     int extension = 0;
     if (!RootNode && !excludedMove && depth >= 8
         && ttHit && isValidMove(ttMove) && std::abs(ttScore) < SCORE_MATE_MAX_PLY
-        && ttLower && ttDepth >= depth - 3
+        && ttLower && ttDepth >= depth - 4
         && pos.isLegal<Me>(ttMove))
     {
         Score singularBeta = ttScore - 2*depth;
