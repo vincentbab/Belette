@@ -330,8 +330,9 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         bool moveIsTactical = pos.isTactical(move);
 
-        // Combined quiet history, must be computed before the move is played
-        MoveScore statScore = moveIsTactical ? 0 : sd->moveHistory.getHistory<Me>(pos, move, contHist);
+        // Combined history, must be computed before the move is played
+        MoveScore statScore = moveIsTactical ? sd->moveHistory.getCaptureHistory(pos, move)
+                                             : sd->moveHistory.getHistory<Me>(pos, move, contHist);
 
         // Late move pruning
         if (!RootNode && bestScore > -SCORE_MATE_MAX_PLY) {
