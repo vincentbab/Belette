@@ -29,6 +29,7 @@ struct Node {
     Score staticEval;
     MoveList pv;
     PieceToHistory* contHist;
+    Move excludedMove = MOVE_NONE;
     //MovePicker mp;
 };
 
