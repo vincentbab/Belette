@@ -307,6 +307,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             extension = 1;
         } else if (score >= beta && std::abs(score) < SCORE_MATE_MAX_PLY) {
             return score;
+        } else if (ttScore >= beta) {
+            extension = -2;
         }
     }
 
