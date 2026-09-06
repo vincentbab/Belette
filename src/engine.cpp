@@ -297,7 +297,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         && ttLower && ttDepth >= depth - 3
         && pos.isLegal<Me>(ttMove))
     {
-        Score singularBeta = ttScore - 2*depth;
+        Score singularBeta = ttScore - 3*depth;
 
         node.excludedMove = ttMove;
         Score score = pvSearch<Me, NodeType::NonPV>(singularBeta-1, singularBeta, (depth-1)/2, ply, cutNode);
