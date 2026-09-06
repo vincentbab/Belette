@@ -292,7 +292,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
     // Singular extensions
     int extension = 0;
-    if (!RootNode && !excludedMove && depth >= 8
+    if (!RootNode && !excludedMove && depth >= 6 + ttPv
         && ttHit && isValidMove(ttMove) && std::abs(ttScore) < SCORE_MATE_MAX_PLY
         && ttLower && ttDepth >= depth - 3
         && pos.isLegal<Me>(ttMove))
