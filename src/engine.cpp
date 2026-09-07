@@ -127,6 +127,12 @@ void Engine::idSearch() {
 
             sd->lastBestMove = bestPv.front();
             sd->softScale = 1.3 - 0.069 * sd->bestMoveStability;
+
+            // Best move effort
+            if (depth >= 5) {
+                double effort = double(sd->rootMoveNodes[moveFromTo(bestPv.front())]) / double(sd->nbNodes);
+                sd->softScale *= (1.5 - effort) * 1.35;
+            }
         }
 
         onSearchProgress(SearchEvent(depth, sd->selDepth, bestPv, bestScore, sd->nbNodes, sd->getElapsed(), tt.usage()));
@@ -371,6 +377,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             }
         }
 
+        const size_t nodesBefore = sd->nbNodes;
+
         sd->nbNodes++;
 
         if (PvNode)
@@ -420,6 +428,9 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         // Undo move
         pos.undoMove<Me>(move);
+
+        if constexpr (RootNode)
+            sd->rootMoveNodes[moveFromTo(move)] += sd->nbNodes - nodesBefore;
 
         if (searchAborted()) return false; // break
 
