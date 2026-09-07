@@ -29,11 +29,13 @@ constexpr MoveScore CORR_HIST_GRAIN = 256;
 constexpr MoveScore CORR_HIST_LIMIT = 32 * CORR_HIST_GRAIN;
 
 using NonPawnCorrHist = std::array<std::array<std::array<MoveScore, CORR_HIST_SIZE>, NB_SIDE>, NB_SIDE>;
+using MinorCorrHist = std::array<std::array<MoveScore, CORR_HIST_SIZE>, NB_SIDE>;
 
 class MoveHistory {
 public:
     MoveHistory(): counterMoves{}, killerMoves{}, history{}, captureHistory{}, corrHist{},
         nonPawnCorrHist(std::make_unique<NonPawnCorrHist>()),
+        minorCorrHist(std::make_unique<MinorCorrHist>()),
         contCorrHist(std::make_unique<ContinuationHistory>()),
         continuationHistory(std::make_unique<ContinuationHistory>()) { }
 
@@ -44,6 +46,7 @@ public:
         std::memset(captureHistory, 0, sizeof(captureHistory));
         std::memset(corrHist, 0, sizeof(corrHist));
         std::memset(nonPawnCorrHist.get(), 0, sizeof(NonPawnCorrHist));
+        std::memset(minorCorrHist.get(), 0, sizeof(MinorCorrHist));
         std::memset(contCorrHist.get(), 0, sizeof(ContinuationHistory));
         std::memset(continuationHistory.get(), 0, sizeof(ContinuationHistory));
     }
@@ -112,7 +115,8 @@ public:
     inline Score correctEval(const Position& pos, Score eval, const PieceToHistory* contCorr) const {
         MoveScore correction = corrHist[Me][pos.pawnHash() & (CORR_HIST_SIZE - 1)]
                              + (*nonPawnCorrHist)[Me][WHITE][pos.nonPawnHash(WHITE) & (CORR_HIST_SIZE - 1)]
-                             + (*nonPawnCorrHist)[Me][BLACK][pos.nonPawnHash(BLACK) & (CORR_HIST_SIZE - 1)];
+                             + (*nonPawnCorrHist)[Me][BLACK][pos.nonPawnHash(BLACK) & (CORR_HIST_SIZE - 1)]
+                             + (*minorCorrHist)[Me][pos.minorHash() & (CORR_HIST_SIZE - 1)];
 
         Move prevMove = pos.previousMove();
         if (isValidMove(prevMove))
@@ -129,6 +133,7 @@ public:
         updateCorrEntry(corrHist[Me][pos.pawnHash() & (CORR_HIST_SIZE - 1)], diff, weight);
         updateCorrEntry((*nonPawnCorrHist)[Me][WHITE][pos.nonPawnHash(WHITE) & (CORR_HIST_SIZE - 1)], diff, weight);
         updateCorrEntry((*nonPawnCorrHist)[Me][BLACK][pos.nonPawnHash(BLACK) & (CORR_HIST_SIZE - 1)], diff, weight);
+        updateCorrEntry((*minorCorrHist)[Me][pos.minorHash() & (CORR_HIST_SIZE - 1)], diff, weight);
 
         Move prevMove = pos.previousMove();
         if (isValidMove(prevMove) && contCorr != getDefaultContCorr())
@@ -164,6 +169,7 @@ private:
     MoveScore captureHistory[NB_PIECE][NB_SQUARE][NB_PIECE_TYPE];
     MoveScore corrHist[NB_SIDE][CORR_HIST_SIZE];
     std::unique_ptr<NonPawnCorrHist> nonPawnCorrHist;
+    std::unique_ptr<MinorCorrHist> minorCorrHist;
     std::unique_ptr<ContinuationHistory> contCorrHist;
     std::unique_ptr<ContinuationHistory> continuationHistory;
 
