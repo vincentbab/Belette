@@ -115,6 +115,7 @@ void Engine::idSearch() {
         if (searchAborted() && (depth > 1 || score == -SCORE_INFINITE)) break;
 
         bestPv = sd->node(0).pv;
+        const Score prevScore = bestScore;
         bestScore = score;
         completedDepth = depth;
 
@@ -132,6 +133,11 @@ void Engine::idSearch() {
             if (depth >= 5) {
                 double effort = double(sd->rootMoveNodes[moveFromTo(bestPv.front())]) / double(sd->nbNodes);
                 sd->softScale *= (1.5 - effort) * 1.35;
+            }
+
+            // Score trend
+            if (depth >= 5) {
+                sd->softScale *= std::clamp(1.0 + 0.02 * (prevScore - score), 1.0, 1.4);
             }
         }
 
