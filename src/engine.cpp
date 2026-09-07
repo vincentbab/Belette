@@ -71,6 +71,9 @@ void Engine::idSearch() {
     Score bestScore = SCORE_DRAW;
     int depth, searchDepth, completedDepth = 0;
 
+    MoveList rootMoves;
+    generateLegalMoves(sd->position, rootMoves);
+
     for (depth = 1; depth < MAX_PLY; depth++) {
         Score alpha = -SCORE_INFINITE, beta = SCORE_INFINITE;
         Score delta = 0, score = -SCORE_INFINITE;
@@ -144,6 +147,9 @@ void Engine::idSearch() {
         onSearchProgress(SearchEvent(depth, sd->selDepth, bestPv, bestScore, sd->nbNodes, sd->getElapsed(), tt.usage()));
 
         if (sd->limits.maxDepth > 0 && depth >= sd->limits.maxDepth) break;
+
+        // Instamove
+        if (sd->useTournamentTime() && rootMoves.size() == 1) break;
 
         if (sd->shouldStopSoft()) break;
     }
