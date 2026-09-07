@@ -1,6 +1,7 @@
 #ifndef ENGINE_H_INCLUDED
 #define ENGINE_H_INCLUDED
 
+#include <algorithm>
 #include <atomic>
 #include <memory>
 #include <thread>
@@ -76,8 +77,8 @@ struct SearchData {
 
     inline bool shouldStopSoft() {
         TimeMs elapsed = now() - startTime;
-        
-        if (useTournamentTime() && elapsed >= softTimeLimit)
+
+        if (useTournamentTime() && elapsed >= std::min<TimeMs>(hardTimeLimit, TimeMs(softTimeLimit * softScale)))
             return true;
 
         return false;
@@ -94,6 +95,9 @@ struct SearchData {
     TimeMs lastCheck;
     TimeMs softTimeLimit;
     TimeMs hardTimeLimit;
+    double softScale = 1.0;
+    Move lastBestMove = MOVE_NONE;
+    int bestMoveStability = 0;
 
     MoveHistory& moveHistory;
 

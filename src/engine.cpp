@@ -118,6 +118,17 @@ void Engine::idSearch() {
         bestScore = score;
         completedDepth = depth;
 
+        // Best move stability
+        if (bestPv.size() > 0) {
+            if (bestPv.front() == sd->lastBestMove)
+                sd->bestMoveStability = std::min(sd->bestMoveStability + 1, 8);
+            else
+                sd->bestMoveStability = 0;
+
+            sd->lastBestMove = bestPv.front();
+            sd->softScale = 1.3 - 0.069 * sd->bestMoveStability;
+        }
+
         onSearchProgress(SearchEvent(depth, sd->selDepth, bestPv, bestScore, sd->nbNodes, sd->getElapsed(), tt.usage()));
 
         if (sd->limits.maxDepth > 0 && depth >= sd->limits.maxDepth) break;
