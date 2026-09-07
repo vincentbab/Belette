@@ -110,8 +110,10 @@ public:
     inline uint64_t hash() const { return state->hash; }
     inline int psq(Phase p) const { return psqValue[p]; }
     inline uint64_t pawnHash() const { return pawnKey; }
+    inline uint64_t nonPawnHash(Side side) const { return nonPawnKeys[side]; }
     uint64_t computeHash() const;
     inline uint64_t computePawnHash() const;
+    inline uint64_t computeNonPawnHash(Side side) const;
     inline uint64_t getHashAfter(Move m) const;
     inline uint64_t getHashAfterNullMove() const { return hash() ^ Zobrist::sideToMoveKey; };
 
@@ -166,6 +168,7 @@ private:
     Bitboard piecesBB[NB_PIECE];
 
     uint64_t pawnKey;
+    uint64_t nonPawnKeys[NB_SIDE];
     int psqValue[NB_PHASE];
 
     Side sideToMove;
@@ -232,6 +235,18 @@ inline uint64_t Position::computePawnHash() const {
     }
     bitscan_loop(bp) {
         h ^= Zobrist::keys[B_PAWN][bitscan(bp)];
+    }
+
+    return h;
+}
+
+inline uint64_t Position::computeNonPawnHash(Side side) const {
+    uint64_t h = 0;
+    Bitboard b = getPiecesBB(side) ^ getPiecesBB(side, PAWN);
+
+    bitscan_loop(b) {
+        Square sq = bitscan(b);
+        h ^= Zobrist::keys[getPieceAt(sq)][sq];
     }
 
     return h;

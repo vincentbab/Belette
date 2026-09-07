@@ -156,6 +156,7 @@ void Position::reset() {
     for(int i=0; i<NB_SQUARE; i++) pieces[i] = NO_PIECE;
     for(int i=0; i<NB_PIECE; i++) piecesBB[i] = EmptyBB;
     pawnKey = 0;
+    nonPawnKeys[WHITE] = nonPawnKeys[BLACK] = 0;
     psqValue[MG] = psqValue[EG] = 0;
     //for(int i=0; i<NB_PIECE_TYPE; i++) typeBB[i] = EmptyBB;
     //typeBB[ALL_PIECES] = EmptyBB;
@@ -452,7 +453,7 @@ inline void Position::setPiece(Square sq, Piece p) {
     //typeBB[pieceType(p)] |= b;
     sideBB[Me] |= b;
     piecesBB[p] |= b;
-    if (pieceType(p) == PAWN) pawnKey ^= Zobrist::keys[p][sq];
+    (pieceType(p) == PAWN ? pawnKey : nonPawnKeys[Me]) ^= Zobrist::keys[p][sq];
     psqValue[MG] += PSQ[p][sq].mg;
     psqValue[EG] += PSQ[p][sq].eg;
 }
@@ -465,7 +466,7 @@ inline void Position::unsetPiece(Square sq) {
     //typeBB[pieceType(p)] &= ~b;
     sideBB[Me] &= ~b;
     piecesBB[p] &= ~b;
-    if (pieceType(p) == PAWN) pawnKey ^= Zobrist::keys[p][sq];
+    (pieceType(p) == PAWN ? pawnKey : nonPawnKeys[Me]) ^= Zobrist::keys[p][sq];
     psqValue[MG] -= PSQ[p][sq].mg;
     psqValue[EG] -= PSQ[p][sq].eg;
 }
@@ -480,7 +481,7 @@ inline void Position::movePiece(Square from, Square to) {
     //typeBB[pieceType(p)] ^= fromTo;
     sideBB[Me] ^= fromTo;
     piecesBB[p] ^= fromTo;
-    if (pieceType(p) == PAWN) pawnKey ^= Zobrist::keys[p][from] ^ Zobrist::keys[p][to];
+    (pieceType(p) == PAWN ? pawnKey : nonPawnKeys[Me]) ^= Zobrist::keys[p][from] ^ Zobrist::keys[p][to];
     psqValue[MG] += PSQ[p][to].mg - PSQ[p][from].mg;
     psqValue[EG] += PSQ[p][to].eg - PSQ[p][from].eg;
 }
@@ -616,6 +617,8 @@ void Position::doMove(Move m) {
     state->hash = h;
     assert(computeHash() == hash());
     assert(computePawnHash() == pawnHash());
+    assert(computeNonPawnHash(WHITE) == nonPawnHash(WHITE));
+    assert(computeNonPawnHash(BLACK) == nonPawnHash(BLACK));
     assert(computePsq(*this, MG) == psq(MG) && computePsq(*this, EG) == psq(EG));
 
     state->repetition = 0;
@@ -682,6 +685,8 @@ void Position::undoMove(Move m) {
     }
 
     assert(computePawnHash() == pawnHash());
+    assert(computeNonPawnHash(WHITE) == nonPawnHash(WHITE));
+    assert(computeNonPawnHash(BLACK) == nonPawnHash(BLACK));
     assert(computePsq(*this, MG) == psq(MG) && computePsq(*this, EG) == psq(EG));
 }
 
