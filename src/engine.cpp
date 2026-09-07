@@ -230,7 +230,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             tt.set(tte, pos.hash(), 0, ply, BOUND_NONE, MOVE_NONE, rawEval, SCORE_NONE, ttPv);
         }
 
-        node.staticEval = eval = sd->moveHistory.correctEval<Me>(pos, rawEval);
+        node.staticEval = eval = sd->moveHistory.correctEval<Me>(pos, rawEval, sd->node(ply-2).contCorr);
 
         // Use score instead of eval if available.
         if (ttHit && tte->canCutoff(ttScore, eval)) {
@@ -275,6 +275,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         int R = 4 + depth / 4;
 
         node.contHist = sd->moveHistory.getDefaultContHist();
+        node.contCorr = sd->moveHistory.getDefaultContCorr();
         pos.doNullMove<Me>();
         Score score = -pvSearch<~Me, NodeType::NonPV>(-beta, -beta+1, depth-R, ply+1, !cutNode);
         pos.undoNullMove<Me>();
@@ -366,6 +367,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         // Continuation history
         node.contHist = sd->moveHistory.getContHistEntry(pos, move);
+        node.contCorr = sd->moveHistory.getContCorrEntry(pos, move);
 
         // Do move
         pos.doMove<Me>(move);
@@ -447,7 +449,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     if (!inCheck && !excludedMove && !(bestMove != MOVE_NONE && pos.isTactical(bestMove)) && std::abs(bestScore) < SCORE_MATE_MAX_PLY
         && ((bestScore < node.staticEval && bestScore < beta) || (bestScore > node.staticEval && bestMove != MOVE_NONE)))
     {
-        sd->moveHistory.updateCorrection<Me>(pos, bestScore, node.staticEval, depth);
+        sd->moveHistory.updateCorrection<Me>(pos, bestScore, node.staticEval, depth, sd->node(ply-2).contCorr);
     }
 
     // Update Transposition Table
@@ -520,7 +522,7 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
             tt.set(tte, pos.hash(), ttDepth, ply, BOUND_NONE, MOVE_NONE, rawEval, SCORE_NONE, ttPv);
         }
 
-        eval = sd->moveHistory.correctEval<Me>(pos, rawEval);
+        eval = sd->moveHistory.correctEval<Me>(pos, rawEval, sd->node(ply-2).contCorr);
 
         // Use score instead of eval if available.
         if (ttHit && tte->canCutoff(ttScore, eval)) {
@@ -550,6 +552,8 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
         if (bestScore > -SCORE_MATE_MAX_PLY && !pos.see(move, 0)) return true; // continue;
         
         sd->nbNodes++;
+
+        sd->node(ply).contCorr = sd->moveHistory.getContCorrEntry(pos, move);
 
         pos.doMove<Me>(move);
         Score score = -qSearch<~Me, NT>(-beta, -alpha, depth-1, ply+1);

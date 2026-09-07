@@ -34,6 +34,7 @@ class MoveHistory {
 public:
     MoveHistory(): counterMoves{}, killerMoves{}, history{}, captureHistory{}, corrHist{},
         nonPawnCorrHist(std::make_unique<NonPawnCorrHist>()),
+        contCorrHist(std::make_unique<ContinuationHistory>()),
         continuationHistory(std::make_unique<ContinuationHistory>()) { }
 
     inline void clear() {
@@ -43,6 +44,7 @@ public:
         std::memset(captureHistory, 0, sizeof(captureHistory));
         std::memset(corrHist, 0, sizeof(corrHist));
         std::memset(nonPawnCorrHist.get(), 0, sizeof(NonPawnCorrHist));
+        std::memset(contCorrHist.get(), 0, sizeof(ContinuationHistory));
         std::memset(continuationHistory.get(), 0, sizeof(ContinuationHistory));
     }
 
@@ -97,22 +99,40 @@ public:
         return getContHistEntry(NO_PIECE, SQ_FIRST);
     }
 
+    inline PieceToHistory* getContCorrEntry(const Position& pos, Move m) {
+        return &(*contCorrHist)[pos.getPieceAt(moveFrom(m))][moveTo(m)];
+    }
+
+    // Never indexed by a real move because NO_PIECE.
+    inline PieceToHistory* getDefaultContCorr() {
+        return &(*contCorrHist)[NO_PIECE][SQ_FIRST];
+    }
+
     template<Side Me>
-    inline Score correctEval(const Position& pos, Score eval) const {
+    inline Score correctEval(const Position& pos, Score eval, const PieceToHistory* contCorr) const {
         MoveScore correction = corrHist[Me][pos.pawnHash() & (CORR_HIST_SIZE - 1)]
                              + (*nonPawnCorrHist)[Me][WHITE][pos.nonPawnHash(WHITE) & (CORR_HIST_SIZE - 1)]
                              + (*nonPawnCorrHist)[Me][BLACK][pos.nonPawnHash(BLACK) & (CORR_HIST_SIZE - 1)];
+
+        Move prevMove = pos.previousMove();
+        if (isValidMove(prevMove))
+            correction += (*contCorr)[pos.getPieceAt(moveTo(prevMove))][moveTo(prevMove)];
+
         return std::clamp<Score>(eval + correction / CORR_HIST_GRAIN, -SCORE_MATE_MAX_PLY + 1, SCORE_MATE_MAX_PLY - 1);
     }
 
     template<Side Me>
-    inline void updateCorrection(const Position& pos, Score bestScore, Score staticEval, int depth) {
+    inline void updateCorrection(const Position& pos, Score bestScore, Score staticEval, int depth, PieceToHistory* contCorr) {
         MoveScore diff = (bestScore - staticEval) * CORR_HIST_GRAIN;
         MoveScore weight = std::min(depth + 1, 16);
 
         updateCorrEntry(corrHist[Me][pos.pawnHash() & (CORR_HIST_SIZE - 1)], diff, weight);
         updateCorrEntry((*nonPawnCorrHist)[Me][WHITE][pos.nonPawnHash(WHITE) & (CORR_HIST_SIZE - 1)], diff, weight);
         updateCorrEntry((*nonPawnCorrHist)[Me][BLACK][pos.nonPawnHash(BLACK) & (CORR_HIST_SIZE - 1)], diff, weight);
+
+        Move prevMove = pos.previousMove();
+        if (isValidMove(prevMove) && contCorr != getDefaultContCorr())
+            updateCorrEntry((*contCorr)[pos.getPieceAt(moveTo(prevMove))][moveTo(prevMove)], diff, weight);
     }
 
     template<Side Me>
@@ -144,6 +164,7 @@ private:
     MoveScore captureHistory[NB_PIECE][NB_SQUARE][NB_PIECE_TYPE];
     MoveScore corrHist[NB_SIDE][CORR_HIST_SIZE];
     std::unique_ptr<NonPawnCorrHist> nonPawnCorrHist;
+    std::unique_ptr<ContinuationHistory> contCorrHist;
     std::unique_ptr<ContinuationHistory> continuationHistory;
 
     inline MoveScore historyBonus(int depth) {

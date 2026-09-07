@@ -28,6 +28,7 @@ struct SearchLimits {
 struct Node {
     Score staticEval;
     PieceToHistory* contHist;
+    PieceToHistory* contCorr;
     Move excludedMove = MOVE_NONE;
     PvList pv;
     //MovePicker mp;
@@ -36,8 +37,10 @@ struct Node {
 struct SearchData {
     SearchData(const Position& pos_, const SearchLimits& limits_, MoveHistory& moveHistory_)
     : position(pos_), limits(limits_), nbNodes(0), moveHistory(moveHistory_) {
-        for (int i = 1; i <= CONT_HIST_PLIES; i++)
+        for (int i = 1; i <= CONT_HIST_PLIES; i++) {
             node(-i).contHist = moveHistory.getDefaultContHist();
+            node(-i).contCorr = moveHistory.getDefaultContCorr();
+        }
 
         start();
     }
