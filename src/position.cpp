@@ -2,6 +2,7 @@
 #include <cstring>
 #include <algorithm>
 #include "position.h"
+#include "evaluate.h"
 #include "movegen.h"
 #include "uci.h"
 #include "zobrist.h"
@@ -155,6 +156,7 @@ void Position::reset() {
     for(int i=0; i<NB_SQUARE; i++) pieces[i] = NO_PIECE;
     for(int i=0; i<NB_PIECE; i++) piecesBB[i] = EmptyBB;
     pawnKey = 0;
+    psqValue[MG] = psqValue[EG] = 0;
     //for(int i=0; i<NB_PIECE_TYPE; i++) typeBB[i] = EmptyBB;
     //typeBB[ALL_PIECES] = EmptyBB;
     sideBB[WHITE] = sideBB[BLACK] = EmptyBB;
@@ -451,6 +453,8 @@ inline void Position::setPiece(Square sq, Piece p) {
     sideBB[Me] |= b;
     piecesBB[p] |= b;
     if (pieceType(p) == PAWN) pawnKey ^= Zobrist::keys[p][sq];
+    psqValue[MG] += PSQ[p][sq].mg;
+    psqValue[EG] += PSQ[p][sq].eg;
 }
 template<Side Me>
 inline void Position::unsetPiece(Square sq) {
@@ -462,6 +466,8 @@ inline void Position::unsetPiece(Square sq) {
     sideBB[Me] &= ~b;
     piecesBB[p] &= ~b;
     if (pieceType(p) == PAWN) pawnKey ^= Zobrist::keys[p][sq];
+    psqValue[MG] -= PSQ[p][sq].mg;
+    psqValue[EG] -= PSQ[p][sq].eg;
 }
 template<Side Me>
 inline void Position::movePiece(Square from, Square to) {
@@ -475,6 +481,20 @@ inline void Position::movePiece(Square from, Square to) {
     sideBB[Me] ^= fromTo;
     piecesBB[p] ^= fromTo;
     if (pieceType(p) == PAWN) pawnKey ^= Zobrist::keys[p][from] ^ Zobrist::keys[p][to];
+    psqValue[MG] += PSQ[p][to].mg - PSQ[p][from].mg;
+    psqValue[EG] += PSQ[p][to].eg - PSQ[p][from].eg;
+}
+
+[[maybe_unused]] static int computePsq(const Position& pos, Phase ph) {
+    int v = 0;
+    Bitboard occupied = pos.getPiecesBB();
+
+    bitscan_loop(occupied) {
+        Square sq = bitscan(occupied);
+        v += (ph == MG ? PSQ[pos.getPieceAt(sq)][sq].mg : PSQ[pos.getPieceAt(sq)][sq].eg);
+    }
+
+    return v;
 }
 
 template<Side Me, MoveType Mt>
@@ -596,6 +616,7 @@ void Position::doMove(Move m) {
     state->hash = h;
     assert(computeHash() == hash());
     assert(computePawnHash() == pawnHash());
+    assert(computePsq(*this, MG) == psq(MG) && computePsq(*this, EG) == psq(EG));
 
     state->repetition = 0;
     const int end = std::min(state->fiftyMoveRule, state->pliesFromNull);
@@ -661,6 +682,7 @@ void Position::undoMove(Move m) {
     }
 
     assert(computePawnHash() == pawnHash());
+    assert(computePsq(*this, MG) == psq(MG) && computePsq(*this, EG) == psq(EG));
 }
 
 template void Position::undoMove<WHITE, NORMAL>(Move m);

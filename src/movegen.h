@@ -9,8 +9,10 @@
 namespace Belette {
 
 using MoveList = fixed_vector<Move, MAX_MOVE, uint8_t>;
+using PvList = fixed_vector<Move, MAX_PLY, uint8_t>;
 
 std::ostream& operator<<(std::ostream& os, const MoveList& pos);
+std::ostream& operator<<(std::ostream& os, const PvList& pos);
 
 enum MoveGenType {
     QUIET_MOVES = 1,

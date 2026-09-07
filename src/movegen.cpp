@@ -4,7 +4,8 @@
 
 namespace Belette {
 
-std::ostream& operator<<(std::ostream& os, const MoveList& moves) {
+template<typename List>
+static std::ostream& printMoves(std::ostream& os, const List& moves) {
     bool first = true;
 
     for(Move m : moves) {
@@ -15,5 +16,8 @@ std::ostream& operator<<(std::ostream& os, const MoveList& moves) {
 
     return os;
 }
+
+std::ostream& operator<<(std::ostream& os, const MoveList& moves) { return printMoves(os, moves); }
+std::ostream& operator<<(std::ostream& os, const PvList& moves) { return printMoves(os, moves); }
 
 } /* namespace Belette*/

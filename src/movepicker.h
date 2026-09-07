@@ -76,7 +76,8 @@ bool MovePicker::enumerate(const Handler &handler) {
     
     bool skipQuiets = false;
 
-    tt.prefetch(pos->getHashAfter(ttMove));
+    if (isValidMove(ttMove))
+        tt.prefetch(pos->getHashAfter(ttMove));
 
     // TT Move
     if (pos->isLegal<Me>(ttMove)) {
@@ -136,9 +137,9 @@ bool MovePicker::enumerate(const Handler &handler) {
     if constexpr(Type == QUIESCENCE) return true;
 
     if (moveHistory != nullptr) [[likely]] {
-        tt.prefetch(pos->getHashAfter(refutations[0]));
-        tt.prefetch(pos->getHashAfter(refutations[1]));
-        tt.prefetch(pos->getHashAfter(refutations[2]));
+        if (isValidMove(refutations[0])) tt.prefetch(pos->getHashAfter(refutations[0]));
+        if (isValidMove(refutations[1])) tt.prefetch(pos->getHashAfter(refutations[1]));
+        if (isValidMove(refutations[2])) tt.prefetch(pos->getHashAfter(refutations[2]));
         
         // Killer 1
         if (refutations[0] != ttMove && !pos->isTactical(refutations[0]) && pos->isLegal<Me>(refutations[0])) {

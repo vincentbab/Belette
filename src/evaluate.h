@@ -1,6 +1,7 @@
 #ifndef EVALUATE_H_INCLUDED
 #define EVALUATE_H_INCLUDED
 
+#include <array>
 #include "chess.h"
 #include "position.h"
 
@@ -189,6 +190,27 @@ constexpr Score PSQT[NB_PIECE_TYPE][NB_PHASE][NB_SQUARE] = {
 
     }
 };
+
+struct PSQPair { int16_t mg, eg; };
+
+constexpr auto PSQ = []() {
+    std::array<std::array<PSQPair, NB_SQUARE>, NB_PIECE> psq{};
+
+    for (int pt = PAWN; pt <= KING; pt++) {
+        for (int sq = 0; sq < NB_SQUARE; sq++) {
+            psq[piece(WHITE, PieceType(pt))][sq] = {
+                int16_t(PIECE_TYPE_VALUE[pt][MG] + PSQT[pt][MG][sq]),
+                int16_t(PIECE_TYPE_VALUE[pt][EG] + PSQT[pt][EG][sq])
+            };
+            psq[piece(BLACK, PieceType(pt))][sq] = {
+                int16_t(-(PIECE_TYPE_VALUE[pt][MG] + PSQT[pt][MG][sq ^ 56])),
+                int16_t(-(PIECE_TYPE_VALUE[pt][EG] + PSQT[pt][EG][sq ^ 56]))
+            };
+        }
+    }
+
+    return psq;
+}();
 
 template<Side Me>
 Score evaluate(const Position &pos);

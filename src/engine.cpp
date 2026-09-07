@@ -18,7 +18,7 @@ void Engine::init() {
     }
 }
 
-void updatePv(MoveList &pv, Move move, const MoveList &childPv) {
+void updatePv(PvList &pv, Move move, const PvList &childPv) {
     pv.clear();
     pv.push_back(move);
     pv.insert(childPv.begin(), childPv.end());
@@ -67,7 +67,7 @@ void Engine::stop() {
 // Iterative deepening loop
 template<Side Me>
 void Engine::idSearch() {
-    MoveList bestPv;
+    PvList bestPv;
     Score bestScore = SCORE_DRAW;
     int depth, searchDepth, completedDepth = 0;
 
@@ -216,7 +216,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     bool ttLower = tte->isLowerBound();
 
     // Transposition Table cutoff
-    if (!PvNode && !excludedMove && ttHit && tte->depth() >= depth && tte->canCutoff(ttScore, beta)) {
+    if (!PvNode && !excludedMove && ttHit && ttDepth >= depth && tte->canCutoff(ttScore, beta)) {
         return ttScore;
     }
 
@@ -234,7 +234,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         // Use score instead of eval if available.
         if (ttHit && tte->canCutoff(ttScore, eval)) {
-            eval = tte->score(ply);
+            eval = ttScore;
         }
 
         // Improving
@@ -524,7 +524,7 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
 
         // Use score instead of eval if available.
         if (ttHit && tte->canCutoff(ttScore, eval)) {
-            eval = tte->score(ply);
+            eval = ttScore;
         }
 
         if (eval >= beta) {
@@ -539,7 +539,7 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
 
     Move ttMove = tte->move();
     // If ttMove is quiet we don't want to use it past a certain depth to allow qSearch to stabilize
-    bool useTTMove = ttHit && isValidMove(ttMove) && (depth >= -7 || pos.inCheck() || pos.isTactical(ttMove));
+    bool useTTMove = ttHit && isValidMove(ttMove) && (depth >= -7 || inCheck || pos.isTactical(ttMove));
     MovePicker mp(pos, useTTMove ? ttMove : MOVE_NONE);
     //MovePicker *mp = new (&node.mp) MovePicker(pos, useTTMove ? ttMove : MOVE_NONE);
 

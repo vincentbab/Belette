@@ -108,6 +108,7 @@ public:
     inline bool inCheck() const { return !!state->checkers; }
 
     inline uint64_t hash() const { return state->hash; }
+    inline int psq(Phase p) const { return psqValue[p]; }
     inline uint64_t pawnHash() const { return pawnKey; }
     uint64_t computeHash() const;
     inline uint64_t computePawnHash() const;
@@ -165,6 +166,7 @@ private:
     Bitboard piecesBB[NB_PIECE];
 
     uint64_t pawnKey;
+    int psqValue[NB_PHASE];
 
     Side sideToMove;
 

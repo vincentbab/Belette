@@ -27,9 +27,9 @@ struct SearchLimits {
 
 struct Node {
     Score staticEval;
-    MoveList pv;
     PieceToHistory* contHist;
     Move excludedMove = MOVE_NONE;
+    PvList pv;
     //MovePicker mp;
 };
 
@@ -98,12 +98,12 @@ struct SearchData {
 };
 
 struct SearchEvent {
-    SearchEvent(int depth_, int selDepth_, const MoveList &pv_, Score bestScore_, size_t nbNode_, TimeMs elapsed_, size_t hashfull_): 
+    SearchEvent(int depth_, int selDepth_, const PvList &pv_, Score bestScore_, size_t nbNode_, TimeMs elapsed_, size_t hashfull_):
         depth(depth_), selDepth(selDepth_), pv(pv_), bestScore(bestScore_), nbNodes(nbNode_), elapsed(elapsed_), hashfull(hashfull_) { }
 
     int depth;
     int selDepth;
-    const MoveList &pv;
+    const PvList &pv;
     Score bestScore;
     size_t nbNodes;
     TimeMs elapsed;
