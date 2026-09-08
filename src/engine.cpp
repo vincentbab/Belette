@@ -301,7 +301,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         && pos.previousMove() != MOVE_NULL && pos.hasNonPawnMateriel<Me>() && eval >= beta)
     {
         tt.prefetch(pos.getHashAfterNullMove());
-        int R = 4 + depth / 4;
+        int R = 4 + depth / 4 + std::min((eval - beta) / 200, 3);
 
         node.contHist = sd->moveHistory.getDefaultContHist();
         node.contCorr = sd->moveHistory.getDefaultContCorr();
