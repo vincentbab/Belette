@@ -300,7 +300,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
     // Null move pruning (NMP)
     if (!PvNode && !inCheck && !excludedMove && depth >= 3
-        && pos.previousMove() != MOVE_NULL && pos.hasNonPawnMateriel<Me>() && eval >= beta)
+        && pos.previousMove() != MOVE_NULL && pos.hasNonPawnMateriel<Me>() && eval >= beta
+        && ply >= sd->nmpMinPly)
     {
         tt.prefetch(pos.getHashAfterNullMove());
         int R = 4 + depth / 4 + std::min((eval - beta) / 200, 3);
@@ -312,8 +313,18 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         pos.undoNullMove<Me>();
 
         if (score >= beta) {
-            // TODO: verification search ?
-            return score >= SCORE_MATE_MAX_PLY ? beta : score;
+            if (score >= SCORE_MATE_MAX_PLY)
+                score = beta;
+
+            if (sd->nmpMinPly || depth < 16)
+                return score;
+
+            sd->nmpMinPly = ply + 3 * (depth - R) / 4;
+            Score v = pvSearch<Me, NodeType::NonPV>(beta - 1, beta, depth - R, ply, false);
+            sd->nmpMinPly = 0;
+
+            if (v >= beta)
+                return score;
         }
     }
 

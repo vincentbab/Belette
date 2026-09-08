@@ -99,6 +99,7 @@ struct SearchData {
     double softScale = 1.0;
     Move lastBestMove = MOVE_NONE;
     int bestMoveStability = 0;
+    int nmpMinPly = 0;
     size_t rootMoveNodes[NB_SQUARE*NB_SQUARE] = {0};
 
     MoveHistory& moveHistory;
