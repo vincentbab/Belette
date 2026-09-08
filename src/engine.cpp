@@ -297,7 +297,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     }
 
     // Null move pruning (NMP)
-    if (!PvNode && !inCheck && !excludedMove
+    if (!PvNode && !inCheck && !excludedMove && depth >= 3
         && pos.previousMove() != MOVE_NULL && pos.hasNonPawnMateriel<Me>() && eval >= beta)
     {
         tt.prefetch(pos.getHashAfterNullMove());
