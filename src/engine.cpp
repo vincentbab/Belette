@@ -375,8 +375,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             Score futilityValue = eval + 100 + 120*depth + statScore/64;
             if (!inCheck && !moveIsTactical && lmrDepth <= 6 && futilityValue <= alpha) {
                 skipQuiets = true;
-                //if (bestScore < futilityValue && futilityValue < SCORE_MATE_MAX_PLY)
-                //    bestScore = futilityValue;
+                if (bestScore < futilityValue && futilityValue < SCORE_MATE_MAX_PLY)
+                    bestScore = futilityValue;
                 return true; // continue;
             }
 
