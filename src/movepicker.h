@@ -124,7 +124,8 @@ bool MovePicker::enumerate(const Handler &handler) {
 
     for (current = endBadTacticals = moves.begin(); current != moves.end(); current++) {
         if constexpr(Type == MAIN) { // For quiescence prunning of bad captures is done in search
-            if (!pos->see(current->move, -50)) { // Allow Bishop takes Knight
+            // Bad capture threshold scaled with victim value
+            if (!pos->see(current->move, -8*PieceValue<MG>(pos->getPieceAt(moveTo(current->move)))/16)) {
                 *endBadTacticals++ = *current;
                 continue;
             }
