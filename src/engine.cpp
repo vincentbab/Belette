@@ -231,6 +231,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         node.pv.clear();
     }
 
+    node.doubleExts = RootNode ? 0 : sd->node(ply-1).doubleExts;
+
     if (ply >= MAX_PLY) [[unlikely]] {
         return evaluate<Me>(pos); // TODO: verify if we are in check ?
     }
@@ -335,6 +337,12 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         if (score < singularBeta) {
             extension = 1;
+
+            // Double extension
+            if (!PvNode && score < singularBeta - 20 && node.doubleExts <= 8) {
+                extension = 2;
+                node.doubleExts++;
+            }
         } else if (score >= beta && std::abs(score) < SCORE_MATE_MAX_PLY) {
             return score;
         }

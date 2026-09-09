@@ -31,6 +31,7 @@ struct Node {
     PieceToHistory* contHist;
     PieceToHistory* contCorr;
     Move excludedMove = MOVE_NONE;
+    int doubleExts = 0;
     PvList pv;
     //MovePicker mp;
 };
