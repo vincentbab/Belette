@@ -124,8 +124,9 @@ bool MovePicker::enumerate(const Handler &handler) {
 
     for (current = endBadTacticals = moves.begin(); current != moves.end(); current++) {
         if constexpr(Type == MAIN) { // For quiescence prunning of bad captures is done in search
-            // Bad capture threshold scaled with victim value
-            if (!pos->see(current->move, -8*PieceValue<MG>(pos->getPieceAt(moveTo(current->move)))/16)) {
+            // Bad capture threshold scaled with victim value and capture history
+            MoveScore captHist = moveHistory != nullptr ? moveHistory->getCaptureHistory(*pos, current->move) : 0;
+            if (!pos->see(current->move, -8*PieceValue<MG>(pos->getPieceAt(moveTo(current->move)))/16 - captHist/32)) {
                 *endBadTacticals++ = *current;
                 continue;
             }
