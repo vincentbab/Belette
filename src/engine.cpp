@@ -424,7 +424,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, depth-R, ply+1, true);
 
             if (score > alpha && R != 1) {
-                // Full depth, Zero window
+                // Full depth, Zero window, deeper if the reduced search returned well above alpha
+                newDepth += (score > bestScore + 40 + 2*newDepth);
                 score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, newDepth, ply+1, !cutNode);
             }
 
