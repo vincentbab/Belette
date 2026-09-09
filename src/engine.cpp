@@ -364,14 +364,16 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         MoveScore statScore = moveIsTactical ? sd->moveHistory.getCaptureHistory(pos, move)
                                              : sd->moveHistory.getHistory<Me>(pos, move, contHist);
 
+        int lmrDepth = std::max(0, depth - 1 - LMRTable[depth][nbMoves]);
+
         // Late move pruning
         if (!RootNode && bestScore > -SCORE_MATE_MAX_PLY) {
             // Move count pruning
             skipQuiets = (nbMoves >= 3 + depth*depth/(improving ? 1 : 2));
 
             // Futility pruning
-            Score futilityValue = eval + 100 + 120*depth;
-            if (!inCheck && !moveIsTactical && depth <= 6 && futilityValue <= alpha) {
+            Score futilityValue = eval + 100 + 120*depth + statScore/64;
+            if (!inCheck && !moveIsTactical && lmrDepth <= 6 && futilityValue <= alpha) {
                 skipQuiets = true;
                 //if (bestScore < futilityValue && futilityValue < SCORE_MATE_MAX_PLY)
                 //    bestScore = futilityValue;
