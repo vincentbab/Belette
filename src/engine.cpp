@@ -317,6 +317,45 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         }
     }
 
+    // ProbCut
+    Score probCutBeta = beta + 180 - 60*improving;
+    if (!PvNode && !inCheck && depth >= 5 && std::abs(beta) < SCORE_MATE_MAX_PLY
+        && !(ttHit && ttDepth >= depth - 3 && ttScore != SCORE_NONE && ttScore < probCutBeta))
+    {
+        MovePicker mp(pos, ttMove);
+        Score probCutScore = -SCORE_INFINITE;
+
+        mp.enumerate<QUIESCENCE, Me>([&](Move move, /*unused*/bool& skipQuiets) -> bool {
+            if (move == excludedMove || !pos.isTactical(move)) return true; // continue
+            if (!pos.see(move, probCutBeta - node.staticEval)) return true; // continue
+
+            sd->nbNodes++;
+
+            node.contHist = sd->moveHistory.getContHistEntry(pos, move);
+            node.contCorr = sd->moveHistory.getContCorrEntry(pos, move);
+
+            pos.doMove<Me>(move);
+            probCutScore = -qSearch<~Me, NodeType::NonPV>(-probCutBeta, -probCutBeta+1, 0, ply+1);
+
+            if (probCutScore >= probCutBeta)
+                probCutScore = -pvSearch<~Me, NodeType::NonPV>(-probCutBeta, -probCutBeta+1, depth-4, ply+1, !cutNode);
+
+            pos.undoMove<Me>(move);
+
+            if (searchAborted()) return false; // break
+
+            if (probCutScore >= probCutBeta) {
+                tt.set(tte, pos.hash(), depth-3, ply, BOUND_LOWER, move, rawEval, probCutScore, ttPv);
+                return false; // break
+            }
+
+            return true;
+        }); if (searchAborted()) return -SCORE_INFINITE;
+
+        if (probCutScore >= probCutBeta)
+            return probCutScore;
+    }
+
     // Check extension
     if (PvNode && inCheck && depth <= 2) {
         depth++;
