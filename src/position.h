@@ -142,6 +142,7 @@ public:
     inline bool isTactical(Move m) const { return isCapture(m) || (moveType(m) == PROMOTION && movePromotionType(m) == QUEEN); }
 
     inline Move previousMove() const { return state->move; }
+    inline Piece capturedPiece() const { return state->capture; }
     
     bool see(Move m, int threshold) const ;
     template<Side Me> inline bool givesCheck(Move m) const;

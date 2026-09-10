@@ -590,8 +590,11 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
 
     Score futilityBase = eval + 100;
     Square prevSq = isValidMove(pos.previousMove()) ? moveTo(pos.previousMove()) : SQ_NONE;
+    int nbMoves = 0;
 
     mp.enumerate<QUIESCENCE, Me>([&](Move move, /*unused*/bool& skipQuiets) -> bool {
+        nbMoves++;
+
         if (bestScore > -SCORE_MATE_MAX_PLY) {
             // Futility Pruning
             if (!inCheck && moveType(move) == NORMAL && moveTo(move) != prevSq) {
@@ -638,6 +641,16 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
     // no legal move: the pruning above cannot produce this state.
     if (inCheck && bestScore == -SCORE_INFINITE) {
         bestScore = -SCORE_MATE + ply;
+    }
+
+    // Stalemate detection
+    if (!inCheck && nbMoves == 0 && !pos.hasNonPawnMateriel<Me>() && pieceType(pos.capturedPiece()) >= ROOK) {
+        Bitboard kingMoves = attacks<KING>(pos.getKingSquare(Me)) & ~pos.getPiecesBB(Me) & ~pos.checkedSquares();
+        Bitboard pushes = shift<pawnDirection(Me)>(pos.getPiecesBB(Me, PAWN)) & ~pos.getPiecesBB();
+
+        if (!kingMoves && !pushes) {
+            bestScore = SCORE_DRAW;
+        }
     }
 
     // Update Transposition Table
