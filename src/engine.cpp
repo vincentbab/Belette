@@ -175,7 +175,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
     // Quiescence
     if (depth <= 0) {
-        return qSearch<Me, QNodeType>(alpha, beta, depth, ply);
+        return qSearch<Me, QNodeType>(alpha, beta, ply);
     }
 
     // Update selDepth
@@ -293,7 +293,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     if (!PvNode && !inCheck && depth <= 2
         && eval + (400 * depth) <= alpha)
     {
-        Score score = qSearch<Me, QNodeType>(alpha, beta, depth, ply);
+        Score score = qSearch<Me, QNodeType>(alpha, beta, ply);
         if (score <= alpha)
             return score;
     }
@@ -508,7 +508,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
 // Quiescence search
 template<Side Me, NodeType NT>
-Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
+Score Engine::qSearch(Score alpha, Score beta, int ply) {
     constexpr bool PvNode = (NT != NodeType::NonPV);
 
     // Check if we should stop according to limits
@@ -584,8 +584,7 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
     }
 
     Move ttMove = tte->move();
-    // If ttMove is quiet we don't want to use it past a certain depth to allow qSearch to stabilize
-    bool useTTMove = ttHit && isValidMove(ttMove) && (depth >= -7 || inCheck || pos.isTactical(ttMove));
+    bool useTTMove = ttHit && isValidMove(ttMove) && (inCheck || pos.isTactical(ttMove));
     MovePicker mp(pos, useTTMove ? ttMove : MOVE_NONE);
     //MovePicker *mp = new (&node.mp) MovePicker(pos, useTTMove ? ttMove : MOVE_NONE);
 
@@ -614,7 +613,7 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
         sd->node(ply).contCorr = sd->moveHistory.getContCorrEntry(pos, move);
 
         pos.doMove<Me>(move);
-        Score score = -qSearch<~Me, NT>(-beta, -alpha, depth-1, ply+1);
+        Score score = -qSearch<~Me, NT>(-beta, -alpha, ply+1);
         pos.undoMove<Me>(move);
 
         if (searchAborted()) return false; // break

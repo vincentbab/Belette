@@ -162,7 +162,7 @@ private:
 
     template<Side Me, NodeType NT> Score pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode);
 
-    template<Side Me, NodeType NT> Score qSearch(Score alpha, Score beta, int depth, int ply);
+    template<Side Me, NodeType NT> Score qSearch(Score alpha, Score beta, int ply);
 };
 
 } /* namespace Belette */
