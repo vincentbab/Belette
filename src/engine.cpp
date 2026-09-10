@@ -589,12 +589,26 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
     MovePicker mp(pos, useTTMove ? ttMove : MOVE_NONE);
     //MovePicker *mp = new (&node.mp) MovePicker(pos, useTTMove ? ttMove : MOVE_NONE);
 
+    Score futilityBase = eval + 150;
+    Square prevSq = isValidMove(pos.previousMove()) ? moveTo(pos.previousMove()) : SQ_NONE;
+
     mp.enumerate<QUIESCENCE, Me>([&](Move move, /*unused*/bool& skipQuiets) -> bool {
-        // SEE Pruning. Gated on bestScore no longer being a loss so that the first evasion
-        // is always searched: otherwise every evasion could be pruned and the mate detection
-        // below would report a mate that does not exist.
-        if (bestScore > -SCORE_MATE_MAX_PLY && !pos.see(move, 0)) return true; // continue;
-        
+        if (bestScore > -SCORE_MATE_MAX_PLY) {
+            // Futility Pruning
+            if (!inCheck && moveType(move) == NORMAL && moveTo(move) != prevSq) {
+                Score futilityScore = futilityBase + PieceValue<MG>(pos.getPieceAt(moveTo(move)));
+
+                if (futilityScore <= alpha && !pos.givesCheck<Me>(move)) {
+                    return true; // continue;
+                }
+            }
+
+            // SEE Pruning
+            if (!pos.see(move, 0)) {
+                return true; // continue;
+            }
+        }
+
         sd->nbNodes++;
 
         sd->node(ply).contCorr = sd->moveHistory.getContCorrEntry(pos, move);
