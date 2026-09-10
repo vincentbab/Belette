@@ -589,11 +589,21 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
     MovePicker mp(pos, useTTMove ? ttMove : MOVE_NONE);
     //MovePicker *mp = new (&node.mp) MovePicker(pos, useTTMove ? ttMove : MOVE_NONE);
 
+    Score futilityScore = eval + 150;
+
     mp.enumerate<QUIESCENCE, Me>([&](Move move, /*unused*/bool& skipQuiets) -> bool {
-        // SEE Pruning. Gated on bestScore no longer being a loss so that the first evasion
-        // is always searched: otherwise every evasion could be pruned and the mate detection
-        // below would report a mate that does not exist.
-        if (bestScore > -SCORE_MATE_MAX_PLY && !pos.see(move, 0)) return true; // continue;
+        if (bestScore > -SCORE_MATE_MAX_PLY) {
+            // Delta Pruning
+            if (!inCheck && futilityScore <= alpha && moveType(move) == NORMAL) {
+                if (!pos.see(move, 1)) {
+                    bestScore = std::max(bestScore, futilityScore);
+                    return true; // continue;
+                }
+            // SEE Pruning
+            } else if (!pos.see(move, 0)) {
+                return true; // continue;
+            }
+        }
         
         sd->nbNodes++;
 
