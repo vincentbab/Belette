@@ -37,8 +37,8 @@ enum MovePickerType {
 class MovePicker {
 public:
     MovePicker(): pos(nullptr), moveHistory(nullptr) { }
-    MovePicker(const Position &pos_, Move ttMove_ = MOVE_NONE)
-    : pos(&pos_),  moveHistory(nullptr), ttMove(ttMove_), refutations{}, contHist(nullptr)
+    MovePicker(const Position &pos_, Move ttMove_ = MOVE_NONE, const MoveHistory* moveHistory_ = nullptr)
+    : pos(&pos_),  moveHistory(moveHistory_), ttMove(ttMove_), refutations{}, contHist(nullptr)
     { }
 
     MovePicker(const Position &pos_, Move ttMove_, const MoveHistory* moveHistory_, int ply_,
@@ -204,7 +204,7 @@ MoveScore MovePicker::scoreEvasion(Move m) {
     if (pos->isTactical(m)) {
         return scoreTactical<Me>(m) + 1000000;
     } else {
-        if (moveHistory != nullptr) [[likely]]
+        if (contHist != nullptr) [[likely]]
             return moveHistory->getHistory<Me>(*pos, m, contHist);
     }
 

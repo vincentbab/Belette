@@ -585,7 +585,7 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
 
     Move ttMove = tte->move();
     bool useTTMove = ttHit && isValidMove(ttMove) && (inCheck || pos.isTactical(ttMove));
-    MovePicker mp(pos, useTTMove ? ttMove : MOVE_NONE);
+    MovePicker mp(pos, useTTMove ? ttMove : MOVE_NONE, &sd->moveHistory);
     //MovePicker *mp = new (&node.mp) MovePicker(pos, useTTMove ? ttMove : MOVE_NONE);
 
     Score futilityBase = eval + 100;
