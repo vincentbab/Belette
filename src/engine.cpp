@@ -590,14 +590,17 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
 
     Score futilityBase = eval + 100;
     Square prevSq = isValidMove(pos.previousMove()) ? moveTo(pos.previousMove()) : SQ_NONE;
+    int nbMoves = 0;
 
     mp.enumerate<QUIESCENCE, Me>([&](Move move, /*unused*/bool& skipQuiets) -> bool {
+        nbMoves++;
+
         if (bestScore > -SCORE_MATE_MAX_PLY) {
-            // Futility Pruning
+            // Futility & Move count Pruning
             if (!inCheck && moveType(move) == NORMAL && moveTo(move) != prevSq) {
                 Score futilityScore = futilityBase + PieceValue<EG>(pos.getPieceAt(moveTo(move)));
 
-                if (futilityScore <= alpha && !pos.givesCheck<Me>(move)) {
+                if ((nbMoves > 2 || futilityScore <= alpha) && !pos.givesCheck<Me>(move)) {
                     return true; // continue;
                 }
             }
