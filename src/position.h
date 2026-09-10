@@ -30,6 +30,7 @@ struct State {
     Bitboard checkMask;
     Bitboard pinDiag;
     Bitboard pinOrtho;
+    Bitboard oppPins;
 
     inline State& prev() { return *(this-1); }
     inline const State& prev() const { return *(this-1); }
@@ -122,6 +123,7 @@ public:
     inline Bitboard checkMask() const { return state->checkMask; }
     inline Bitboard pinDiag() const { return state->pinDiag; }
     inline Bitboard pinOrtho() const { return state->pinOrtho; }
+    inline Bitboard oppPins() const { return state->oppPins; }
 
     inline size_t historySize() const { return state - history; }
 
@@ -160,6 +162,7 @@ private:
     template<Side Me> inline void updateThreatenedSquares();
     template<Side Me> inline void updateCheckers();
     template<Side Me, bool InCheck> inline void updatePinsAndCheckMask();
+    template<Side Me> inline void updateOppPins();
 
     inline void updateBitboards();
     template<Side Me> inline void updateBitboards();

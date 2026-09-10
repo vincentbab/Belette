@@ -841,6 +841,26 @@ inline void Position::updatePinsAndCheckMask() {
     state->pinDiag = pd;
     state->pinOrtho = po;
     if constexpr (InCheck) state->checkMask = cm;
+
+    updateOppPins<Me>();
+}
+
+template<Side Me>
+inline void Position::updateOppPins() {
+    constexpr Side Opp = ~Me;
+    Square ksq = getKingSquare(Opp);
+    Bitboard pins = EmptyBB;
+
+    Bitboard pinners = (attacks<BISHOP>(ksq, getPiecesBB(Me)) & getPiecesBB(Me, BISHOP, QUEEN))
+                     | (attacks<ROOK>(ksq, getPiecesBB(Me)) & getPiecesBB(Me, ROOK, QUEEN));
+    bitscan_loop(pinners) {
+        Square s = bitscan(pinners);
+        Bitboard b = betweenBB(ksq, s);
+
+        if (popcount(b & getPiecesBB(Opp)) == 1) pins |= b | bb(s);
+    }
+
+    state->oppPins = pins;
 }
 
 template<Side Me>
@@ -891,11 +911,18 @@ bool Position::see(Move move, int threshold) const {
     Bitboard allAttackers = getAttackers(to, occupied) & occupied;
     int result = 1;
 
+    Bitboard pinMask[NB_SIDE];
+    pinMask[getSideToMove()] = pinDiag() | pinOrtho();
+    pinMask[me] = oppPins();
+
     while (true) {
         Bitboard myAttackers = allAttackers & getPiecesBB(me);
-        if (!myAttackers) break; // No more attackers
 
-        // TODO: remove pinned pieces
+        // Excluded pinned pieces unless they capture along the pin
+        if (pinMask[me] & getPiecesBB(~me) & occupied)
+            myAttackers &= ~(pinMask[me] & ~lineBB(getKingSquare(me), to));
+
+        if (!myAttackers) break; // No more attackers
 
         result ^= 1;
 

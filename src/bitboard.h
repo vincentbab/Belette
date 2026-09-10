@@ -50,6 +50,7 @@ extern PextEntry BISHOP_MOVE[NB_SQUARE];
 extern PextEntry ROOK_MOVE[NB_SQUARE];
 
 extern Bitboard BETWEEN_BB[NB_SQUARE][NB_SQUARE];
+extern Bitboard LINE_BB[NB_SQUARE][NB_SQUARE];
 
 template<Direction D>
 constexpr Bitboard shift(Bitboard b)
@@ -101,6 +102,11 @@ inline Bitboard attacks(Square sq, Bitboard occupied = 0) {
 inline Bitboard betweenBB(Square from, Square to) {
     assert(isValidSq(from) && isValidSq(to));
     return BETWEEN_BB[from][to];
+}
+
+inline Bitboard lineBB(Square from, Square to) {
+    assert(isValidSq(from) && isValidSq(to));
+    return LINE_BB[from][to];
 }
 
 } /* namespace Belette */

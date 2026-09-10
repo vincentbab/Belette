@@ -10,6 +10,7 @@ PextEntry ROOK_MOVE[NB_SQUARE];
 PextEntry BISHOP_MOVE[NB_SQUARE];
 
 Bitboard BETWEEN_BB[NB_SQUARE][NB_SQUARE];
+Bitboard LINE_BB[NB_SQUARE][NB_SQUARE];
 
 Bitboard ROOK_DATA[0x19000];
 Bitboard BISHOP_DATA[0x1480];
@@ -110,8 +111,10 @@ void init()
 
             if (slidingAttacks<ROOK>(s, 0) & s2) {
                 BETWEEN_BB[s][s2] |= slidingAttacks<ROOK>(s, b2) & slidingAttacks<ROOK>(s2, b);
+                LINE_BB[s][s2] = (slidingAttacks<ROOK>(s, 0) & slidingAttacks<ROOK>(s2, 0)) | b | b2;
             } else if (slidingAttacks<BISHOP>(s, 0) & s2) {
                 BETWEEN_BB[s][s2] = slidingAttacks<BISHOP>(s, b2) & slidingAttacks<BISHOP>(s2, b);
+                LINE_BB[s][s2] = (slidingAttacks<BISHOP>(s, 0) & slidingAttacks<BISHOP>(s2, 0)) | b | b2;
             }
         }
     }
