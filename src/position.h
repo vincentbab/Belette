@@ -144,6 +144,7 @@ public:
     inline Move previousMove() const { return state->move; }
     
     bool see(Move m, int threshold) const ;
+    template<Side Me> inline bool givesCheck(Move m) const;
 
     std::string debugHistory();
 
@@ -184,6 +185,48 @@ private:
 };
 
 std::ostream& operator<<(std::ostream& os, const Position& pos);
+
+template<Side Me>
+inline bool Position::givesCheck(Move m) const {
+    constexpr Side Opp = ~Me;
+    const Square from = moveFrom(m), to = moveTo(m);
+    const Square ksq = getKingSquare(Opp);
+    const MoveType mt = moveType(m);
+
+    Bitboard occupied = (getPiecesBB() ^ bb(from)) | bb(to);
+    Bitboard vacated = bb(from);
+
+    if (mt == EN_PASSANT) {
+        const Square epsq = to - pawnDirection(Me);
+        occupied ^= bb(epsq);
+        vacated |= bb(epsq);
+    } else if (mt == CASTLING) {
+        const CastlingRight cr = Me & (to > from ? KING_SIDE : QUEEN_SIDE);
+        occupied ^= bb(CastlingRookFrom[cr]) | bb(CastlingRookTo[cr]);
+
+        return !!(attacks<ROOK>(CastlingRookTo[cr], occupied) & ksq);
+    }
+
+    // Direct check
+    switch (mt == PROMOTION ? movePromotionType(m) : pieceType(getPieceAt(from))) {
+        case PAWN:   if (pawnAttacks(Opp, ksq) & to) return true; break;
+        case KNIGHT: if (attacks<KNIGHT>(ksq) & to) return true; break;
+        case BISHOP: if (attacks<BISHOP>(ksq, occupied) & to) return true; break;
+        case ROOK:   if (attacks<ROOK>(ksq, occupied) & to) return true; break;
+        case QUEEN:  if (attacks<QUEEN>(ksq, occupied) & to) return true; break;
+        default: break;
+    }
+
+    // Discovered check
+    if (mt != EN_PASSANT) {
+        const Bitboard line = lineBB(ksq, from);
+        if (line == EmptyBB || (line & to)) return false;
+    }
+
+    vacated = ~vacated;
+    return !!(((attacks<BISHOP>(ksq, occupied) & getPiecesBB(Me, BISHOP, QUEEN))
+             | (attacks<ROOK>(ksq, occupied) & getPiecesBB(Me, ROOK, QUEEN))) & vacated);
+}
 
 inline Bitboard Position::getAttackers(Square sq, Bitboard occupied) const {
     return ((pawnAttacks(BLACK, sq) & getPiecesBB(WHITE, PAWN))
