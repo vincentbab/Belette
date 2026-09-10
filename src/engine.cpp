@@ -585,7 +585,13 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
 
     Move ttMove = tte->move();
     bool useTTMove = ttHit && isValidMove(ttMove) && (inCheck || pos.isTactical(ttMove));
-    MovePicker mp(pos, useTTMove ? ttMove : MOVE_NONE, &sd->moveHistory);
+
+    PieceToHistory* contHist[CONT_HIST_PLIES] = {
+        sd->node(ply-1).contHist,
+        sd->node(ply-2).contHist
+    };
+
+    MovePicker mp(pos, useTTMove ? ttMove : MOVE_NONE, &sd->moveHistory, ply, contHist);
     //MovePicker *mp = new (&node.mp) MovePicker(pos, useTTMove ? ttMove : MOVE_NONE);
 
     Score futilityBase = eval + 100;
@@ -610,6 +616,7 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
 
         sd->nbNodes++;
 
+        sd->node(ply).contHist = sd->moveHistory.getContHistEntry(pos, move);
         sd->node(ply).contCorr = sd->moveHistory.getContCorrEntry(pos, move);
 
         pos.doMove<Me>(move);
