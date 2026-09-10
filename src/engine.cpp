@@ -586,7 +586,7 @@ Score Engine::qSearch(Score alpha, Score beta, int depth, int ply) {
     Move ttMove = tte->move();
     // If ttMove is quiet we don't want to use it past a certain depth to allow qSearch to stabilize
     bool useTTMove = ttHit && isValidMove(ttMove) && (depth >= -7 || inCheck || pos.isTactical(ttMove));
-    MovePicker mp(pos, useTTMove ? ttMove : MOVE_NONE);
+    MovePicker mp(pos, useTTMove ? ttMove : MOVE_NONE, &sd->moveHistory);
     //MovePicker *mp = new (&node.mp) MovePicker(pos, useTTMove ? ttMove : MOVE_NONE);
 
     Score futilityBase = eval + 100;
