@@ -37,10 +37,21 @@ enum MovePickerType {
 class MovePicker {
 public:
     MovePicker(): pos(nullptr), moveHistory(nullptr) { }
+
+    // Simple
     MovePicker(const Position &pos_, Move ttMove_ = MOVE_NONE, const MoveHistory* moveHistory_ = nullptr)
     : pos(&pos_),  moveHistory(moveHistory_), ttMove(ttMove_), refutations{}, contHist(nullptr)
     { }
 
+    // Quiescence
+    MovePicker(const Position &pos_, Move ttMove_, const MoveHistory* moveHistory_,
+               const PieceToHistory* const* contHist_)
+    : pos(&pos_), moveHistory(moveHistory_), ttMove(ttMove_), refutations{}, contHist(contHist_)
+    {
+        assert(contHist != nullptr);
+    }
+
+    // Main
     MovePicker(const Position &pos_, Move ttMove_, const MoveHistory* moveHistory_, int ply_,
                const PieceToHistory* const* contHist_)
     : pos(&pos_), moveHistory(moveHistory_), ttMove(ttMove_),
@@ -64,7 +75,7 @@ private:
     Move refutations[3];
     const PieceToHistory* const* contHist;
 
-    template<Side Me> inline MoveScore scoreEvasion(Move m);
+    template<Side Me, int NbContHist> inline MoveScore scoreEvasion(Move m);
     template<Side Me> inline MoveScore scoreTactical(Move m);
     template<Side Me> inline MoveScore scoreQuiet(Move m);
 };
@@ -96,7 +107,7 @@ bool MovePicker::enumerate(const Handler &handler) {
 
             tt.prefetch(pos->getHashAfter(m));
 
-            ScoredMove newMove = ScoredMove(m, scoreEvasion<Me>(m));
+            ScoredMove newMove = ScoredMove(m, scoreEvasion<Me, Type == QUIESCENCE ? QSEARCH_CONT_HIST_PLIES : CONT_HIST_PLIES>(m));
             moves.insert_sorted(newMove, compare);
             
             return true;
@@ -199,13 +210,13 @@ bool MovePicker::enumerate(const Handler &handler) {
     return true;
 }
 
-template<Side Me>
+template<Side Me, int NbContHist>
 MoveScore MovePicker::scoreEvasion(Move m) {
     if (pos->isTactical(m)) {
         return scoreTactical<Me>(m) + 1000000;
     } else {
         if (contHist != nullptr) [[likely]]
-            return moveHistory->getHistory<Me>(*pos, m, contHist);
+            return moveHistory->getHistory<Me, NbContHist>(*pos, m, contHist);
     }
 
     return 0;

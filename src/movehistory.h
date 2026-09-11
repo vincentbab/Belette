@@ -23,6 +23,7 @@ using PieceToHistory = std::array<std::array<MoveScore, NB_SQUARE>, NB_PIECE>;
 using ContinuationHistory = std::array<std::array<PieceToHistory, NB_SQUARE>, NB_PIECE>;
 
 constexpr int CONT_HIST_PLIES = 2;
+constexpr int QSEARCH_CONT_HIST_PLIES = 1;
 
 constexpr int CORR_HIST_SIZE = 16384;
 constexpr MoveScore CORR_HIST_GRAIN = 256;
@@ -73,13 +74,13 @@ public:
         return counterMoves[pos.getPieceAt(moveTo(prevMove))][moveTo(prevMove)];
     }
 
-    template<Side Me>
+    template<Side Me, int NbContHist = CONT_HIST_PLIES>
     inline MoveScore getHistory(const Position& pos, Move m, const PieceToHistory* const* contHist) const {
         Piece pc = pos.getPieceAt(moveFrom(m));
         Square to = moveTo(m);
 
         MoveScore score = 2 * history[Me][moveFromTo(m)];
-        for (int i = 0; i < CONT_HIST_PLIES; i++)
+        for (int i = 0; i < NbContHist; i++)
             score += (*contHist[i])[pc][to];
 
         return score;
