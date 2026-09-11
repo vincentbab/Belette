@@ -428,7 +428,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             R += 1024 * ttTactical;
             R += 2048 * cutNode;
             R += 1024 * !improving;
-            R -= statScore / 4;
+            R -= std::clamp(statScore / 4, -4096, 4096);
 
             R = std::min(depth - 1, std::max(1, R / LMR_FACTOR));
 
