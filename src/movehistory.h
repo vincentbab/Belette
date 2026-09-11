@@ -25,6 +25,10 @@ using ContinuationHistory = std::array<std::array<PieceToHistory, NB_SQUARE>, NB
 constexpr int CONT_HIST_PLIES = 2;
 constexpr int QSEARCH_CONT_HIST_PLIES = 1;
 
+constexpr int PAWN_HIST_SIZE = 4096;
+
+using PawnHistory = std::array<std::array<std::array<int16_t, NB_SQUARE>, NB_PIECE>, PAWN_HIST_SIZE>;
+
 constexpr int CORR_HIST_SIZE = 16384;
 constexpr MoveScore CORR_HIST_GRAIN = 256;
 constexpr MoveScore CORR_HIST_LIMIT = 32 * CORR_HIST_GRAIN;
@@ -38,7 +42,8 @@ public:
         nonPawnCorrHist(std::make_unique<NonPawnCorrHist>()),
         minorCorrHist(std::make_unique<MinorCorrHist>()),
         contCorrHist(std::make_unique<ContinuationHistory>()),
-        continuationHistory(std::make_unique<ContinuationHistory>()) { }
+        continuationHistory(std::make_unique<ContinuationHistory>()),
+        pawnHistory(std::make_unique<PawnHistory>()) { }
 
     inline void clear() {
         std::memset(counterMoves, 0, sizeof(counterMoves));
@@ -50,6 +55,7 @@ public:
         std::memset(minorCorrHist.get(), 0, sizeof(MinorCorrHist));
         std::memset(contCorrHist.get(), 0, sizeof(ContinuationHistory));
         std::memset(continuationHistory.get(), 0, sizeof(ContinuationHistory));
+        std::memset(pawnHistory.get(), 0, sizeof(PawnHistory));
     }
 
     inline void clearAllKillers() {
@@ -84,6 +90,10 @@ public:
             score += (*contHist[i])[pc][to];
 
         return score;
+    }
+
+    inline MoveScore getPawnHistory(const Position& pos, Move m) const {
+        return (*pawnHistory)[pos.pawnHash() & (PAWN_HIST_SIZE - 1)][pos.getPieceAt(moveFrom(m))][moveTo(m)];
     }
 
     inline MoveScore getCaptureHistory(const Position& pos, Move m) const {
@@ -173,6 +183,7 @@ private:
     std::unique_ptr<MinorCorrHist> minorCorrHist;
     std::unique_ptr<ContinuationHistory> contCorrHist;
     std::unique_ptr<ContinuationHistory> continuationHistory;
+    std::unique_ptr<PawnHistory> pawnHistory;
 
     inline MoveScore historyBonus(int depth) {
         return std::min(1536, 8*depth*depth);
@@ -193,7 +204,8 @@ private:
             counterMoves[pos.getPieceAt(moveTo(prevMove))][moveTo(prevMove)] = move;
     }
 
-    inline void updateHistoryEntry(MoveScore &entry, MoveScore bonus) {
+    template<typename T>
+    inline void updateHistoryEntry(T &entry, MoveScore bonus) {
         entry += bonus - entry * std::abs(bonus) / 8192;
     }
 
@@ -219,6 +231,8 @@ private:
         for (int i = 0; i < CONT_HIST_PLIES; i++)
             if (contHist[i] != getDefaultContHist())
                 updateHistoryEntry((*contHist[i])[pc][to], bonus);
+
+        updateHistoryEntry((*pawnHistory)[pos.pawnHash() & (PAWN_HIST_SIZE - 1)][pc][to], bonus);
     }
 };
 

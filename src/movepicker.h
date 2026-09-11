@@ -248,7 +248,7 @@ MoveScore MovePicker::scoreQuiet(Move m) {
     score += ((threatened & from) && !(threatened & to)) * PieceThreatenedValue[pt];
 
     if (moveHistory != nullptr) [[likely]]
-        score += moveHistory->getHistory<Me>(*pos, m, contHist);
+        score += moveHistory->getHistory<Me>(*pos, m, contHist) + 2 * moveHistory->getPawnHistory(*pos, m);
 
     // TODO: refactor this!
     switch (pt) {
