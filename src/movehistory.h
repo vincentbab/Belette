@@ -29,6 +29,11 @@ constexpr int QSEARCH_CONT_HIST_PLIES = 1;
 constexpr MoveScore MAIN_HIST_LIMIT = 8192;
 constexpr MoveScore CAPTURE_HIST_LIMIT = 8192;
 constexpr MoveScore CONT_HIST_LIMIT = 8192;
+constexpr MoveScore PAWN_HIST_LIMIT = 8192;
+
+constexpr int PAWN_HIST_SIZE = 4096;
+
+using PawnHistory = std::array<PieceToHistory, PAWN_HIST_SIZE>;
 
 constexpr int CORR_HIST_SIZE = 16384;
 constexpr MoveScore CORR_HIST_GRAIN = 256;
@@ -43,7 +48,8 @@ public:
         nonPawnCorrHist(std::make_unique<NonPawnCorrHist>()),
         minorCorrHist(std::make_unique<MinorCorrHist>()),
         contCorrHist(std::make_unique<ContinuationHistory>()),
-        continuationHistory(std::make_unique<ContinuationHistory>()) { }
+        continuationHistory(std::make_unique<ContinuationHistory>()),
+        pawnHistory(std::make_unique<PawnHistory>()) { }
 
     inline void clear() {
         std::memset(counterMoves, 0, sizeof(counterMoves));
@@ -55,6 +61,7 @@ public:
         std::memset(minorCorrHist.get(), 0, sizeof(MinorCorrHist));
         std::memset(contCorrHist.get(), 0, sizeof(ContinuationHistory));
         std::memset(continuationHistory.get(), 0, sizeof(ContinuationHistory));
+        std::memset(pawnHistory.get(), 0, sizeof(PawnHistory));
     }
 
     inline void clearAllKillers() {
@@ -84,7 +91,7 @@ public:
         Piece pc = pos.getPieceAt(moveFrom(m));
         Square to = moveTo(m);
 
-        MoveScore score = 2 * history[Me][moveFromTo(m)];
+        MoveScore score = 2 * history[Me][moveFromTo(m)] + 2 * getPawnHistory(pos, m);
         for (int i = 0; i < CONT_HIST_PLIES; i++)
             score += (*contHist[i])[pc][to];
 
@@ -101,6 +108,10 @@ public:
             score += (*contHist[i])[pc][to];
 
         return score;
+    }
+
+    inline MoveScore getPawnHistory(const Position& pos, Move m) const {
+        return (*pawnHistory)[pos.pawnHash() & (PAWN_HIST_SIZE - 1)][pos.getPieceAt(moveFrom(m))][moveTo(m)];
     }
 
     inline MoveScore getCaptureHistory(const Position& pos, Move m) const {
@@ -185,10 +196,12 @@ public:
 
             updateMainHistory<Me>(bestMove, bonus);
             updateContinuationHistory(pos, bestMove, bonus, contHist);
+            updatePawnHistory(pos, bestMove, bonus);
 
             for (auto m : quietMoves) {
                 updateMainHistory<Me>(m, -malus);
                 updateContinuationHistory(pos, m, -malus, contHist);
+                updatePawnHistory(pos, m, -malus);
             }
         } else {
             updateCaptureHistory(pos, bestMove, bonus);
@@ -208,6 +221,7 @@ private:
     std::unique_ptr<MinorCorrHist> minorCorrHist;
     std::unique_ptr<ContinuationHistory> contCorrHist;
     std::unique_ptr<ContinuationHistory> continuationHistory;
+    std::unique_ptr<PawnHistory> pawnHistory;
 
     inline MoveScore historyBonus(int depth) {
         return std::min(1536, 8*depth*depth);
@@ -261,6 +275,10 @@ private:
         for (int i = 0; i < CONT_HIST_PLIES; i++)
             if (contHist[i] != getDefaultContHist())
                 updateHistoryEntry((*contHist[i])[pc][to], bonus, CONT_HIST_LIMIT);
+    }
+
+    inline void updatePawnHistory(const Position& pos, Move m, MoveScore bonus) {
+        updateHistoryEntry((*pawnHistory)[pos.pawnHash() & (PAWN_HIST_SIZE - 1)][pos.getPieceAt(moveFrom(m))][moveTo(m)], bonus, PAWN_HIST_LIMIT);
     }
 };
 
