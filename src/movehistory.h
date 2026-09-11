@@ -9,6 +9,7 @@
 #include "chess.h"
 #include "position.h"
 #include "fixed_vector.h"
+#include "tune.h"
 
 namespace Belette {
 
@@ -79,7 +80,7 @@ public:
         Piece pc = pos.getPieceAt(moveFrom(m));
         Square to = moveTo(m);
 
-        MoveScore score = 2 * history[Me][moveFromTo(m)];
+        MoveScore score = history[Me][moveFromTo(m)] * HistMainMult / 512;
         for (int i = 0; i < NbContHist; i++)
             score += (*contHist[i])[pc][to];
 
@@ -129,7 +130,7 @@ public:
     template<Side Me>
     inline void updateCorrection(const Position& pos, Score bestScore, Score staticEval, int depth, PieceToHistory* contCorr) {
         MoveScore diff = (bestScore - staticEval) * CORR_HIST_GRAIN;
-        MoveScore weight = std::min(depth + 1, 16);
+        MoveScore weight = std::min(depth + 1, CorrWeightMax);
 
         updateCorrEntry(corrHist[Me][pos.pawnHash() & (CORR_HIST_SIZE - 1)], diff, weight);
         updateCorrEntry((*nonPawnCorrHist)[Me][WHITE][pos.nonPawnHash(WHITE) & (CORR_HIST_SIZE - 1)], diff, weight);
@@ -175,7 +176,7 @@ private:
     std::unique_ptr<ContinuationHistory> continuationHistory;
 
     inline MoveScore historyBonus(int depth) {
-        return std::min(1536, 8*depth*depth);
+        return std::min(HistBonusMax, HistBonusMult * depth * depth / 16);
     }
 
     inline void updateKiller(Move move, int ply) {
@@ -194,7 +195,7 @@ private:
     }
 
     inline void updateHistoryEntry(MoveScore &entry, MoveScore bonus) {
-        entry += bonus - entry * std::abs(bonus) / 8192;
+        entry += bonus - entry * std::abs(bonus) / HistMax;
     }
 
     inline void updateCorrEntry(MoveScore &entry, MoveScore diff, MoveScore weight) {

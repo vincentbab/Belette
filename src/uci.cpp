@@ -8,6 +8,7 @@
 #include "utils.h"
 #include "movepicker.h"
 #include "bench.h"
+#include "tune.h"
 
 namespace Belette {
 
@@ -37,6 +38,15 @@ Uci::Uci()  {
     });
     options["Threads"] = UciOption(1, 1, 1);
 
+#ifdef TUNE
+    for (auto p : tunableParams()) {
+        options[p->name] = UciOption(p->defaultValue, p->min, p->max, [p] (const UciOption &opt) {
+            p->value = int(int64_t(opt));
+            Engine::init();
+        });
+    }
+#endif
+
     commands["uci"] = &Uci::cmdUci;
     commands["isready"] = &Uci::cmdIsReady;
     commands["ucinewgame"] = &Uci::cmdUciNewGame;
@@ -53,6 +63,9 @@ Uci::Uci()  {
     commands["perftmp"] = &Uci::cmdPerftmp;
     commands["test"] = &Uci::cmdTest;
     commands["bench"] = &Uci::cmdBench;
+#ifdef TUNE
+    commands["spsa"] = &Uci::cmdSpsa;
+#endif
 }
 
 Square Uci::parseSquare(std::string str) {
@@ -384,6 +397,19 @@ bool Uci::cmdBench(std::istringstream& is) {
     
     return true;
 }
+
+#ifdef TUNE
+bool Uci::cmdSpsa(std::istringstream& is) {
+    auto params = tunableParams();
+    std::sort(params.begin(), params.end(), [](auto a, auto b) { return a->name < b->name; });
+
+    for (auto p : params) {
+        console << p->name << ", int, " << p->defaultValue << ", " << p->min << ", " << p->max << ", " << p->step << ", 0.002" << std::endl;
+    }
+
+    return true;
+}
+#endif
 
 void UciEngine::onSearchProgress(const SearchEvent &event) {
     console << "info"

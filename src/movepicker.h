@@ -10,12 +10,9 @@
 #include "movehistory.h"
 #include "evaluate.h"
 #include "tt.h"
+#include "tune.h"
 
 namespace Belette {
-
-constexpr MoveScore PieceThreatenedValue[NB_PIECE_TYPE] = {
-    0, 0, 15000, 15000, 25000, 50000, 0
-};
 
 struct ScoredMove {
     ScoredMove() { };
@@ -135,7 +132,7 @@ bool MovePicker::enumerate(const Handler &handler) {
 
     for (current = endBadTacticals = moves.begin(); current != moves.end(); current++) {
         if constexpr(Type == MAIN) { // For quiescence prunning of bad captures is done in search
-            if (!pos->see(current->move, -50)) { // Allow Bishop takes Knight
+            if (!pos->see(current->move, BadCaptureSee)) { // Allow Bishop takes Knight
                 *endBadTacticals++ = *current;
                 continue;
             }
@@ -187,7 +184,7 @@ bool MovePicker::enumerate(const Handler &handler) {
 
     // Good quiets
     for (current = endBadQuiets = beginQuiets; current != moves.end() && !skipQuiets; current++) {
-        if (current->score < -16000) {
+        if (current->score < GoodQuietThreshold) {
             *endBadQuiets++ = *current;
             continue;
         }
@@ -244,6 +241,10 @@ MoveScore MovePicker::scoreQuiet(Move m) {
     if (moveType(m) == PROMOTION) [[unlikely]]
         return -40000;
 
+    const MoveScore PieceThreatenedValue[NB_PIECE_TYPE] = {
+        0, 0, ThreatMinor, ThreatMinor, ThreatRook, ThreatQueen, 0
+    };
+
     Bitboard threatened = pos->threatsFor(pt);
     score += ((threatened & from) && !(threatened & to)) * PieceThreatenedValue[pt];
 
@@ -254,27 +255,27 @@ MoveScore MovePicker::scoreQuiet(Move m) {
     switch (pt) {
         case PAWN:
             if (pawnAttacks<Me>(bb(to)) & pos->getPiecesBB(~Me, KING)) {
-                score += 10000;
+                score += CheckBonus;
             }
             break;
         case KNIGHT:
             if (attacks<KNIGHT>(to, pos->getPiecesBB()) & pos->getPiecesBB(~Me, KING)) {
-                score += 10000;
+                score += CheckBonus;
             }
             break;
         case BISHOP:
             if (attacks<BISHOP>(to, pos->getPiecesBB()) & pos->getPiecesBB(~Me, KING)) {
-                score += 10000;
+                score += CheckBonus;
             }
             break;
         case ROOK:
             if (attacks<ROOK>(to, pos->getPiecesBB()) & pos->getPiecesBB(~Me, KING)) {
-                score += 10000;
+                score += CheckBonus;
             }
             break;
         case QUEEN:
             if (attacks<QUEEN>(to, pos->getPiecesBB()) & pos->getPiecesBB(~Me, KING)) {
-                score += 10000;
+                score += CheckBonus;
             }
             break;
         default:

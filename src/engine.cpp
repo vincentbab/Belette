@@ -5,6 +5,7 @@
 #include "movegen.h"
 #include "evaluate.h"
 #include "movepicker.h"
+#include "tune.h"
 
 namespace Belette {
 
@@ -15,7 +16,7 @@ int Engine::LMRTable[MAX_PLY][MAX_MOVE];
 void Engine::init() {
     for (int d=1; d<MAX_PLY; d++) {
         for (int m=1; m<MAX_MOVE; m++) {
-            LMRTable[d][m] = int(LMR_FACTOR * (0.25 + 0.46 * std::log(d) * std::log(m)));
+            LMRTable[d][m] = int(LmrBase + LMR_FACTOR * (LmrScale / 1000.0 * std::log(d) * std::log(m)));
         }
     }
 }
@@ -86,8 +87,8 @@ void Engine::idSearch() {
         searchDepth = depth;
 
         // Aspiration window
-        if (depth > 4) {
-            delta = 16 + std::abs(bestScore)/100;
+        if (depth > AspDepth) {
+            delta = AspDelta + std::abs(bestScore) * AspScoreMult / 10000;
             alpha = std::max(-SCORE_INFINITE, bestScore - delta);
             beta  = std::min( SCORE_INFINITE, bestScore + delta);
         }
@@ -114,7 +115,7 @@ void Engine::idSearch() {
                 break;
             }
 
-            delta += delta / 2;
+            delta += delta * AspGrowth / 1024;
         }
 
         if (searchAborted() && (depth > 1 || score == -SCORE_INFINITE)) break;
@@ -280,20 +281,20 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     }
 
     // Internal Iterative Reduction (IIR)
-    if (depth >= 4 && ttMove == MOVE_NONE) {
+    if (depth >= IirDepth && ttMove == MOVE_NONE) {
         depth--;
     }
 
     // Reverse futility pruning (RFP)
-    if (!PvNode && !inCheck && depth <= 8
-        && eval - ((improving ? 60 : 120) * depth) >= beta)
+    if (!PvNode && !inCheck && depth <= RfpDepth
+        && eval - ((improving ? RfpMarginImproving : RfpMargin) * depth) >= beta)
     {
         return eval;
     }
 
     // Razoring
-    if (!PvNode && !inCheck && depth <= 2
-        && eval + (400 * depth) <= alpha)
+    if (!PvNode && !inCheck && depth <= RazorDepth
+        && eval + (RazorMargin * depth) <= alpha)
     {
         Score score = qSearch<Me, QNodeType>(alpha, beta, ply);
         if (score <= alpha)
@@ -301,11 +302,11 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     }
 
     // Null move pruning (NMP)
-    if (!PvNode && !inCheck && !excludedMove && depth >= 3
+    if (!PvNode && !inCheck && !excludedMove && depth >= NmpDepth
         && pos.previousMove() != MOVE_NULL && pos.hasNonPawnMateriel<Me>() && eval >= beta)
     {
         tt.prefetch(pos.getHashAfterNullMove());
-        int R = 4 + depth / 4 + std::min((eval - beta) / 200, 3);
+        int R = NmpBase + depth * NmpDepthMult / 1024 + std::min((eval - beta) / NmpEvalDiv, NmpEvalMax);
 
         node.contHist = sd->moveHistory.getDefaultContHist();
         node.contCorr = sd->moveHistory.getDefaultContCorr();
@@ -326,12 +327,12 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
     // Singular extensions
     int extension = 0;
-    if (!RootNode && !excludedMove && depth >= 8
+    if (!RootNode && !excludedMove && depth >= SeDepth
         && ttHit && isValidMove(ttMove) && std::abs(ttScore) < SCORE_MATE_MAX_PLY
-        && ttLower && ttDepth >= depth - 3
+        && ttLower && ttDepth >= depth - SeTtDepthMargin
         && pos.isLegal<Me>(ttMove))
     {
-        Score singularBeta = ttScore - 2*depth;
+        Score singularBeta = ttScore - SeBetaMult * depth / 16;
 
         node.excludedMove = ttMove;
         Score score = pvSearch<Me, NodeType::NonPV>(singularBeta-1, singularBeta, (depth-1)/2, ply, cutNode);
@@ -341,7 +342,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             extension = 1;
 
             // Double extension
-            if (!PvNode && score < singularBeta - 20 && node.doubleExts <= 8) {
+            if (!PvNode && score < singularBeta - SeDoubleMargin && node.doubleExts <= SeDoubleMax) {
                 extension = 2;
                 node.doubleExts++;
             }
@@ -379,11 +380,11 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         // Late move pruning
         if (!RootNode && bestScore > -SCORE_MATE_MAX_PLY) {
             // Move count pruning
-            skipQuiets = (nbMoves >= 3 + depth*depth/(improving ? 1 : 2));
+            skipQuiets = (nbMoves >= (LmpBase + depth * depth * (improving ? LmpImproving : LmpMult)) / 1024);
 
             // Futility pruning
-            Score futilityValue = eval + 100 + 120*depth + statScore/64;
-            if (!inCheck && !moveIsTactical && lmrDepth <= 6 && futilityValue <= alpha) {
+            Score futilityValue = eval + FpBase + FpDepthMargin * depth + statScore * FpHistMult / 4096;
+            if (!inCheck && !moveIsTactical && lmrDepth <= FpLmrDepth && futilityValue <= alpha) {
                 skipQuiets = true;
                 if (bestScore < futilityValue && futilityValue < SCORE_MATE_MAX_PLY)
                     bestScore = futilityValue;
@@ -391,12 +392,12 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             }
 
             // History pruning
-            if (!inCheck && !moveIsTactical && depth <= 4 && statScore < -4096 * depth) {
+            if (!inCheck && !moveIsTactical && depth <= HpDepth && statScore < -HpMargin * depth) {
                 return true; // continue;
             }
 
             // SEE Pruning
-            if (depth <= 8 && !pos.see(move, moveIsTactical ? -100*depth : -60*depth)) {
+            if (depth <= SeePruneDepth && !pos.see(move, moveIsTactical ? -SeeTacticalMargin * depth : -SeeQuietMargin * depth)) {
                 return true; // continue;
             }
         }
@@ -422,13 +423,13 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         if (depth >= 2 && nbMoves > 1) {
             int R = LMRTable[depth][nbMoves];
 
-            R -= 1024 * PvNode;
-            R -= 1024 * pos.inCheck();
-            R += 1024 * !ttPv;
-            R += 1024 * ttTactical;
-            R += 2048 * cutNode;
-            R += 1024 * !improving;
-            R -= statScore / 4;
+            R -= LmrPv * PvNode;
+            R -= LmrInCheck * pos.inCheck();
+            R += LmrNoTtPv * !ttPv;
+            R += LmrTtTactical * ttTactical;
+            R += LmrCutNode * cutNode;
+            R += LmrNotImproving * !improving;
+            R -= statScore * LmrHistMult / 4096;
 
             R = std::min(depth - 1, std::max(1, R / LMR_FACTOR));
 
@@ -596,7 +597,7 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
     MovePicker mp(pos, useTTMove ? ttMove : MOVE_NONE, &sd->moveHistory, contHist);
     //MovePicker *mp = new (&node.mp) MovePicker(pos, useTTMove ? ttMove : MOVE_NONE);
 
-    Score futilityBase = eval + 100;
+    Score futilityBase = eval + QsFpMargin;
     Square prevSq = isValidMove(pos.previousMove()) ? moveTo(pos.previousMove()) : SQ_NONE;
 
     mp.enumerate<QUIESCENCE, Me>([&](Move move, /*unused*/bool& skipQuiets) -> bool {
@@ -611,7 +612,7 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
             }
 
             // SEE Pruning
-            if (!pos.see(move, 0)) {
+            if (!pos.see(move, QsSeeMargin)) {
                 return true; // continue;
             }
         }
