@@ -8,12 +8,14 @@
 
 namespace Belette {
 
+constexpr int LMR_FACTOR = 1024;
+
 int Engine::LMRTable[MAX_PLY][MAX_MOVE];
 
 void Engine::init() {
     for (int d=1; d<MAX_PLY; d++) {
         for (int m=1; m<MAX_MOVE; m++) {
-            LMRTable[d][m] = int(0.25 + 0.46 * std::log(d) * std::log(m));
+            LMRTable[d][m] = int(LMR_FACTOR * (0.25 + 0.46 * std::log(d) * std::log(m)));
         }
     }
 }
@@ -372,7 +374,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         MoveScore statScore = moveIsTactical ? sd->moveHistory.getCaptureHistory(pos, move)
                                              : sd->moveHistory.getHistory<Me>(pos, move, contHist);
 
-        int lmrDepth = std::max(0, depth - 1 - LMRTable[depth][nbMoves]);
+        int lmrDepth = std::max(0, depth - 1 - LMRTable[depth][nbMoves] / LMR_FACTOR);
 
         // Late move pruning
         if (!RootNode && bestScore > -SCORE_MATE_MAX_PLY) {
@@ -420,15 +422,15 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         if (depth >= 2 && nbMoves > 1) {
             int R = LMRTable[depth][nbMoves];
 
-            R -= PvNode;
-            R -= pos.inCheck();
-            R += !ttPv;
-            R += ttTactical;
-            R += 2*cutNode;
-            R += !improving;
-            R -= statScore / 4096;
+            R -= 1024 * PvNode;
+            R -= 1024 * pos.inCheck();
+            R += 1024 * !ttPv;
+            R += 1024 * ttTactical;
+            R += 2048 * cutNode;
+            R += 1024 * !improving;
+            R -= statScore / 4;
 
-            R = std::min(depth - 1, std::max(1, R));
+            R = std::min(depth - 1, std::max(1, R / LMR_FACTOR));
 
             // Reduced depth, Zero window
             score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, depth-R, ply+1, true);
