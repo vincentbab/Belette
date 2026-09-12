@@ -216,7 +216,7 @@ MoveScore MovePicker::scoreEvasion(Move m) {
         return scoreTactical<Me>(m) + 1000000;
     } else {
         if (contHist != nullptr) [[likely]]
-            return moveHistory->getHistory<Me, NbContHist>(*pos, m, contHist);
+            return moveHistory->getEvasionQuietOrderingHistory<Me, NbContHist>(*pos, m, contHist);
     }
 
     return 0;
@@ -248,7 +248,7 @@ MoveScore MovePicker::scoreQuiet(Move m) {
     score += ((threatened & from) && !(threatened & to)) * PieceThreatenedValue[pt];
 
     if (moveHistory != nullptr) [[likely]]
-        score += moveHistory->getHistory<Me>(*pos, m, contHist);
+        score += moveHistory->getQuietOrderingHistory<Me>(*pos, m, contHist);
 
     // TODO: refactor this!
     switch (pt) {
