@@ -13,11 +13,12 @@
 namespace Belette {
 
 using MoveScore = int32_t;
+using HistoryScore = int16_t;
 
 using PartialMoveList = fixed_vector<Move, 32, uint8_t>;
 
 // Indexed by [piece][to] of the current move
-using PieceToHistory = std::array<std::array<MoveScore, NB_SQUARE>, NB_PIECE>;
+using PieceToHistory = std::array<std::array<HistoryScore, NB_SQUARE>, NB_PIECE>;
 
 // Indexed by [piece][to] of a previous move
 using ContinuationHistory = std::array<std::array<PieceToHistory, NB_SQUARE>, NB_PIECE>;
@@ -31,13 +32,15 @@ constexpr MoveScore CORR_HIST_LIMIT = 32 * CORR_HIST_GRAIN;
 
 using NonPawnCorrHist = std::array<std::array<std::array<MoveScore, CORR_HIST_SIZE>, NB_SIDE>, NB_SIDE>;
 using MinorCorrHist = std::array<std::array<MoveScore, CORR_HIST_SIZE>, NB_SIDE>;
+using PieceToCorrHist = std::array<std::array<MoveScore, NB_SQUARE>, NB_PIECE>;
+using ContinuationCorrHist = std::array<std::array<PieceToCorrHist, NB_SQUARE>, NB_PIECE>;
 
 class MoveHistory {
 public:
     MoveHistory(): counterMoves{}, killerMoves{}, history{}, captureHistory{}, corrHist{},
         nonPawnCorrHist(std::make_unique<NonPawnCorrHist>()),
         minorCorrHist(std::make_unique<MinorCorrHist>()),
-        contCorrHist(std::make_unique<ContinuationHistory>()),
+        contCorrHist(std::make_unique<ContinuationCorrHist>()),
         continuationHistory(std::make_unique<ContinuationHistory>()) { }
 
     inline void clear() {
@@ -48,7 +51,7 @@ public:
         std::memset(corrHist, 0, sizeof(corrHist));
         std::memset(nonPawnCorrHist.get(), 0, sizeof(NonPawnCorrHist));
         std::memset(minorCorrHist.get(), 0, sizeof(MinorCorrHist));
-        std::memset(contCorrHist.get(), 0, sizeof(ContinuationHistory));
+        std::memset(contCorrHist.get(), 0, sizeof(ContinuationCorrHist));
         std::memset(continuationHistory.get(), 0, sizeof(ContinuationHistory));
     }
 
@@ -103,17 +106,17 @@ public:
         return getContHistEntry(NO_PIECE, SQ_FIRST);
     }
 
-    inline PieceToHistory* getContCorrEntry(const Position& pos, Move m) {
+    inline PieceToCorrHist* getContCorrEntry(const Position& pos, Move m) {
         return &(*contCorrHist)[pos.getPieceAt(moveFrom(m))][moveTo(m)];
     }
 
     // Never indexed by a real move because NO_PIECE.
-    inline PieceToHistory* getDefaultContCorr() {
+    inline PieceToCorrHist* getDefaultContCorr() {
         return &(*contCorrHist)[NO_PIECE][SQ_FIRST];
     }
 
     template<Side Me>
-    inline Score correctEval(const Position& pos, Score eval, const PieceToHistory* contCorr) const {
+    inline Score correctEval(const Position& pos, Score eval, const PieceToCorrHist* contCorr) const {
         MoveScore correction = corrHist[Me][pos.pawnHash() & (CORR_HIST_SIZE - 1)]
                              + (*nonPawnCorrHist)[Me][WHITE][pos.nonPawnHash(WHITE) & (CORR_HIST_SIZE - 1)]
                              + (*nonPawnCorrHist)[Me][BLACK][pos.nonPawnHash(BLACK) & (CORR_HIST_SIZE - 1)]
@@ -127,7 +130,7 @@ public:
     }
 
     template<Side Me>
-    inline void updateCorrection(const Position& pos, Score bestScore, Score staticEval, int depth, PieceToHistory* contCorr) {
+    inline void updateCorrection(const Position& pos, Score bestScore, Score staticEval, int depth, PieceToCorrHist* contCorr) {
         MoveScore diff = (bestScore - staticEval) * CORR_HIST_GRAIN;
         MoveScore weight = std::min(depth + 1, 16);
 
@@ -166,12 +169,12 @@ public:
 private:
     Move counterMoves[NB_PIECE][NB_SQUARE];
     Move killerMoves[MAX_PLY+1][2];
-    MoveScore history[NB_SIDE][NB_SQUARE*NB_SQUARE];
-    MoveScore captureHistory[NB_PIECE][NB_SQUARE][NB_PIECE_TYPE];
+    HistoryScore history[NB_SIDE][NB_SQUARE*NB_SQUARE];
+    HistoryScore captureHistory[NB_PIECE][NB_SQUARE][NB_PIECE_TYPE];
     MoveScore corrHist[NB_SIDE][CORR_HIST_SIZE];
     std::unique_ptr<NonPawnCorrHist> nonPawnCorrHist;
     std::unique_ptr<MinorCorrHist> minorCorrHist;
-    std::unique_ptr<ContinuationHistory> contCorrHist;
+    std::unique_ptr<ContinuationCorrHist> contCorrHist;
     std::unique_ptr<ContinuationHistory> continuationHistory;
 
     inline MoveScore historyBonus(int depth) {
@@ -193,7 +196,7 @@ private:
             counterMoves[pos.getPieceAt(moveTo(prevMove))][moveTo(prevMove)] = move;
     }
 
-    inline void updateHistoryEntry(MoveScore &entry, MoveScore bonus) {
+    inline void updateHistoryEntry(HistoryScore &entry, MoveScore bonus) {
         entry += bonus - entry * std::abs(bonus) / 8192;
     }
 

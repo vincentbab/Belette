@@ -29,7 +29,7 @@ struct SearchLimits {
 struct Node {
     Score staticEval;
     PieceToHistory* contHist;
-    PieceToHistory* contCorr;
+    PieceToCorrHist* contCorr;
     Move excludedMove = MOVE_NONE;
     int doubleExts = 0;
     PvList pv;
