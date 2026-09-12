@@ -13,11 +13,12 @@
 namespace Belette {
 
 using MoveScore = int32_t;
+using HistoryScore = int16_t;
 
 using PartialMoveList = fixed_vector<Move, 32, uint8_t>;
 
 // Indexed by [piece][to] of the current move
-using PieceToHistory = std::array<std::array<MoveScore, NB_SQUARE>, NB_PIECE>;
+using PieceToHistory = std::array<std::array<HistoryScore, NB_SQUARE>, NB_PIECE>;
 
 // Indexed by [piece][to] of a previous move
 using ContinuationHistory = std::array<std::array<PieceToHistory, NB_SQUARE>, NB_PIECE>;
@@ -29,8 +30,8 @@ constexpr int CORR_HIST_SIZE = 16384;
 constexpr MoveScore CORR_HIST_GRAIN = 256;
 constexpr MoveScore CORR_HIST_LIMIT = 32 * CORR_HIST_GRAIN;
 
-using NonPawnCorrHist = std::array<std::array<std::array<MoveScore, CORR_HIST_SIZE>, NB_SIDE>, NB_SIDE>;
-using MinorCorrHist = std::array<std::array<MoveScore, CORR_HIST_SIZE>, NB_SIDE>;
+using NonPawnCorrHist = std::array<std::array<std::array<HistoryScore, CORR_HIST_SIZE>, NB_SIDE>, NB_SIDE>;
+using MinorCorrHist = std::array<std::array<HistoryScore, CORR_HIST_SIZE>, NB_SIDE>;
 
 class MoveHistory {
 public:
@@ -166,9 +167,9 @@ public:
 private:
     Move counterMoves[NB_PIECE][NB_SQUARE];
     Move killerMoves[MAX_PLY+1][2];
-    MoveScore history[NB_SIDE][NB_SQUARE*NB_SQUARE];
-    MoveScore captureHistory[NB_PIECE][NB_SQUARE][NB_PIECE_TYPE];
-    MoveScore corrHist[NB_SIDE][CORR_HIST_SIZE];
+    HistoryScore history[NB_SIDE][NB_SQUARE*NB_SQUARE];
+    HistoryScore captureHistory[NB_PIECE][NB_SQUARE][NB_PIECE_TYPE];
+    HistoryScore corrHist[NB_SIDE][CORR_HIST_SIZE];
     std::unique_ptr<NonPawnCorrHist> nonPawnCorrHist;
     std::unique_ptr<MinorCorrHist> minorCorrHist;
     std::unique_ptr<ContinuationHistory> contCorrHist;
@@ -193,13 +194,13 @@ private:
             counterMoves[pos.getPieceAt(moveTo(prevMove))][moveTo(prevMove)] = move;
     }
 
-    inline void updateHistoryEntry(MoveScore &entry, MoveScore bonus) {
+    inline void updateHistoryEntry(HistoryScore &entry, MoveScore bonus) {
         entry += bonus - entry * std::abs(bonus) / 8192;
     }
 
-    inline void updateCorrEntry(MoveScore &entry, MoveScore diff, MoveScore weight) {
-        entry = (entry * (256 - weight) + diff * weight) / 256;
-        entry = std::clamp(entry, -CORR_HIST_LIMIT, CORR_HIST_LIMIT);
+    inline void updateCorrEntry(HistoryScore &entry, MoveScore diff, MoveScore weight) {
+        MoveScore value = (entry * (256 - weight) + diff * weight) / 256;
+        entry = std::clamp(value, -CORR_HIST_LIMIT, CORR_HIST_LIMIT);
     }
 
     inline PieceType capturedType(const Position& pos, Move m) const {
