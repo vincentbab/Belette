@@ -75,7 +75,7 @@ private:
     Move refutations[3];
     const PieceToHistory* const* contHist;
 
-    template<Side Me, int NbContHist> inline MoveScore scoreEvasion(Move m);
+    template<Side Me> inline MoveScore scoreEvasion(Move m);
     template<Side Me> inline MoveScore scoreTactical(Move m);
     template<Side Me> inline MoveScore scoreQuiet(Move m);
 };
@@ -107,7 +107,7 @@ bool MovePicker::enumerate(const Handler &handler) {
 
             tt.prefetch(pos->getHashAfter(m));
 
-            ScoredMove newMove = ScoredMove(m, scoreEvasion<Me, Type == QUIESCENCE ? QSEARCH_CONT_HIST_PLIES : CONT_HIST_PLIES>(m));
+            ScoredMove newMove = ScoredMove(m, scoreEvasion<Me>(m));
             moves.insert_sorted(newMove, compare);
             
             return true;
@@ -210,13 +210,13 @@ bool MovePicker::enumerate(const Handler &handler) {
     return true;
 }
 
-template<Side Me, int NbContHist>
+template<Side Me>
 MoveScore MovePicker::scoreEvasion(Move m) {
     if (pos->isTactical(m)) {
         return scoreTactical<Me>(m) + 1000000;
     } else {
         if (contHist != nullptr) [[likely]]
-            return moveHistory->getEvasionQuietOrderingHistory<Me, NbContHist>(*pos, m, contHist);
+            return moveHistory->getEvasionQuietOrderingHistory<Me>(*pos, m, contHist);
     }
 
     return 0;

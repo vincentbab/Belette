@@ -24,7 +24,6 @@ using PieceToHistory = std::array<std::array<HistoryScore, NB_SQUARE>, NB_PIECE>
 using ContinuationHistory = std::array<std::array<PieceToHistory, NB_SQUARE>, NB_PIECE>;
 
 constexpr int CONT_HIST_PLIES = 2;
-constexpr int QSEARCH_CONT_HIST_PLIES = 1;
 
 constexpr MoveScore MAIN_HIST_LIMIT = 8192;
 constexpr MoveScore CAPTURE_HIST_LIMIT = 8192;
@@ -91,16 +90,12 @@ public:
         return score;
     }
 
-    template<Side Me, int NbContHist>
+    template<Side Me>
     inline MoveScore getEvasionQuietOrderingHistory(const Position& pos, Move m, const PieceToHistory* const* contHist) const {
         Piece pc = pos.getPieceAt(moveFrom(m));
         Square to = moveTo(m);
 
-        MoveScore score = 2 * history[Me][moveFromTo(m)];
-        for (int i = 0; i < NbContHist; i++)
-            score += (*contHist[i])[pc][to];
-
-        return score;
+        return history[Me][moveFromTo(m)] + (*contHist[0])[pc][to];
     }
 
     inline MoveScore getCaptureHistory(const Position& pos, Move m) const {
