@@ -61,6 +61,12 @@ public:
         std::memset(killerMoves, 0, sizeof(killerMoves));
     }
 
+    inline void ageMainHistory() {
+        for (auto& sideHistory : history)
+            for (auto& entry : sideHistory)
+                entry /= 2;
+    }
+
     inline void clearKillers(int ply) {
         assert(ply >= 0 && ply < MAX_PLY + 1);
         killerMoves[ply][0] = killerMoves[ply][1] = MOVE_NONE;
