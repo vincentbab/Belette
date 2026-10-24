@@ -24,7 +24,8 @@ using ContinuationHistory = std::array<std::array<PieceToHistory, NB_SQUARE>, NB
 
 using ButterflyHistory = std::array<std::array<std::array<std::array<MoveScore, NB_SQUARE*NB_SQUARE>, 2>, 2>, NB_SIDE>;
 
-constexpr int CONT_HIST_PLIES = 2;
+constexpr int CONT_HIST_PLIES = 3;
+constexpr int CONT_HIST_MAX_PLY = 4;
 constexpr int QSEARCH_CONT_HIST_PLIES = 1;
 
 constexpr int PAWN_HIST_SIZE = 4096;

@@ -226,7 +226,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     // continuation history
     PieceToHistory* contHist[CONT_HIST_PLIES] = {
         sd->node(ply-1).contHist,
-        sd->node(ply-2).contHist
+        sd->node(ply-2).contHist,
+        sd->node(ply-4).contHist
     };
 
     if (RootNode) {
@@ -410,7 +411,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         // Combined history, must be computed before the move is played
         MoveScore statScore = moveIsTactical ? sd->moveHistory.getCaptureHistory(pos, move)
-                                             : sd->moveHistory.getHistory<Me>(pos, move, contHist);
+                                             : sd->moveHistory.getHistory<Me, 2>(pos, move, contHist);
 
         int lmrDepth = std::max(0, depth - 1 - LMRTable[depth][nbMoves] / LMR_FACTOR);
 
@@ -628,7 +629,8 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
 
     PieceToHistory* contHist[CONT_HIST_PLIES] = {
         sd->node(ply-1).contHist,
-        sd->node(ply-2).contHist
+        sd->node(ply-2).contHist,
+        sd->node(ply-4).contHist
     };
 
     MovePicker mp(pos, useTTMove ? ttMove : MOVE_NONE, &sd->moveHistory, contHist);

@@ -107,7 +107,7 @@ bool MovePicker::enumerate(const Handler &handler) {
 
             tt.prefetch(pos->getHashAfter(m));
 
-            ScoredMove newMove = ScoredMove(m, scoreEvasion<Me, Type == QUIESCENCE ? QSEARCH_CONT_HIST_PLIES : CONT_HIST_PLIES>(m));
+            ScoredMove newMove = ScoredMove(m, scoreEvasion<Me, Type == QUIESCENCE ? QSEARCH_CONT_HIST_PLIES : 2>(m));
             moves.insert_sorted(newMove, compare);
             
             return true;
