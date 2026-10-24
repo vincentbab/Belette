@@ -22,6 +22,8 @@ using PieceToHistory = std::array<std::array<MoveScore, NB_SQUARE>, NB_PIECE>;
 // Indexed by [piece][to] of a previous move
 using ContinuationHistory = std::array<std::array<PieceToHistory, NB_SQUARE>, NB_PIECE>;
 
+using ButterflyHistory = std::array<std::array<std::array<std::array<MoveScore, NB_SQUARE*NB_SQUARE>, 2>, 2>, NB_SIDE>;
+
 constexpr int CONT_HIST_PLIES = 2;
 constexpr int QSEARCH_CONT_HIST_PLIES = 1;
 
@@ -38,7 +40,7 @@ using MinorCorrHist = std::array<std::array<MoveScore, CORR_HIST_SIZE>, NB_SIDE>
 
 class MoveHistory {
 public:
-    MoveHistory(): counterMoves{}, killerMoves{}, history{}, captureHistory{}, corrHist{},
+    MoveHistory(): counterMoves{}, killerMoves{}, history(std::make_unique<ButterflyHistory>()), captureHistory{}, corrHist{},
         nonPawnCorrHist(std::make_unique<NonPawnCorrHist>()),
         minorCorrHist(std::make_unique<MinorCorrHist>()),
         contCorrHist(std::make_unique<ContinuationHistory>()),
@@ -48,7 +50,7 @@ public:
     inline void clear() {
         std::memset(counterMoves, 0, sizeof(counterMoves));
         std::memset(killerMoves, 0, sizeof(killerMoves));
-        std::memset(history, 0, sizeof(history));
+        std::memset(history.get(), 0, sizeof(ButterflyHistory));
         std::memset(captureHistory, 0, sizeof(captureHistory));
         std::memset(corrHist, 0, sizeof(corrHist));
         std::memset(nonPawnCorrHist.get(), 0, sizeof(NonPawnCorrHist));
@@ -85,7 +87,7 @@ public:
         Piece pc = pos.getPieceAt(moveFrom(m));
         Square to = moveTo(m);
 
-        MoveScore score = 2 * history[Me][moveFromTo(m)];
+        MoveScore score = 2 * getButterfly<Me>(pos, m);
         for (int i = 0; i < NbContHist; i++)
             score += (*contHist[i])[pc][to];
 
@@ -176,7 +178,7 @@ public:
 private:
     Move counterMoves[NB_PIECE][NB_SQUARE];
     Move killerMoves[MAX_PLY+1][2];
-    MoveScore history[NB_SIDE][NB_SQUARE*NB_SQUARE];
+    std::unique_ptr<ButterflyHistory> history;
     MoveScore captureHistory[NB_PIECE][NB_SQUARE][NB_PIECE_TYPE];
     MoveScore corrHist[NB_SIDE][CORR_HIST_SIZE];
     std::unique_ptr<NonPawnCorrHist> nonPawnCorrHist;
@@ -184,6 +186,12 @@ private:
     std::unique_ptr<ContinuationHistory> contCorrHist;
     std::unique_ptr<ContinuationHistory> continuationHistory;
     std::unique_ptr<PawnHistory> pawnHistory;
+
+    template<Side Me>
+    inline MoveScore& getButterfly(const Position& pos, Move m) const {
+        Bitboard threats = pos.threatsFor(KING);
+        return (*history)[Me][bool(threats & moveFrom(m))][bool(threats & moveTo(m))][moveFromTo(m)];
+    }
 
     inline MoveScore historyBonus(int depth) {
         return std::min(1536, 8*depth*depth);
@@ -224,7 +232,7 @@ private:
 
     template<Side Me>
     inline void updateQuiet(const Position& pos, Move m, MoveScore bonus, PieceToHistory* const* contHist) {
-        updateHistoryEntry(history[Me][moveFromTo(m)], bonus);
+        updateHistoryEntry(getButterfly<Me>(pos, m), bonus);
 
         Piece pc = pos.getPieceAt(moveFrom(m));
         Square to = moveTo(m);
