@@ -124,6 +124,8 @@ public:
 
     template<Side Me>
     inline Score correctEval(const Position& pos, Score eval, const PieceToHistory* contCorr) const {
+        eval = eval * (200 - pos.getFiftyMoveRule()) / 200;
+
         MoveScore correction = corrHist[Me][pos.pawnHash() & (CORR_HIST_SIZE - 1)]
                              + (*nonPawnCorrHist)[Me][WHITE][pos.nonPawnHash(WHITE) & (CORR_HIST_SIZE - 1)]
                              + (*nonPawnCorrHist)[Me][BLACK][pos.nonPawnHash(BLACK) & (CORR_HIST_SIZE - 1)]
