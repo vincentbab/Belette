@@ -113,10 +113,12 @@ public:
     inline uint64_t pawnHash() const { return pawnKey; }
     inline uint64_t nonPawnHash(Side side) const { return nonPawnKeys[side]; }
     inline uint64_t minorHash() const { return minorKey; }
+    inline uint64_t majorHash() const { return majorKey; }
     uint64_t computeHash() const;
     inline uint64_t computePawnHash() const;
     inline uint64_t computeNonPawnHash(Side side) const;
     inline uint64_t computeMinorHash() const;
+    inline uint64_t computeMajorHash() const;
     inline uint64_t getHashAfter(Move m) const;
     inline uint64_t getHashAfterNullMove() const { return hash() ^ Zobrist::sideToMoveKey; };
 
@@ -176,6 +178,7 @@ private:
     uint64_t pawnKey;
     uint64_t nonPawnKeys[NB_SIDE];
     uint64_t minorKey;
+    uint64_t majorKey;
     int psqValue[NB_PHASE];
 
     Side sideToMove;
@@ -304,6 +307,18 @@ inline uint64_t Position::computeNonPawnHash(Side side) const {
 inline uint64_t Position::computeMinorHash() const {
     uint64_t h = 0;
     Bitboard b = getPiecesTypeBB(KNIGHT, BISHOP) | getPiecesTypeBB(KING);
+
+    bitscan_loop(b) {
+        Square sq = bitscan(b);
+        h ^= Zobrist::keys[getPieceAt(sq)][sq];
+    }
+
+    return h;
+}
+
+inline uint64_t Position::computeMajorHash() const {
+    uint64_t h = 0;
+    Bitboard b = getPiecesTypeBB(ROOK, QUEEN) | getPiecesTypeBB(KING);
 
     bitscan_loop(b) {
         Square sq = bitscan(b);

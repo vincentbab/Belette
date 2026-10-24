@@ -158,6 +158,7 @@ void Position::reset() {
     pawnKey = 0;
     nonPawnKeys[WHITE] = nonPawnKeys[BLACK] = 0;
     minorKey = 0;
+    majorKey = 0;
     psqValue[MG] = psqValue[EG] = 0;
     //for(int i=0; i<NB_PIECE_TYPE; i++) typeBB[i] = EmptyBB;
     //typeBB[ALL_PIECES] = EmptyBB;
@@ -457,6 +458,7 @@ inline void Position::setPiece(Square sq, Piece p) {
     PieceType pt = pieceType(p);
     (pt == PAWN ? pawnKey : nonPawnKeys[Me]) ^= Zobrist::keys[p][sq];
     if (pt == KNIGHT || pt == BISHOP || pt == KING) minorKey ^= Zobrist::keys[p][sq];
+    if (pt == ROOK || pt == QUEEN || pt == KING) majorKey ^= Zobrist::keys[p][sq];
     psqValue[MG] += PSQ[p][sq].mg;
     psqValue[EG] += PSQ[p][sq].eg;
 }
@@ -472,6 +474,7 @@ inline void Position::unsetPiece(Square sq) {
     PieceType pt = pieceType(p);
     (pt == PAWN ? pawnKey : nonPawnKeys[Me]) ^= Zobrist::keys[p][sq];
     if (pt == KNIGHT || pt == BISHOP || pt == KING) minorKey ^= Zobrist::keys[p][sq];
+    if (pt == ROOK || pt == QUEEN || pt == KING) majorKey ^= Zobrist::keys[p][sq];
     psqValue[MG] -= PSQ[p][sq].mg;
     psqValue[EG] -= PSQ[p][sq].eg;
 }
@@ -489,6 +492,7 @@ inline void Position::movePiece(Square from, Square to) {
     PieceType pt = pieceType(p);
     (pt == PAWN ? pawnKey : nonPawnKeys[Me]) ^= Zobrist::keys[p][from] ^ Zobrist::keys[p][to];
     if (pt == KNIGHT || pt == BISHOP || pt == KING) minorKey ^= Zobrist::keys[p][from] ^ Zobrist::keys[p][to];
+    if (pt == ROOK || pt == QUEEN || pt == KING) majorKey ^= Zobrist::keys[p][from] ^ Zobrist::keys[p][to];
     psqValue[MG] += PSQ[p][to].mg - PSQ[p][from].mg;
     psqValue[EG] += PSQ[p][to].eg - PSQ[p][from].eg;
 }
@@ -627,6 +631,7 @@ void Position::doMove(Move m) {
     assert(computeNonPawnHash(WHITE) == nonPawnHash(WHITE));
     assert(computeNonPawnHash(BLACK) == nonPawnHash(BLACK));
     assert(computeMinorHash() == minorHash());
+    assert(computeMajorHash() == majorHash());
     assert(computePsq(*this, MG) == psq(MG) && computePsq(*this, EG) == psq(EG));
 
     state->repetition = 0;
@@ -696,6 +701,7 @@ void Position::undoMove(Move m) {
     assert(computeNonPawnHash(WHITE) == nonPawnHash(WHITE));
     assert(computeNonPawnHash(BLACK) == nonPawnHash(BLACK));
     assert(computeMinorHash() == minorHash());
+    assert(computeMajorHash() == majorHash());
     assert(computePsq(*this, MG) == psq(MG) && computePsq(*this, EG) == psq(EG));
 }
 
