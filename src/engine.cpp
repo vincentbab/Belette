@@ -388,6 +388,10 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         }
     }
 
+    if (!PvNode && !excludedMove && ttHit && ttLower && ttDepth >= depth - 4
+        && ttScore >= beta + 600 && std::abs(ttScore) < SCORE_MATE_MAX_PLY && std::abs(beta) < SCORE_MATE_MAX_PLY)
+        return beta + 600;
+
     if (!excludedMove)
         sd->moveHistory.clearKillers(ply+1);
 
