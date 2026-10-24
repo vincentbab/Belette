@@ -255,6 +255,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
     // Static eval
     Score rawEval = SCORE_NONE;
+    Score correctedEval = SCORE_NONE;
     if (!inCheck) {
         if (ttHit) {
             rawEval = (tte->eval() != SCORE_NONE ? tte->eval() : evaluate<Me>(pos));
@@ -263,7 +264,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             tt.set(tte, pos.hash(), 0, ply, BOUND_NONE, MOVE_NONE, rawEval, SCORE_NONE, ttPv);
         }
 
-        node.staticEval = eval = sd->moveHistory.correctEval<Me>(pos, rawEval, sd->node(ply-2).contCorr);
+        correctedEval = sd->moveHistory.correctEval<Me>(pos, rawEval, sd->node(ply-2).contCorr);
+        node.staticEval = eval = correctedEval * (200 - pos.getFiftyMoveRule()) / 200;
 
         // Use score instead of eval if available.
         if (ttHit && tte->canCutoff(ttScore, eval)) {
@@ -531,9 +533,9 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
     // Update correction history
     if (!inCheck && !excludedMove && !(bestMove != MOVE_NONE && pos.isTactical(bestMove)) && std::abs(bestScore) < SCORE_MATE_MAX_PLY
-        && ((bestScore < node.staticEval && bestScore < beta) || (bestScore > node.staticEval && bestMove != MOVE_NONE)))
+        && ((bestScore < correctedEval && bestScore < beta) || (bestScore > correctedEval && bestMove != MOVE_NONE)))
     {
-        sd->moveHistory.updateCorrection<Me>(pos, bestScore, node.staticEval, depth, sd->node(ply-2).contCorr);
+        sd->moveHistory.updateCorrection<Me>(pos, bestScore, correctedEval, depth, sd->node(ply-2).contCorr);
     }
 
     // Update Transposition Table
@@ -606,7 +608,7 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
             tt.set(tte, pos.hash(), ttDepth, ply, BOUND_NONE, MOVE_NONE, rawEval, SCORE_NONE, ttPv);
         }
 
-        eval = sd->moveHistory.correctEval<Me>(pos, rawEval, sd->node(ply-2).contCorr);
+        eval = sd->moveHistory.correctEval<Me>(pos, rawEval, sd->node(ply-2).contCorr) * (200 - pos.getFiftyMoveRule()) / 200;
 
         // Use score instead of eval if available.
         if (ttHit && tte->canCutoff(ttScore, eval)) {
