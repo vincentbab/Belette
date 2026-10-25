@@ -236,7 +236,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         sd->node(ply-4).contCorr,
         sd->node(ply-5).contCorr,
         sd->node(ply-6).contCorr,
-        sd->node(ply-7).contCorr
+        sd->node(ply-7).contCorr,
+        sd->node(ply-8).contCorr
     };
 
     if (RootNode) {
@@ -613,7 +614,8 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
         sd->node(ply-4).contCorr,
         sd->node(ply-5).contCorr,
         sd->node(ply-6).contCorr,
-        sd->node(ply-7).contCorr
+        sd->node(ply-7).contCorr,
+        sd->node(ply-8).contCorr
     };
 
     // Standing Pat

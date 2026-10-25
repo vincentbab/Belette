@@ -27,8 +27,9 @@ using ButterflyHistory = std::array<std::array<std::array<std::array<MoveScore, 
 constexpr int CONT_HIST_PLIES = 3;
 constexpr int CONT_HIST_MAX_PLY = 4;
 constexpr int QSEARCH_CONT_HIST_PLIES = 1;
-constexpr int CONT_CORR_PLIES = 6;
-constexpr int NODE_SENTINELS = std::max(CONT_HIST_MAX_PLY, CONT_CORR_PLIES + 1);
+constexpr int CONT_CORR_PLIES = 7;
+constexpr int CONT_CORR_MAX_PLY = 8;
+constexpr int NODE_SENTINELS = std::max(CONT_HIST_MAX_PLY, CONT_CORR_MAX_PLY);
 
 constexpr int PAWN_HIST_SIZE = 4096;
 
