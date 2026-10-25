@@ -31,7 +31,8 @@ using ScoredMoveList = fixed_vector<ScoredMove, MAX_MOVE, uint8_t>;
 
 enum MovePickerType {
     MAIN,
-    QUIESCENCE
+    QUIESCENCE,
+    NO_HISTORY
 };
 
 class MovePicker {
@@ -39,8 +40,8 @@ public:
     MovePicker(): pos(nullptr), moveHistory(nullptr) { }
 
     // Simple
-    MovePicker(const Position &pos_, Move ttMove_ = MOVE_NONE, const MoveHistory* moveHistory_ = nullptr)
-    : pos(&pos_),  moveHistory(moveHistory_), ttMove(ttMove_), refutations{}, contHist(nullptr)
+    MovePicker(const Position &pos_, Move ttMove_ = MOVE_NONE)
+    : pos(&pos_), moveHistory(nullptr), ttMove(ttMove_), refutations{}, contHist(nullptr)
     { }
 
     // Quiescence
@@ -75,16 +76,17 @@ private:
     Move refutations[3];
     const PieceToHistory* const* contHist;
 
-    template<Side Me, int NbContHist> inline MoveScore scoreEvasion(Move m);
-    template<Side Me> inline MoveScore scoreTactical(Move m);
-    template<Side Me> inline MoveScore scoreQuiet(Move m);
+    template<Side Me, MovePickerType Type> inline MoveScore scoreEvasion(Move m);
+    template<Side Me, MovePickerType Type> inline MoveScore scoreTactical(Move m);
+    template<Side Me, MovePickerType Type> inline MoveScore scoreQuiet(Move m);
 };
 
 template<MovePickerType Type, Side Me, typename Handler>
 bool MovePicker::enumerate(const Handler &handler) {
     assert(pos != nullptr);
     assert(pos->getSideToMove() == Me);
-    
+    assert(Type == NO_HISTORY || (moveHistory != nullptr && contHist != nullptr));
+
     bool skipQuiets = false;
 
     if (isValidMove(ttMove))
@@ -107,7 +109,7 @@ bool MovePicker::enumerate(const Handler &handler) {
 
             tt.prefetch(pos->getHashAfter(m));
 
-            ScoredMove newMove = ScoredMove(m, scoreEvasion<Me, Type == QUIESCENCE ? QSEARCH_CONT_HIST_PLIES : 2>(m));
+            ScoredMove newMove = ScoredMove(m, scoreEvasion<Me, Type>(m));
             moves.insert_sorted(newMove, compare);
             
             return true;
@@ -127,14 +129,14 @@ bool MovePicker::enumerate(const Handler &handler) {
         if (moves.size() < 16)
             tt.prefetch(pos->getHashAfter(m));
 
-        ScoredMove newMove = ScoredMove(m, scoreTactical<Me>(m));
+        ScoredMove newMove = ScoredMove(m, scoreTactical<Me, Type>(m));
         moves.insert_sorted(newMove, compare);
 
         return true;
     });
 
     for (current = endBadTacticals = moves.begin(); current != moves.end(); current++) {
-        if constexpr(Type == MAIN) { // For quiescence prunning of bad captures is done in search
+        if constexpr(Type != QUIESCENCE) { // For quiescence prunning of bad captures is done in search
             if (!pos->see(current->move, -50)) { // Allow Bishop takes Knight
                 *endBadTacticals++ = *current;
                 continue;
@@ -147,7 +149,7 @@ bool MovePicker::enumerate(const Handler &handler) {
     // Stop here for Quiescence
     if constexpr(Type == QUIESCENCE) return true;
 
-    if (moveHistory != nullptr) [[likely]] {
+    if constexpr (Type != NO_HISTORY) {
         if (isValidMove(refutations[0])) tt.prefetch(pos->getHashAfter(refutations[0]));
         if (isValidMove(refutations[1])) tt.prefetch(pos->getHashAfter(refutations[1]));
         if (isValidMove(refutations[2])) tt.prefetch(pos->getHashAfter(refutations[2]));
@@ -179,7 +181,7 @@ bool MovePicker::enumerate(const Handler &handler) {
         if (moves.size() < 48)
             tt.prefetch(pos->getHashAfter(m));
 
-        ScoredMove newMove = ScoredMove(m, scoreQuiet<Me>(m));
+        ScoredMove newMove = ScoredMove(m, scoreQuiet<Me, Type>(m));
         moves.insert_sorted(newMove, compare);
         
         return true;
@@ -210,30 +212,31 @@ bool MovePicker::enumerate(const Handler &handler) {
     return true;
 }
 
-template<Side Me, int NbContHist>
+template<Side Me, MovePickerType Type>
 MoveScore MovePicker::scoreEvasion(Move m) {
-    if (pos->isTactical(m)) {
-        return scoreTactical<Me>(m) + 1000000;
-    } else {
-        if (contHist != nullptr) [[likely]]
-            return moveHistory->getHistory<Me, NbContHist>(*pos, m, contHist);
-    }
+    if (pos->isTactical(m))
+        return scoreTactical<Me, Type>(m) + 1000000;
 
-    return 0;
+    if constexpr (Type == NO_HISTORY)
+        return 0;
+    else if constexpr (Type == QUIESCENCE)
+        return moveHistory->getQSearchEvasionHistory<Me>(*pos, m, contHist);
+    else
+        return moveHistory->getEvasionHistory<Me>(*pos, m, contHist);
 }
 
-template<Side Me>
+template<Side Me, MovePickerType Type>
 MoveScore MovePicker::scoreTactical(Move m) {
     MoveScore score = 8*PieceValue<MG>(pos->getPieceAt(moveTo(m))) - (int)pieceType(pos->getPieceAt(moveFrom(m))); // MVV-LVA
 
     // Capture history
-    if (moveHistory != nullptr) [[likely]]
+    if constexpr (Type != NO_HISTORY)
         score += moveHistory->getCaptureHistory(*pos, m);
 
     return score;
 }
 
-template<Side Me>
+template<Side Me, MovePickerType Type>
 MoveScore MovePicker::scoreQuiet(Move m) {
     assert(movePromotionType(m) != QUEEN);
 
@@ -247,8 +250,8 @@ MoveScore MovePicker::scoreQuiet(Move m) {
     Bitboard threatened = pos->threatsFor(pt);
     score += ((threatened & from) && !(threatened & to)) * PieceThreatenedValue[pt];
 
-    if (moveHistory != nullptr) [[likely]]
-        score += moveHistory->getHistory<Me>(*pos, m, contHist) + 2 * moveHistory->getPawnHistory(*pos, m);
+    if constexpr (Type != NO_HISTORY)
+        score += moveHistory->getQuietHistory<Me>(*pos, m, contHist);
 
     // TODO: refactor this!
     switch (pt) {

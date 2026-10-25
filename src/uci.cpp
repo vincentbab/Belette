@@ -312,7 +312,7 @@ bool Uci::cmdDebug(std::istringstream& is) {
     } else if (token == "movepicker") {
         MovePicker mp(engine.position());
 
-        mp.enumerate<MAIN>([&] (Move m, bool& skipQuiets) {
+        mp.enumerate<NO_HISTORY>([&] (Move m, bool& skipQuiets) {
             console << Uci::formatMove(m) << std::endl;
             return true;
         });

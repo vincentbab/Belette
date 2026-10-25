@@ -17,7 +17,7 @@ size_t perftmp(Position &pos, int depth) {
     
     if (!Div && depth <= 1) {
         MovePicker mp(pos);
-        mp.enumerate<MAIN, Me>([&](Move m, bool& skipQuiets) {
+        mp.enumerate<NO_HISTORY, Me>([&](Move m, bool& skipQuiets) {
             total += 1;
             return true;
         });
@@ -26,7 +26,7 @@ size_t perftmp(Position &pos, int depth) {
     }
     
     MovePicker mp(pos);
-    mp.enumerate<MAIN, Me>([&](Move move, bool& skipQuiets) {
+    mp.enumerate<NO_HISTORY, Me>([&](Move move, bool& skipQuiets) {
         size_t n = 0;
 
         if (Div && depth == 1) {
