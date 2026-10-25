@@ -256,6 +256,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
     // Transposition Table cutoff
     if (!PvNode && !excludedMove && ttHit && ttDepth >= depth && tte->canCutoff(ttScore, beta)) {
+        if (ttScore >= beta && std::abs(ttScore) < SCORE_MATE_MAX_PLY && std::abs(beta) < SCORE_MATE_MAX_PLY)
+            return (3 * ttScore + beta) / 4;
         return ttScore;
     }
 
