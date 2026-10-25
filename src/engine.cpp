@@ -541,6 +541,9 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         return excludedMove ? alpha : inCheck ? -SCORE_MATE + ply : SCORE_DRAW;
     }
 
+    if (!RootNode && !excludedMove && bestMove == MOVE_NONE && isValidMove(pos.previousMove()))
+        sd->moveHistory.updatePrior<Me>(pos, depth, sd->node(ply-2).contHist);
+
     // Update correction history
     if (!inCheck && !excludedMove && !(bestMove != MOVE_NONE && pos.isTactical(bestMove)) && std::abs(bestScore) < SCORE_MATE_MAX_PLY
         && ((bestScore < node.staticEval && bestScore < beta) || (bestScore > node.staticEval && bestMove != MOVE_NONE)))
