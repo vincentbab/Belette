@@ -289,7 +289,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     if (!PvNode && !inCheck && depth <= 8
         && eval - ((improving ? 60 : 120) * depth) >= beta)
     {
-        return eval;
+        return std::abs(eval) < SCORE_MATE_MAX_PLY && std::abs(beta) < SCORE_MATE_MAX_PLY ? (eval + beta) / 2 : eval;
     }
 
     // Razoring
