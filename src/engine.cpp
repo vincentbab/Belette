@@ -402,6 +402,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     if (!excludedMove)
         sd->moveHistory.clearKillers(ply+1);
 
+    int corrMag = inCheck ? 0 : std::abs(node.staticEval - rawEval);
     int nbMoves = 0;
     bool failedLow = !inCheck && eval <= alpha;
     MovePicker mp(pos, ttMove, &sd->moveHistory, ply, contHist);
@@ -479,6 +480,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             R += 2048 * cutNode;
             R += 1024 * !improving;
             R -= statScore / 4;
+            R -= std::min(corrMag * 8, 1024);
 
             R = std::min(depth - 1, std::max(1, R / LMR_FACTOR));
 
