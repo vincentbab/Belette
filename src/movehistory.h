@@ -27,6 +27,7 @@ using ButterflyHistory = std::array<std::array<std::array<std::array<MoveScore, 
 constexpr int CONT_HIST_PLIES = 3;
 constexpr int CONT_HIST_MAX_PLY = 4;
 constexpr int QSEARCH_CONT_HIST_PLIES = 1;
+constexpr int CONT_CORR_PLIES = 2;
 
 constexpr int PAWN_HIST_SIZE = 4096;
 
@@ -129,7 +130,7 @@ public:
     }
 
     template<Side Me>
-    inline Score correctEval(const Position& pos, Score eval, const PieceToHistory* contCorr) const {
+    inline Score correctEval(const Position& pos, Score eval, PieceToHistory* const* contCorr) const {
         MoveScore correction = corrHist[Me][pos.pawnHash() & (CORR_HIST_SIZE - 1)]
                              + (*nonPawnCorrHist)[Me][WHITE][pos.nonPawnHash(WHITE) & (CORR_HIST_SIZE - 1)]
                              + (*nonPawnCorrHist)[Me][BLACK][pos.nonPawnHash(BLACK) & (CORR_HIST_SIZE - 1)]
@@ -137,14 +138,18 @@ public:
                              + (*majorCorrHist)[Me][pos.majorHash() & (CORR_HIST_SIZE - 1)];
 
         Move prevMove = pos.previousMove();
-        if (isValidMove(prevMove))
-            correction += (*contCorr)[pos.getPieceAt(moveTo(prevMove))][moveTo(prevMove)];
+        if (isValidMove(prevMove)) {
+            Piece pc = pos.getPieceAt(moveTo(prevMove));
+            Square to = moveTo(prevMove);
+            for (int i = 0; i < CONT_CORR_PLIES; i++)
+                correction += (*contCorr[i])[pc][to];
+        }
 
         return std::clamp<Score>(eval + correction / CORR_HIST_GRAIN, -SCORE_MATE_MAX_PLY + 1, SCORE_MATE_MAX_PLY - 1);
     }
 
     template<Side Me>
-    inline void updateCorrection(const Position& pos, Score bestScore, Score staticEval, int depth, PieceToHistory* contCorr) {
+    inline void updateCorrection(const Position& pos, Score bestScore, Score staticEval, int depth, PieceToHistory* const* contCorr) {
         MoveScore diff = (bestScore - staticEval) * CORR_HIST_GRAIN;
         MoveScore weight = std::min(depth + 1, 16);
 
@@ -155,8 +160,13 @@ public:
         updateCorrEntry((*majorCorrHist)[Me][pos.majorHash() & (CORR_HIST_SIZE - 1)], diff, weight);
 
         Move prevMove = pos.previousMove();
-        if (isValidMove(prevMove) && contCorr != getDefaultContCorr())
-            updateCorrEntry((*contCorr)[pos.getPieceAt(moveTo(prevMove))][moveTo(prevMove)], diff, weight);
+        if (isValidMove(prevMove)) {
+            Piece pc = pos.getPieceAt(moveTo(prevMove));
+            Square to = moveTo(prevMove);
+            for (int i = 0; i < CONT_CORR_PLIES; i++)
+                if (contCorr[i] != getDefaultContCorr())
+                    updateCorrEntry((*contCorr[i])[pc][to], diff, weight);
+        }
     }
 
     template<Side Me>

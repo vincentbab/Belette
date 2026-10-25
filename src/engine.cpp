@@ -230,6 +230,11 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         sd->node(ply-4).contHist
     };
 
+    PieceToHistory* contCorr[CONT_CORR_PLIES] = {
+        sd->node(ply-2).contCorr,
+        sd->node(ply-3).contCorr
+    };
+
     if (RootNode) {
         node.pv.clear();
     }
@@ -264,7 +269,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             tt.set(tte, pos.hash(), 0, ply, BOUND_NONE, MOVE_NONE, rawEval, SCORE_NONE, ttPv);
         }
 
-        node.staticEval = eval = sd->moveHistory.correctEval<Me>(pos, rawEval, sd->node(ply-2).contCorr);
+        node.staticEval = eval = sd->moveHistory.correctEval<Me>(pos, rawEval, contCorr);
 
         // Use score instead of eval if available.
         if (ttHit && tte->canCutoff(ttScore, eval)) {
@@ -534,7 +539,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     if (!inCheck && !excludedMove && !(bestMove != MOVE_NONE && pos.isTactical(bestMove)) && std::abs(bestScore) < SCORE_MATE_MAX_PLY
         && ((bestScore < node.staticEval && bestScore < beta) || (bestScore > node.staticEval && bestMove != MOVE_NONE)))
     {
-        sd->moveHistory.updateCorrection<Me>(pos, bestScore, node.staticEval, depth, sd->node(ply-2).contCorr);
+        sd->moveHistory.updateCorrection<Me>(pos, bestScore, node.staticEval, depth, contCorr);
     }
 
     // Update Transposition Table
@@ -597,6 +602,11 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
         return ttScore;
     }
 
+    PieceToHistory* contCorr[CONT_CORR_PLIES] = {
+        sd->node(ply-2).contCorr,
+        sd->node(ply-3).contCorr
+    };
+
     // Standing Pat
     Score rawEval = SCORE_NONE;
     if (!inCheck) {
@@ -607,7 +617,7 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
             tt.set(tte, pos.hash(), ttDepth, ply, BOUND_NONE, MOVE_NONE, rawEval, SCORE_NONE, ttPv);
         }
 
-        eval = sd->moveHistory.correctEval<Me>(pos, rawEval, sd->node(ply-2).contCorr);
+        eval = sd->moveHistory.correctEval<Me>(pos, rawEval, contCorr);
 
         // Use score instead of eval if available.
         if (ttHit && tte->canCutoff(ttScore, eval)) {
