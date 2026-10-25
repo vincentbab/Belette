@@ -110,14 +110,6 @@ public:
         Piece pc = pos.getPieceAt(moveFrom(m));
         Square to = moveTo(m);
 
-        return 2 * getButterfly<Me>(pos, m) + (*contHist[0])[pc][to] + (*contHist[1])[pc][to];
-    }
-
-    template<Side Me>
-    inline MoveScore getQSearchEvasionHistory(const Position& pos, Move m, const PieceToHistory* const* contHist) const {
-        Piece pc = pos.getPieceAt(moveFrom(m));
-        Square to = moveTo(m);
-
         return 2 * getButterfly<Me>(pos, m) + (*contHist[0])[pc][to];
     }
 

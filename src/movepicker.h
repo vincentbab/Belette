@@ -219,8 +219,6 @@ MoveScore MovePicker::scoreEvasion(Move m) {
 
     if constexpr (Type == NO_HISTORY)
         return 0;
-    else if constexpr (Type == QUIESCENCE)
-        return moveHistory->getQSearchEvasionHistory<Me>(*pos, m, contHist);
     else
         return moveHistory->getEvasionHistory<Me>(*pos, m, contHist);
 }
