@@ -148,7 +148,7 @@ protected:
     virtual void onSearchFinish(const SearchEvent &event) = 0;
 
 private:
-    static int LMRTable[MAX_PLY][MAX_MOVE];
+    static int LMRTable[2][MAX_PLY][MAX_MOVE];
 
     MoveHistory moveHistory;
     std::unique_ptr<SearchData> sd;
