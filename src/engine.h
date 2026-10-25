@@ -39,7 +39,7 @@ struct Node {
 struct SearchData {
     SearchData(const Position& pos_, const SearchLimits& limits_, MoveHistory& moveHistory_)
     : position(pos_), limits(limits_), nbNodes(0), moveHistory(moveHistory_) {
-        for (int i = 1; i <= CONT_HIST_MAX_PLY; i++) {
+        for (int i = 1; i <= NODE_SENTINELS; i++) {
             node(-i).contHist = moveHistory.getDefaultContHist();
             node(-i).contCorr = moveHistory.getDefaultContCorr();
         }
@@ -85,7 +85,7 @@ struct SearchData {
         return false;
     }
 
-    inline Node &node(int ply) { assert(ply >= -CONT_HIST_MAX_PLY && ply < MAX_PLY); return nodes[ply + CONT_HIST_MAX_PLY]; }
+    inline Node &node(int ply) { assert(ply >= -NODE_SENTINELS && ply < MAX_PLY); return nodes[ply + NODE_SENTINELS]; }
 
     Position position;
     SearchLimits limits;
@@ -103,7 +103,7 @@ struct SearchData {
 
     MoveHistory& moveHistory;
 
-    Node nodes[MAX_PLY+1+CONT_HIST_MAX_PLY];
+    Node nodes[MAX_PLY+1+NODE_SENTINELS];
 };
 
 struct SearchEvent {
