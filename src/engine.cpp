@@ -417,6 +417,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         nbMoves++;
 
         bool moveIsTactical = pos.isTactical(move);
+        bool moveIsBadTactical = moveIsTactical && !pos.see(move, -50);
 
         // Combined history, must be computed before the move is played
         MoveScore statScore = moveIsTactical ? sd->moveHistory.getCaptureHistory(pos, move)
@@ -476,6 +477,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             R += 1024 * ttTactical;
             R += 2048 * cutNode;
             R += 1024 * !improving;
+            R += 1024 * moveIsBadTactical;
             R -= statScore / 4;
 
             R = std::min(depth - 1, std::max(1, R / LMR_FACTOR));
