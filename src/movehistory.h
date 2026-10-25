@@ -26,6 +26,7 @@ using ButterflyHistory = std::array<std::array<std::array<std::array<MoveScore, 
 
 constexpr int CONT_HIST_PLIES = 3;
 constexpr int CONT_HIST_MAX_PLY = 4;
+constexpr int QSEARCH_CONT_HIST_PLIES = 2;
 constexpr int CONT_CORR_PLIES = 7;
 constexpr int CONT_CORR_MAX_PLY = 8;
 constexpr int NODE_SENTINELS = std::max(CONT_HIST_MAX_PLY, CONT_CORR_MAX_PLY);
@@ -111,14 +112,6 @@ public:
         Square to = moveTo(m);
 
         return 2 * getButterfly<Me>(pos, m) + (*contHist[0])[pc][to] + (*contHist[1])[pc][to];
-    }
-
-    template<Side Me>
-    inline MoveScore getQSearchEvasionHistory(const Position& pos, Move m, const PieceToHistory* const* contHist) const {
-        Piece pc = pos.getPieceAt(moveFrom(m));
-        Square to = moveTo(m);
-
-        return 2 * getButterfly<Me>(pos, m) + (*contHist[0])[pc][to];
     }
 
     inline MoveScore getPawnHistory(const Position& pos, Move m) const {

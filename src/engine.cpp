@@ -648,10 +648,9 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
     Move ttMove = tte->move();
     bool useTTMove = ttHit && isValidMove(ttMove) && (inCheck || pos.isTactical(ttMove));
 
-    PieceToHistory* contHist[CONT_HIST_PLIES] = {
+    PieceToHistory* contHist[QSEARCH_CONT_HIST_PLIES] = {
         sd->node(ply-1).contHist,
-        sd->node(ply-2).contHist,
-        sd->node(ply-4).contHist
+        sd->node(ply-2).contHist
     };
 
     MovePicker mp(pos, useTTMove ? ttMove : MOVE_NONE, &sd->moveHistory, contHist);
