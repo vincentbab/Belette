@@ -399,6 +399,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         sd->moveHistory.clearKillers(ply+1);
 
     int nbMoves = 0;
+    bool failedLow = !inCheck && eval <= alpha;
     MovePicker mp(pos, ttMove, &sd->moveHistory, ply, contHist);
     //MovePicker *mp = new (&node.mp) MovePicker(pos, ttMove, &sd->moveHistory, ply);
     PartialMoveList quietMoves, captureMoves;
@@ -513,7 +514,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
                     updatePv(node.pv, move, sd->node(ply+1).pv);
 
                 if (alpha >= beta) {
-                    sd->moveHistory.update<Me>(pos, bestMove, ply, depth, quietMoves, captureMoves, contHist);
+                    sd->moveHistory.update<Me>(pos, bestMove, ply, depth + failedLow, quietMoves, captureMoves, contHist);
                     return false; // break
                 }
             }
