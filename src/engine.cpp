@@ -376,6 +376,9 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         Score score = pvSearch<Me, NodeType::NonPV>(singularBeta-1, singularBeta, (depth-1)/2, ply, cutNode);
         node.excludedMove = MOVE_NONE;
 
+        if (!PvNode && depth < 12 && score < singularBeta + 10)
+            depth++;
+
         if (score < singularBeta) {
             extension = 1;
 
