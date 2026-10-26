@@ -193,6 +193,17 @@ public:
             updateCapture(pos, m, -bonus);
         }
     }
+
+    template<Side Me>
+    inline void updatePrior(const Position& pos, int depth, PieceToHistory* contHist) {
+        Move prevMove = pos.previousMove();
+
+        if (pos.previousCapture() != NO_PIECE || moveType(prevMove) == EN_PASSANT || moveType(prevMove) == PROMOTION || contHist == getDefaultContHist())
+            return;
+
+        Square to = moveTo(prevMove);
+        updateHistoryEntry((*contHist)[pos.getPieceAt(to)][to], historyBonus(depth) / 2);
+    }
 private:
     Move counterMoves[NB_PIECE][NB_SQUARE];
     Move killerMoves[MAX_PLY+1][2];
