@@ -240,7 +240,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         sd->node(ply-8).contCorr,
         sd->node(ply-9).contCorr,
         sd->node(ply-10).contCorr,
-        sd->node(ply-11).contCorr
+        sd->node(ply-11).contCorr,
+        sd->node(ply-12).contCorr
     };
 
     PieceToHistory* contCorr2[CONT_CORR2_PLIES] = {
@@ -252,7 +253,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         sd->node(ply-8).contCorr2,
         sd->node(ply-9).contCorr2,
         sd->node(ply-10).contCorr2,
-        sd->node(ply-11).contCorr2
+        sd->node(ply-11).contCorr2,
+        sd->node(ply-12).contCorr2
     };
 
     if (RootNode) {
@@ -645,7 +647,8 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
         sd->node(ply-8).contCorr,
         sd->node(ply-9).contCorr,
         sd->node(ply-10).contCorr,
-        sd->node(ply-11).contCorr
+        sd->node(ply-11).contCorr,
+        sd->node(ply-12).contCorr
     };
 
     PieceToHistory* contCorr2[CONT_CORR2_PLIES] = {
@@ -657,7 +660,8 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
         sd->node(ply-8).contCorr2,
         sd->node(ply-9).contCorr2,
         sd->node(ply-10).contCorr2,
-        sd->node(ply-11).contCorr2
+        sd->node(ply-11).contCorr2,
+        sd->node(ply-12).contCorr2
     };
 
     // Standing Pat
