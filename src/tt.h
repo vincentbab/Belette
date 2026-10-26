@@ -46,7 +46,7 @@ public:
     inline uint8_t age() const { return ageFlags8 & AGE_MASK; }
     inline bool isPv() const { return bool(ageFlags8 & PV_MASK); }
     inline Bound bound() const { return Bound(ageFlags8 & BOUND_MASK); }
-    inline bool isExactBound() const { return bound() & BOUND_EXACT; }
+    inline bool isExactBound() const { return bound() == BOUND_EXACT; }
     inline bool isLowerBound() const { return bound() & BOUND_LOWER; }
     inline bool isUpperBound() const { return bound() & BOUND_UPPER; }
     inline bool canCutoff(Score score, Score beta) { return score != SCORE_NONE && (bound() & (score >= beta ? BOUND_LOWER : BOUND_UPPER)); }
