@@ -30,6 +30,9 @@ struct Node {
     Score staticEval;
     PieceToHistory* contHist;
     PieceToHistory* contCorr;
+    PieceToHistory* contCorr2;
+    Piece movedPiece;
+    Square movedTo;
     Move excludedMove = MOVE_NONE;
     int doubleExts = 0;
     PvList pv;
@@ -42,6 +45,9 @@ struct SearchData {
         for (int i = 1; i <= NODE_SENTINELS; i++) {
             node(-i).contHist = moveHistory.getDefaultContHist();
             node(-i).contCorr = moveHistory.getDefaultContCorr();
+            node(-i).contCorr2 = moveHistory.getDefaultContCorr2();
+            node(-i).movedPiece = NO_PIECE;
+            node(-i).movedTo = SQ_FIRST;
         }
 
         start();
