@@ -31,7 +31,9 @@ constexpr int CONT_CORR_PLIES = 10;
 constexpr int CONT_CORR_MAX_PLY = 11;
 constexpr int CONT_CORR2_PLIES = 9;
 constexpr int CONT_CORR2_MAX_PLY = 11;
-constexpr int NODE_SENTINELS = std::max({CONT_HIST_MAX_PLY, CONT_CORR_MAX_PLY, CONT_CORR2_MAX_PLY});
+constexpr int CONT_CORR3_PLIES = 8;
+constexpr int CONT_CORR3_MAX_PLY = 11;
+constexpr int NODE_SENTINELS = std::max({CONT_HIST_MAX_PLY, CONT_CORR_MAX_PLY, CONT_CORR2_MAX_PLY, CONT_CORR3_MAX_PLY});
 
 constexpr int PAWN_HIST_SIZE = 4096;
 
@@ -53,6 +55,7 @@ public:
         majorCorrHist(std::make_unique<MajorCorrHist>()),
         contCorrHist(std::make_unique<ContinuationHistory>()),
         contCorr2Hist(std::make_unique<ContinuationHistory>()),
+        contCorr3Hist(std::make_unique<ContinuationHistory>()),
         continuationHistory(std::make_unique<ContinuationHistory>()),
         pawnHistory(std::make_unique<PawnHistory>()) { }
 
@@ -67,6 +70,7 @@ public:
         std::memset(majorCorrHist.get(), 0, sizeof(MajorCorrHist));
         std::memset(contCorrHist.get(), 0, sizeof(ContinuationHistory));
         std::memset(contCorr2Hist.get(), 0, sizeof(ContinuationHistory));
+        std::memset(contCorr3Hist.get(), 0, sizeof(ContinuationHistory));
         std::memset(continuationHistory.get(), 0, sizeof(ContinuationHistory));
         std::memset(pawnHistory.get(), 0, sizeof(PawnHistory));
     }
@@ -143,9 +147,18 @@ public:
         return &(*contCorr2Hist)[NO_PIECE][SQ_FIRST];
     }
 
+    inline PieceToHistory* getContCorr3Entry(const Position& pos, Move m) {
+        return &(*contCorr3Hist)[pos.getPieceAt(moveFrom(m))][moveTo(m)];
+    }
+
+    inline PieceToHistory* getDefaultContCorr3() {
+        return &(*contCorr3Hist)[NO_PIECE][SQ_FIRST];
+    }
+
     template<Side Me>
     inline Score correctEval(const Position& pos, Score eval, PieceToHistory* const* contCorr,
-                             PieceToHistory* const* contCorr2, Piece prevPiece2, Square prevTo2) const {
+                             PieceToHistory* const* contCorr2, Piece prevPiece2, Square prevTo2,
+                             PieceToHistory* const* contCorr3, Piece prevPiece3, Square prevTo3) const {
         MoveScore correction = corrHist[Me][pos.pawnHash() & (CORR_HIST_SIZE - 1)]
                              + (*nonPawnCorrHist)[Me][WHITE][pos.nonPawnHash(WHITE) & (CORR_HIST_SIZE - 1)]
                              + (*nonPawnCorrHist)[Me][BLACK][pos.nonPawnHash(BLACK) & (CORR_HIST_SIZE - 1)]
@@ -165,12 +178,18 @@ public:
                 correction += (*contCorr2[i])[prevPiece2][prevTo2];
         }
 
+        if (prevPiece3 != NO_PIECE) {
+            for (int i = 0; i < CONT_CORR3_PLIES; i++)
+                correction += (*contCorr3[i])[prevPiece3][prevTo3];
+        }
+
         return std::clamp<Score>(eval + correction / CORR_HIST_GRAIN, -SCORE_MATE_MAX_PLY + 1, SCORE_MATE_MAX_PLY - 1);
     }
 
     template<Side Me>
     inline void updateCorrection(const Position& pos, Score bestScore, Score staticEval, int depth, PieceToHistory* const* contCorr,
-                                 PieceToHistory* const* contCorr2, Piece prevPiece2, Square prevTo2) {
+                                 PieceToHistory* const* contCorr2, Piece prevPiece2, Square prevTo2,
+                                 PieceToHistory* const* contCorr3, Piece prevPiece3, Square prevTo3) {
         MoveScore diff = (bestScore - staticEval) * CORR_HIST_GRAIN;
         MoveScore weight = std::min(depth + 1, 16);
 
@@ -193,6 +212,12 @@ public:
             for (int i = 0; i < CONT_CORR2_PLIES; i++)
                 if (contCorr2[i] != getDefaultContCorr2())
                     updateCorrEntry((*contCorr2[i])[prevPiece2][prevTo2], diff, weight);
+        }
+
+        if (prevPiece3 != NO_PIECE) {
+            for (int i = 0; i < CONT_CORR3_PLIES; i++)
+                if (contCorr3[i] != getDefaultContCorr3())
+                    updateCorrEntry((*contCorr3[i])[prevPiece3][prevTo3], diff, weight);
         }
     }
 
@@ -229,6 +254,7 @@ private:
     std::unique_ptr<MajorCorrHist> majorCorrHist;
     std::unique_ptr<ContinuationHistory> contCorrHist;
     std::unique_ptr<ContinuationHistory> contCorr2Hist;
+    std::unique_ptr<ContinuationHistory> contCorr3Hist;
     std::unique_ptr<ContinuationHistory> continuationHistory;
     std::unique_ptr<PawnHistory> pawnHistory;
 

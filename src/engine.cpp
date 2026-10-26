@@ -255,6 +255,17 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         sd->node(ply-11).contCorr2
     };
 
+    PieceToHistory* contCorr3[CONT_CORR3_PLIES] = {
+        sd->node(ply-4).contCorr3,
+        sd->node(ply-5).contCorr3,
+        sd->node(ply-6).contCorr3,
+        sd->node(ply-7).contCorr3,
+        sd->node(ply-8).contCorr3,
+        sd->node(ply-9).contCorr3,
+        sd->node(ply-10).contCorr3,
+        sd->node(ply-11).contCorr3
+    };
+
     if (RootNode) {
         node.pv.clear();
     }
@@ -289,7 +300,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             tt.set(tte, pos.hash(), 0, ply, BOUND_NONE, MOVE_NONE, rawEval, SCORE_NONE, ttPv);
         }
 
-        node.staticEval = eval = sd->moveHistory.correctEval<Me>(pos, rawEval, contCorr, contCorr2, sd->node(ply-2).movedPiece, sd->node(ply-2).movedTo);
+        node.staticEval = eval = sd->moveHistory.correctEval<Me>(pos, rawEval, contCorr, contCorr2, sd->node(ply-2).movedPiece, sd->node(ply-2).movedTo,
+                                                                 contCorr3, sd->node(ply-3).movedPiece, sd->node(ply-3).movedTo);
 
         // Use score instead of eval if available.
         if (ttHit && tte->canCutoff(ttScore, eval)) {
@@ -336,6 +348,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         node.contHist = sd->moveHistory.getDefaultContHist();
         node.contCorr = sd->moveHistory.getDefaultContCorr();
         node.contCorr2 = sd->moveHistory.getDefaultContCorr2();
+        node.contCorr3 = sd->moveHistory.getDefaultContCorr3();
         node.movedPiece = NO_PIECE;
         node.movedTo = SQ_FIRST;
         pos.doNullMove<Me>();
@@ -364,6 +377,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             node.contHist = sd->moveHistory.getContHistEntry(pos, move);
             node.contCorr = sd->moveHistory.getContCorrEntry(pos, move);
             node.contCorr2 = sd->moveHistory.getContCorr2Entry(pos, move);
+            node.contCorr3 = sd->moveHistory.getContCorr3Entry(pos, move);
             node.movedPiece = pos.getPieceAt(moveFrom(move));
             node.movedTo = moveTo(move);
 
@@ -483,6 +497,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         node.contHist = sd->moveHistory.getContHistEntry(pos, move);
         node.contCorr = sd->moveHistory.getContCorrEntry(pos, move);
         node.contCorr2 = sd->moveHistory.getContCorr2Entry(pos, move);
+        node.contCorr3 = sd->moveHistory.getContCorr3Entry(pos, move);
         node.movedPiece = pos.getPieceAt(moveFrom(move));
         node.movedTo = moveTo(move);
 
@@ -569,7 +584,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     if (!inCheck && !excludedMove && !(bestMove != MOVE_NONE && pos.isTactical(bestMove)) && std::abs(bestScore) < SCORE_MATE_MAX_PLY
         && ((bestScore < node.staticEval && bestScore < beta) || (bestScore > node.staticEval && bestMove != MOVE_NONE)))
     {
-        sd->moveHistory.updateCorrection<Me>(pos, bestScore, node.staticEval, depth, contCorr, contCorr2, sd->node(ply-2).movedPiece, sd->node(ply-2).movedTo);
+        sd->moveHistory.updateCorrection<Me>(pos, bestScore, node.staticEval, depth, contCorr, contCorr2, sd->node(ply-2).movedPiece, sd->node(ply-2).movedTo,
+                                             contCorr3, sd->node(ply-3).movedPiece, sd->node(ply-3).movedTo);
     }
 
     // Update Transposition Table
@@ -657,6 +673,17 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
         sd->node(ply-11).contCorr2
     };
 
+    PieceToHistory* contCorr3[CONT_CORR3_PLIES] = {
+        sd->node(ply-4).contCorr3,
+        sd->node(ply-5).contCorr3,
+        sd->node(ply-6).contCorr3,
+        sd->node(ply-7).contCorr3,
+        sd->node(ply-8).contCorr3,
+        sd->node(ply-9).contCorr3,
+        sd->node(ply-10).contCorr3,
+        sd->node(ply-11).contCorr3
+    };
+
     // Standing Pat
     Score rawEval = SCORE_NONE;
     if (!inCheck) {
@@ -667,7 +694,8 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
             tt.set(tte, pos.hash(), ttDepth, ply, BOUND_NONE, MOVE_NONE, rawEval, SCORE_NONE, ttPv);
         }
 
-        eval = sd->moveHistory.correctEval<Me>(pos, rawEval, contCorr, contCorr2, sd->node(ply-2).movedPiece, sd->node(ply-2).movedTo);
+        eval = sd->moveHistory.correctEval<Me>(pos, rawEval, contCorr, contCorr2, sd->node(ply-2).movedPiece, sd->node(ply-2).movedTo,
+                                               contCorr3, sd->node(ply-3).movedPiece, sd->node(ply-3).movedTo);
 
         // Use score instead of eval if available.
         if (ttHit && tte->canCutoff(ttScore, eval)) {
@@ -721,6 +749,7 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
         sd->node(ply).contHist = sd->moveHistory.getContHistEntry(pos, move);
         sd->node(ply).contCorr = sd->moveHistory.getContCorrEntry(pos, move);
         sd->node(ply).contCorr2 = sd->moveHistory.getContCorr2Entry(pos, move);
+        sd->node(ply).contCorr3 = sd->moveHistory.getContCorr3Entry(pos, move);
         sd->node(ply).movedPiece = pos.getPieceAt(moveFrom(move));
         sd->node(ply).movedTo = moveTo(move);
 

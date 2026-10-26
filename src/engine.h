@@ -31,6 +31,7 @@ struct Node {
     PieceToHistory* contHist;
     PieceToHistory* contCorr;
     PieceToHistory* contCorr2;
+    PieceToHistory* contCorr3;
     Piece movedPiece;
     Square movedTo;
     Move excludedMove = MOVE_NONE;
@@ -46,6 +47,7 @@ struct SearchData {
             node(-i).contHist = moveHistory.getDefaultContHist();
             node(-i).contCorr = moveHistory.getDefaultContCorr();
             node(-i).contCorr2 = moveHistory.getDefaultContCorr2();
+            node(-i).contCorr3 = moveHistory.getDefaultContCorr3();
             node(-i).movedPiece = NO_PIECE;
             node(-i).movedTo = SQ_FIRST;
         }
