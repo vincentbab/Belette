@@ -22,6 +22,8 @@ using PieceToHistory = std::array<std::array<MoveScore, NB_SQUARE>, NB_PIECE>;
 // Indexed by [piece][to] of a previous move
 using ContinuationHistory = std::array<std::array<PieceToHistory, NB_SQUARE>, NB_PIECE>;
 
+using CheckCaptureContinuationHistory = std::array<std::array<ContinuationHistory, 2>, 2>;
+
 using ButterflyHistory = std::array<std::array<std::array<std::array<MoveScore, NB_SQUARE*NB_SQUARE>, 2>, 2>, NB_SIDE>;
 
 constexpr int CONT_HIST_PLIES = 3;
@@ -50,7 +52,7 @@ public:
         minorCorrHist(std::make_unique<MinorCorrHist>()),
         majorCorrHist(std::make_unique<MajorCorrHist>()),
         contCorrHist(std::make_unique<ContinuationHistory>()),
-        continuationHistory(std::make_unique<ContinuationHistory>()),
+        continuationHistory(std::make_unique<CheckCaptureContinuationHistory>()),
         pawnHistory(std::make_unique<PawnHistory>()) { }
 
     inline void clear() {
@@ -63,7 +65,7 @@ public:
         std::memset(minorCorrHist.get(), 0, sizeof(MinorCorrHist));
         std::memset(majorCorrHist.get(), 0, sizeof(MajorCorrHist));
         std::memset(contCorrHist.get(), 0, sizeof(ContinuationHistory));
-        std::memset(continuationHistory.get(), 0, sizeof(ContinuationHistory));
+        std::memset(continuationHistory.get(), 0, sizeof(CheckCaptureContinuationHistory));
         std::memset(pawnHistory.get(), 0, sizeof(PawnHistory));
     }
 
@@ -109,17 +111,17 @@ public:
         return captureHistory[pos.getPieceAt(moveFrom(m))][moveTo(m)][capturedType(pos, m)];
     }
 
-    inline PieceToHistory* getContHistEntry(Piece pc, Square to) {
-        return &(*continuationHistory)[pc][to];
+    inline PieceToHistory* getContHistEntry(bool inCheck, bool capture, Piece pc, Square to) {
+        return &(*continuationHistory)[inCheck][capture][pc][to];
     }
 
     inline PieceToHistory* getContHistEntry(const Position& pos, Move m) {
-        return getContHistEntry(pos.getPieceAt(moveFrom(m)), moveTo(m));
+        return getContHistEntry(pos.inCheck(), pos.isTactical(m), pos.getPieceAt(moveFrom(m)), moveTo(m));
     }
 
     // Never indexed by a real move because NO_PIECE.
     inline PieceToHistory* getDefaultContHist() {
-        return getContHistEntry(NO_PIECE, SQ_FIRST);
+        return getContHistEntry(false, false, NO_PIECE, SQ_FIRST);
     }
 
     inline PieceToHistory* getContCorrEntry(const Position& pos, Move m) {
@@ -203,7 +205,7 @@ private:
     std::unique_ptr<MinorCorrHist> minorCorrHist;
     std::unique_ptr<MajorCorrHist> majorCorrHist;
     std::unique_ptr<ContinuationHistory> contCorrHist;
-    std::unique_ptr<ContinuationHistory> continuationHistory;
+    std::unique_ptr<CheckCaptureContinuationHistory> continuationHistory;
     std::unique_ptr<PawnHistory> pawnHistory;
 
     template<Side Me>
