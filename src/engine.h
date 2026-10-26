@@ -37,18 +37,29 @@ struct Node {
     int doubleExts = 0;
     PvList pv;
     //MovePicker mp;
+
+    inline void setMove(MoveHistory& moveHistory, const Position& pos, Move move) {
+        contHist = moveHistory.getContHistEntry(pos, move);
+        contCorr = moveHistory.getContCorrEntry(pos, move);
+        contCorr2 = moveHistory.getContCorr2Entry(pos, move);
+        movedPiece = pos.getPieceAt(moveFrom(move));
+        movedTo = moveTo(move);
+    }
+
+    inline void setNullMove(MoveHistory& moveHistory) {
+        contHist = moveHistory.getDefaultContHist();
+        contCorr = moveHistory.getDefaultContCorr();
+        contCorr2 = moveHistory.getDefaultContCorr2();
+        movedPiece = NO_PIECE;
+        movedTo = SQ_FIRST;
+    }
 };
 
 struct SearchData {
     SearchData(const Position& pos_, const SearchLimits& limits_, MoveHistory& moveHistory_)
     : position(pos_), limits(limits_), nbNodes(0), moveHistory(moveHistory_) {
-        for (int i = 1; i <= NODE_SENTINELS; i++) {
-            node(-i).contHist = moveHistory.getDefaultContHist();
-            node(-i).contCorr = moveHistory.getDefaultContCorr();
-            node(-i).contCorr2 = moveHistory.getDefaultContCorr2();
-            node(-i).movedPiece = NO_PIECE;
-            node(-i).movedTo = SQ_FIRST;
-        }
+        for (int i = 1; i <= NODE_SENTINELS; i++)
+            node(-i).setNullMove(moveHistory);
 
         start();
     }
@@ -92,6 +103,36 @@ struct SearchData {
     }
 
     inline Node &node(int ply) { assert(ply >= -NODE_SENTINELS && ply < MAX_PLY); return nodes[ply + NODE_SENTINELS]; }
+
+    inline ContCorrContext contCorrContext(int ply) {
+        return {
+            {
+                node(ply-2).contCorr,
+                node(ply-3).contCorr,
+                node(ply-4).contCorr,
+                node(ply-5).contCorr,
+                node(ply-6).contCorr,
+                node(ply-7).contCorr,
+                node(ply-8).contCorr,
+                node(ply-9).contCorr,
+                node(ply-10).contCorr,
+                node(ply-11).contCorr
+            },
+            {
+                node(ply-3).contCorr2,
+                node(ply-4).contCorr2,
+                node(ply-5).contCorr2,
+                node(ply-6).contCorr2,
+                node(ply-7).contCorr2,
+                node(ply-8).contCorr2,
+                node(ply-9).contCorr2,
+                node(ply-10).contCorr2,
+                node(ply-11).contCorr2
+            },
+            node(ply-2).movedPiece,
+            node(ply-2).movedTo
+        };
+    }
 
     Position position;
     SearchLimits limits;

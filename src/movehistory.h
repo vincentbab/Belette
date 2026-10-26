@@ -33,6 +33,13 @@ constexpr int CONT_CORR2_PLIES = 9;
 constexpr int CONT_CORR2_MAX_PLY = 11;
 constexpr int NODE_SENTINELS = std::max({CONT_HIST_MAX_PLY, CONT_CORR_MAX_PLY, CONT_CORR2_MAX_PLY});
 
+struct ContCorrContext {
+    PieceToHistory* contCorr[CONT_CORR_PLIES];
+    PieceToHistory* contCorr2[CONT_CORR2_PLIES];
+    Piece prevPiece2;
+    Square prevTo2;
+};
+
 constexpr int PAWN_HIST_SIZE = 4096;
 
 using PawnHistory = std::array<std::array<std::array<int16_t, NB_SQUARE>, NB_PIECE>, PAWN_HIST_SIZE>;
@@ -144,8 +151,7 @@ public:
     }
 
     template<Side Me>
-    inline Score correctEval(const Position& pos, Score eval, PieceToHistory* const* contCorr,
-                             PieceToHistory* const* contCorr2, Piece prevPiece2, Square prevTo2) const {
+    inline Score correctEval(const Position& pos, Score eval, const ContCorrContext& ctx) const {
         MoveScore correction = corrHist[Me][pos.pawnHash() & (CORR_HIST_SIZE - 1)]
                              + (*nonPawnCorrHist)[Me][WHITE][pos.nonPawnHash(WHITE) & (CORR_HIST_SIZE - 1)]
                              + (*nonPawnCorrHist)[Me][BLACK][pos.nonPawnHash(BLACK) & (CORR_HIST_SIZE - 1)]
@@ -157,20 +163,19 @@ public:
             Piece pc = pos.getPieceAt(moveTo(prevMove));
             Square to = moveTo(prevMove);
             for (int i = 0; i < CONT_CORR_PLIES; i++)
-                correction += (*contCorr[i])[pc][to];
+                correction += (*ctx.contCorr[i])[pc][to];
         }
 
-        if (prevPiece2 != NO_PIECE) {
+        if (ctx.prevPiece2 != NO_PIECE) {
             for (int i = 0; i < CONT_CORR2_PLIES; i++)
-                correction += (*contCorr2[i])[prevPiece2][prevTo2];
+                correction += (*ctx.contCorr2[i])[ctx.prevPiece2][ctx.prevTo2];
         }
 
         return std::clamp<Score>(eval + correction / CORR_HIST_GRAIN, -SCORE_MATE_MAX_PLY + 1, SCORE_MATE_MAX_PLY - 1);
     }
 
     template<Side Me>
-    inline void updateCorrection(const Position& pos, Score bestScore, Score staticEval, int depth, PieceToHistory* const* contCorr,
-                                 PieceToHistory* const* contCorr2, Piece prevPiece2, Square prevTo2) {
+    inline void updateCorrection(const Position& pos, Score bestScore, Score staticEval, int depth, const ContCorrContext& ctx) {
         MoveScore diff = (bestScore - staticEval) * CORR_HIST_GRAIN;
         MoveScore weight = std::min(depth + 1, 16);
 
@@ -185,14 +190,14 @@ public:
             Piece pc = pos.getPieceAt(moveTo(prevMove));
             Square to = moveTo(prevMove);
             for (int i = 0; i < CONT_CORR_PLIES; i++)
-                if (contCorr[i] != getDefaultContCorr())
-                    updateCorrEntry((*contCorr[i])[pc][to], diff, weight);
+                if (ctx.contCorr[i] != getDefaultContCorr())
+                    updateCorrEntry((*ctx.contCorr[i])[pc][to], diff, weight);
         }
 
-        if (prevPiece2 != NO_PIECE) {
+        if (ctx.prevPiece2 != NO_PIECE) {
             for (int i = 0; i < CONT_CORR2_PLIES; i++)
-                if (contCorr2[i] != getDefaultContCorr2())
-                    updateCorrEntry((*contCorr2[i])[prevPiece2][prevTo2], diff, weight);
+                if (ctx.contCorr2[i] != getDefaultContCorr2())
+                    updateCorrEntry((*ctx.contCorr2[i])[ctx.prevPiece2][ctx.prevTo2], diff, weight);
         }
     }
 
