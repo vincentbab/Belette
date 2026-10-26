@@ -34,7 +34,6 @@ struct Node {
     Piece movedPiece;
     Square movedTo;
     Move excludedMove = MOVE_NONE;
-    int doubleExts = 0;
     PvList pv;
     //MovePicker mp;
 
@@ -138,6 +137,7 @@ struct SearchData {
     SearchLimits limits;
     size_t nbNodes;
     int selDepth;
+    int rootDepth;
 
     TimeMs startTime;
     TimeMs lastCheck;

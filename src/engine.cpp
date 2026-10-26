@@ -82,6 +82,7 @@ void Engine::idSearch() {
 
         // Reset selDepth
         sd->selDepth = 0;
+        sd->rootDepth = depth;
 
         searchDepth = depth;
 
@@ -236,8 +237,6 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         node.pv.clear();
     }
 
-    node.doubleExts = RootNode ? 0 : sd->node(ply-1).doubleExts;
-
     if (ply >= MAX_PLY) [[unlikely]] {
         return evaluate<Me>(pos); // TODO: verify if we are in check ?
     }
@@ -365,7 +364,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
     // Singular extensions
     int extension = 0;
-    if (!RootNode && !excludedMove && depth >= 8
+    if (!RootNode && !excludedMove && depth >= 8 && ply < 2 * sd->rootDepth
         && ttHit && isValidMove(ttMove) && std::abs(ttScore) < SCORE_MATE_MAX_PLY
         && ttLower && ttDepth >= depth - 3
         && pos.isLegal<Me>(ttMove))
@@ -380,9 +379,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             extension = 1;
 
             // Double extension
-            if (!PvNode && score < singularBeta - 20 && node.doubleExts <= 8) {
+            if (!PvNode && score < singularBeta - 20) {
                 extension = 2;
-                node.doubleExts++;
 
                 if (score < singularBeta - 60)
                     extension = 3;
