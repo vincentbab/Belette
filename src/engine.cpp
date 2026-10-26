@@ -380,11 +380,11 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             extension = 1;
 
             // Double extension
-            if (!PvNode && score < singularBeta - 20 && node.doubleExts <= 8) {
+            if (!PvNode && score < singularBeta - 20 - 40 * ttTactical && node.doubleExts <= 8) {
                 extension = 2;
                 node.doubleExts++;
 
-                if (score < singularBeta - 60)
+                if (score < singularBeta - 60 - 40 * ttTactical)
                     extension = 3;
             }
         } else if (score >= beta && std::abs(score) < SCORE_MATE_MAX_PLY) {
