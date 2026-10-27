@@ -365,11 +365,13 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
     // Singular extensions
     int extension = 0;
+    bool singularSearched = false;
     if (!RootNode && !excludedMove && depth >= 6 + ttPv
         && ttHit && isValidMove(ttMove) && std::abs(ttScore) < SCORE_MATE_MAX_PLY
         && ttLower && ttDepth >= depth - 3
         && pos.isLegal<Me>(ttMove))
     {
+        singularSearched = true;
         Score singularBeta = ttScore - depth;
         int corrAdj = std::abs(node.staticEval - rawEval) / 4;
 
@@ -395,6 +397,9 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             return score;
         }
     }
+
+    // Low depth extension
+    int lowDepthExt = !inCheck && cutNode && depth <= 7 && eval <= alpha - 20 + std::abs(node.staticEval - rawEval) / 4;
 
     if (!excludedMove)
         sd->moveHistory.clearKillers(ply+1);
@@ -462,7 +467,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         pos.doMove<Me>(move);
 
         Score score;
-        int newDepth = depth - 1 + (move == ttMove ? extension : 0);
+        int newDepth = depth - 1 + (move == ttMove && singularSearched ? extension : lowDepthExt);
 
         // Late move reduction (LMR)
         if (depth >= 2 && nbMoves > 1) {
