@@ -370,8 +370,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         && ttLower && ttDepth >= depth - 3
         && pos.isLegal<Me>(ttMove))
     {
-        Score singularBeta = ttScore - depth;
         int corrAdj = std::abs(node.staticEval - rawEval) / 4;
+        Score singularBeta = ttScore - depth + corrAdj / 2;
 
         node.excludedMove = ttMove;
         Score score = pvSearch<Me, NodeType::NonPV>(singularBeta-1, singularBeta, (depth-1)/2, ply, cutNode);
