@@ -384,7 +384,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             extension = 1;
 
             // Double extension
-            if (!PvNode && score < singularBeta - 20 + corrAdj && node.doubleExts <= 8) {
+            if (!PvNode && node.doubleExts <= 8) {
                 extension = 2;
                 node.doubleExts++;
 
