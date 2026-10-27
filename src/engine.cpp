@@ -358,11 +358,6 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             return probCutScore;
     }
 
-    // Check extension
-    if (PvNode && inCheck && depth <= 2) {
-        depth++;
-    }
-
     // Singular extensions
     int extension = 0;
     if (!RootNode && !excludedMove && depth >= 6 + ttPv
