@@ -283,7 +283,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     }
 
     // Internal Iterative Reduction (IIR)
-    if (depth >= 4 && ttMove == MOVE_NONE) {
+    if (depth >= 4 && (ttMove == MOVE_NONE || ttDepth < depth - 4)) {
         depth--;
     }
 
