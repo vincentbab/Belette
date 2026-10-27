@@ -322,7 +322,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     }
 
     Score probCutBeta = beta + 180 - 60*improving;
-    if (!PvNode && !inCheck && depth >= 5 && std::abs(beta) < SCORE_MATE_MAX_PLY
+    if (!PvNode && !inCheck && depth >= 7 && std::abs(beta) < SCORE_MATE_MAX_PLY
         && !(ttHit && ttDepth >= depth - 3 && ttScore != SCORE_NONE && ttScore < probCutBeta))
     {
         MovePicker mp(pos, ttMove, &sd->moveHistory, contHist);
