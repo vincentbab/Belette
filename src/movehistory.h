@@ -61,7 +61,7 @@ public:
         contCorrHist(std::make_unique<ContinuationHistory>()),
         contCorr2Hist(std::make_unique<ContinuationHistory>()),
         continuationHistory(std::make_unique<ContinuationHistory>()),
-        pawnHistory(std::make_unique<PawnHistory>()) { }
+        pawnHistory(std::make_unique<PawnHistory>()), ttMoveHistory(0) { }
 
     inline void clear() {
         std::memset(counterMoves, 0, sizeof(counterMoves));
@@ -76,6 +76,7 @@ public:
         std::memset(contCorr2Hist.get(), 0, sizeof(ContinuationHistory));
         std::memset(continuationHistory.get(), 0, sizeof(ContinuationHistory));
         std::memset(pawnHistory.get(), 0, sizeof(PawnHistory));
+        ttMoveHistory = 0;
     }
 
     inline void clearAllKillers() {
@@ -110,6 +111,14 @@ public:
             score += (*contHist[i])[pc][to];
 
         return score;
+    }
+
+    inline MoveScore getTTMoveHistory() const {
+        return ttMoveHistory;
+    }
+
+    inline void updateTTMove(MoveScore bonus) {
+        updateHistoryEntry(ttMoveHistory, bonus);
     }
 
     inline MoveScore getPawnHistory(const Position& pos, Move m) const {
@@ -236,6 +245,7 @@ private:
     std::unique_ptr<ContinuationHistory> contCorr2Hist;
     std::unique_ptr<ContinuationHistory> continuationHistory;
     std::unique_ptr<PawnHistory> pawnHistory;
+    MoveScore ttMoveHistory;
 
     template<Side Me>
     inline MoveScore& getButterfly(const Position& pos, Move m) const {

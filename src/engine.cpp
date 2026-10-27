@@ -388,10 +388,11 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
                 extension = 2;
                 node.doubleExts++;
 
-                if (score < singularBeta - 60 + corrAdj)
+                if (score < singularBeta - 60 + corrAdj + sd->moveHistory.getTTMoveHistory() / 128)
                     extension = 3;
             }
         } else if (score >= beta && std::abs(score) < SCORE_MATE_MAX_PLY) {
+            sd->moveHistory.updateTTMove(std::max(-400 - 100 * depth, -4000));
             return score;
         }
     }
@@ -515,6 +516,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
                 if (alpha >= beta) {
                     sd->moveHistory.update<Me>(pos, bestMove, ply, depth + failedLow, quietMoves, captureMoves, contHist);
+                    if (!PvNode)
+                        sd->moveHistory.updateTTMove(bestMove == ttMove ? 800 : -800);
                     return false; // break
                 }
             }
