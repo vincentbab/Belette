@@ -64,6 +64,7 @@ public:
 
     inline Side getSideToMove() const { return sideToMove; }
     inline int getFiftyMoveRule() const { return state->fiftyMoveRule; }
+    inline int getPliesFromNull() const { return state->pliesFromNull; }
     inline int getHalfMoves() const { return state->halfMoves; }
     inline int getFullMoves() const { return 1 + (getHalfMoves() - (sideToMove == BLACK)) / 2; }
     inline Square getEpSquare() const { return state->epSquare; }
