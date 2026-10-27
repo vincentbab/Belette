@@ -151,6 +151,15 @@ public:
     }
 
     template<Side Me>
+    inline void prefetchCorrection(const Position& pos) const {
+        __builtin_prefetch(&corrHist[Me][pos.pawnHash() & (CORR_HIST_SIZE - 1)]);
+        __builtin_prefetch(&(*nonPawnCorrHist)[Me][WHITE][pos.nonPawnHash(WHITE) & (CORR_HIST_SIZE - 1)]);
+        __builtin_prefetch(&(*nonPawnCorrHist)[Me][BLACK][pos.nonPawnHash(BLACK) & (CORR_HIST_SIZE - 1)]);
+        __builtin_prefetch(&(*minorCorrHist)[Me][pos.minorHash() & (CORR_HIST_SIZE - 1)]);
+        __builtin_prefetch(&(*majorCorrHist)[Me][pos.majorHash() & (CORR_HIST_SIZE - 1)]);
+    }
+
+    template<Side Me>
     inline Score correctEval(const Position& pos, Score eval, const ContCorrContext& ctx) const {
         MoveScore correction = corrHist[Me][pos.pawnHash() & (CORR_HIST_SIZE - 1)]
                              + (*nonPawnCorrHist)[Me][WHITE][pos.nonPawnHash(WHITE) & (CORR_HIST_SIZE - 1)]

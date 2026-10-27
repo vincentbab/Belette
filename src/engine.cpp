@@ -460,6 +460,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         // Do move
         pos.doMove<Me>(move);
+        sd->moveHistory.prefetchCorrection<~Me>(pos);
 
         Score score;
         int newDepth = depth - 1 + (move == ttMove ? extension : 0);
@@ -670,6 +671,7 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
         sd->node(ply).setMove(sd->moveHistory, pos, move);
 
         pos.doMove<Me>(move);
+        sd->moveHistory.prefetchCorrection<~Me>(pos);
         Score score = -qSearch<~Me, NT>(-beta, -alpha, ply+1);
         pos.undoMove<Me>(move);
 
