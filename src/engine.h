@@ -32,9 +32,9 @@ struct Node {
     PieceToHistory* contCorr;
     PieceToHistory* contCorr2;
     Piece movedPiece;
+    Square movedFrom;
     Square movedTo;
     Move excludedMove = MOVE_NONE;
-    int doubleExts = 0;
     PvList pv;
     //MovePicker mp;
 
@@ -43,6 +43,7 @@ struct Node {
         contCorr = moveHistory.getContCorrEntry(pos, move);
         contCorr2 = moveHistory.getContCorr2Entry(pos, move);
         movedPiece = pos.getPieceAt(moveFrom(move));
+        movedFrom = moveFrom(move);
         movedTo = moveTo(move);
     }
 
@@ -51,6 +52,7 @@ struct Node {
         contCorr = moveHistory.getDefaultContCorr();
         contCorr2 = moveHistory.getDefaultContCorr2();
         movedPiece = NO_PIECE;
+        movedFrom = SQ_FIRST;
         movedTo = SQ_FIRST;
     }
 };
@@ -132,6 +134,12 @@ struct SearchData {
             node(ply-2).movedPiece,
             node(ply-2).movedTo
         };
+    }
+
+    inline bool isWandering(const Position& pos, Move move, int ply) {
+        if (pos.isTactical(move) || pos.getFiftyMoveRule() < 10 || pos.getPliesFromNull() <= 6 || ply < 20)
+            return false;
+        return moveFrom(move) == node(ply-2).movedTo && node(ply-2).movedFrom == node(ply-4).movedTo;
     }
 
     Position position;
