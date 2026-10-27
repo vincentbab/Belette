@@ -269,7 +269,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         node.staticEval = eval = sd->moveHistory.correctEval<Me>(pos, rawEval, corrCtx);
 
         // Use score instead of eval if available.
-        if (ttHit && tte->canCutoff(ttScore, eval)) {
+        if (ttHit && !excludedMove && tte->canCutoff(ttScore, eval)) {
             eval = ttScore;
         }
 
