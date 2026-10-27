@@ -288,7 +288,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     }
 
     // Reverse futility pruning (RFP)
-    if (!PvNode && !inCheck && depth <= 8
+    if (!PvNode && !inCheck && depth <= 10
         && eval - ((improving ? 60 : 120) * depth) >= beta)
     {
         return eval;
