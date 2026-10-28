@@ -10,12 +10,13 @@ namespace Belette {
 
 constexpr int LMR_FACTOR = 1024;
 
-int Engine::LMRTable[MAX_PLY][MAX_MOVE];
+int Engine::LMRTable[2][MAX_PLY][MAX_MOVE];
 
 void Engine::init() {
     for (int d=1; d<MAX_PLY; d++) {
         for (int m=1; m<MAX_MOVE; m++) {
-            LMRTable[d][m] = int(LMR_FACTOR * (0.25 + 0.46 * std::log(d) * std::log(m)));
+            LMRTable[0][d][m] = int(LMR_FACTOR * (0.25 + 0.46 * std::log(d) * std::log(m)));
+            LMRTable[1][d][m] = int(LMR_FACTOR * (0.75 + 0.46 * std::log(d) * std::log(m)));
         }
     }
 }
@@ -421,19 +422,27 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         MoveScore statScore = moveIsTactical ? sd->moveHistory.getCaptureHistory(pos, move)
                                              : sd->moveHistory.getHistory<Me, 2>(pos, move, contHist);
 
-        int lmrDepth = std::max(0, depth - 1 - LMRTable[depth][nbMoves] / LMR_FACTOR);
+        int lmrDepth = std::max(0, depth - 1 - LMRTable[!moveIsTactical][depth][nbMoves] / LMR_FACTOR);
 
         // Late move pruning
         if (!RootNode && bestScore > -SCORE_MATE_MAX_PLY) {
             // Move count pruning
-            skipQuiets |= (nbMoves >= 3 + depth*depth/(improving ? 1 : 2));
+            if (!moveIsTactical)
+                skipQuiets |= (nbMoves >= 3 + depth*depth/(improving ? 1 : 2));
 
             // Futility pruning
             Score futilityValue = eval + 100 + 120*depth + statScore/64;
             if (!inCheck && !moveIsTactical && lmrDepth <= 6 && futilityValue <= alpha) {
-                skipQuiets = true;
                 if (bestScore < futilityValue && futilityValue < SCORE_MATE_MAX_PLY)
                     bestScore = futilityValue;
+                return true; // continue;
+            }
+
+            // Bad captures futility pruning
+            Score captureFutilityValue = eval + 100*depth;
+            if (!inCheck && moveIsTactical && depth <= 8 && captureFutilityValue <= alpha && !pos.see(move, -50)) {
+                if (bestScore < captureFutilityValue)
+                    bestScore = captureFutilityValue;
                 return true; // continue;
             }
 
@@ -467,7 +476,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         // Late move reduction (LMR)
         if (depth >= 2 && nbMoves > 1) {
-            int R = LMRTable[depth][nbMoves];
+            int R = LMRTable[!moveIsTactical][depth][nbMoves];
 
             R -= 1024 * PvNode;
             R -= 1024 * pos.inCheck();
