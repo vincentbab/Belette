@@ -389,8 +389,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             int tripleMargin = pos.isTactical(ttMove) ? 150 : -35 - sd->moveHistory.getHistory<Me>(pos, ttMove, contHist) / 512;
             if (score < singularBeta - tripleMargin + corrAdj)
                 extension++;
-        } else if (score >= beta && std::abs(score) < SCORE_MATE_MAX_PLY) {
-            return score;
+        } else if (singularBeta >= beta) {
+            return singularBeta;
         } else if (ttScore >= beta) {
             extension = -2 - !PvNode;
         } else if (cutNode) {
