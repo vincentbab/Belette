@@ -62,9 +62,14 @@ public:
 
     template<typename Compare>
     inline void insert_sorted(const T& e, Compare comp) {
+        insert_sorted(e, comp, begin());
+    }
+
+    template<typename Compare>
+    inline void insert_sorted(const T& e, Compare comp, const T* first) {
         T *cur = end();
 
-        for (; cur != begin() && comp(e, *(cur - 1)); cur--) {
+        for (; cur != first && comp(e, *(cur - 1)); cur--) {
             *cur = *(cur - 1);
         }
 

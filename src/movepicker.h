@@ -180,7 +180,7 @@ bool MovePicker::enumerate(const Handler &handler) {
             tt.prefetch(pos->getHashAfter(m));
 
         ScoredMove newMove = ScoredMove(m, scoreQuiet<Me>(m));
-        moves.insert_sorted(newMove, compare);
+        moves.insert_sorted(newMove, compare, beginQuiets);
         
         return true;
     });
