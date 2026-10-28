@@ -370,8 +370,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         && ttLower && ttDepth >= depth - 3
         && pos.isLegal<Me>(ttMove))
     {
-        Score singularBeta = ttScore - depth;
-        int corrAdj = std::abs(node.staticEval - rawEval) / 4;
+        Score singularBeta = ttScore - ((tte->isExactBound() ? 6 : 10) * depth + 10 * (ttPv && !PvNode)) / 8;
 
         node.excludedMove = ttMove;
         Score score = pvSearch<Me, NodeType::NonPV>(singularBeta-1, singularBeta, (depth-1)/2, ply, cutNode);
@@ -382,15 +381,18 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         if (score < singularBeta) {
             extension = 1;
+            int corrAdj = std::abs(node.staticEval - rawEval) / 8;
 
             // Double extension
-            if (!PvNode && node.doubleExts <= 8) {
-                extension = 2;
+            if (!PvNode && node.doubleExts <= 8 && score < singularBeta + 20) {
+                extension++;
                 node.doubleExts++;
-
-                if (score < singularBeta - 60 + corrAdj)
-                    extension = 3;
             }
+
+            // Triple extension
+            int tripleMargin = pos.isTactical(ttMove) ? 150 : -35 - sd->moveHistory.getHistory<Me>(pos, ttMove, contHist) / 512;
+            if (score < singularBeta - tripleMargin + corrAdj)
+                extension++;
         } else if (score >= beta && std::abs(score) < SCORE_MATE_MAX_PLY) {
             return score;
         }
