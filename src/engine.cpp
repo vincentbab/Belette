@@ -426,7 +426,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         // Late move pruning
         if (!RootNode && bestScore > -SCORE_MATE_MAX_PLY) {
             // Move count pruning
-            skipQuiets = (nbMoves >= 3 + depth*depth/(improving ? 1 : 2));
+            skipQuiets = (nbMoves >= 2 + depth*depth/(improving ? 1 : 2));
 
             // Futility pruning
             Score futilityValue = eval + 100 + 120*depth + statScore/64;
@@ -475,6 +475,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             R += 1024 * ttTactical;
             R += 2048 * cutNode;
             R += 1024 * !improving;
+            R += 512 * !moveIsTactical;
             R -= statScore / 4;
 
             R = std::min(depth - 1, std::max(1, R / LMR_FACTOR));
