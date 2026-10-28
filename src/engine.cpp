@@ -247,7 +247,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     Score ttScore = tte->score(ply);
     bool ttPv = PvNode || (ttHit && tte->isPv());
     Move ttMove = ttHit ? tte->move() : MOVE_NONE;
-    bool ttTactical = ttHit ? pos.isTactical(ttMove) : false;
+    bool ttTactical = ttHit && isValidMove(ttMove) && pos.isTactical(ttMove);
     int ttDepth = tte->depth();
     bool ttLower = tte->isLowerBound();
 
