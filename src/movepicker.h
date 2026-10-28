@@ -96,7 +96,7 @@ bool MovePicker::enumerate(const Handler &handler) {
     }
     
     ScoredMoveList moves;
-    ScoredMove *current, *endBadTacticals, *beginQuiets, *endBadQuiets;
+    ScoredMove *current, *endBadTacticals, *endBadQuiets;
 
     auto compare = [](const ScoredMove& a, const ScoredMove& b) { return a.score > b.score; };
 
@@ -170,7 +170,6 @@ bool MovePicker::enumerate(const Handler &handler) {
 
     // Quiets
     moves.resize(endBadTacticals - moves.begin()); // Keep only bad tacticals
-    beginQuiets = endBadTacticals;
 
     enumerateLegalMoves<Me, QUIET_MOVES>(*pos, [&](Move m) {
         if (m == ttMove) return true; // continue;
@@ -185,8 +184,8 @@ bool MovePicker::enumerate(const Handler &handler) {
         return true;
     });
 
-    // Good quiets
-    for (current = endBadQuiets = beginQuiets; current != moves.end() && !skipQuiets; current++) {
+    // Good quiets and bad tacticals
+    for (current = endBadQuiets = moves.begin(); current != moves.end() && !skipQuiets; current++) {
         if (current->score < -16000) {
             *endBadQuiets++ = *current;
             continue;
@@ -195,14 +194,8 @@ bool MovePicker::enumerate(const Handler &handler) {
         CALL_HANDLER(current->move, skipQuiets);
     }
 
-    // Bad tacticals
-    for (current = moves.begin(); current != endBadTacticals; current++) {
-        tt.prefetch(pos->getHashAfter(current->move));
-        CALL_HANDLER(current->move, skipQuiets);
-    }
-
     // Bad quiets
-    for (current = beginQuiets; current != endBadQuiets && !skipQuiets; current++) {
+    for (current = moves.begin(); current != endBadQuiets && !skipQuiets; current++) {
         tt.prefetch(pos->getHashAfter(current->move));
         CALL_HANDLER(current->move, skipQuiets);
     }
