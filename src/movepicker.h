@@ -187,7 +187,7 @@ bool MovePicker::enumerate(const Handler &handler) {
 
     // Good quiets
     for (current = endBadQuiets = beginQuiets; current != moves.end() && !skipQuiets; current++) {
-        if (current->score < -16000) {
+        if (current->score < 0) {
             *endBadQuiets++ = *current;
             continue;
         }
