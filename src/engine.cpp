@@ -437,6 +437,14 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
                 return true; // continue;
             }
 
+            // Bad captures futility pruning
+            Score captureFutilityValue = eval + 100*depth;
+            if (!inCheck && moveIsTactical && depth <= 8 && captureFutilityValue <= alpha && !pos.see(move, -50)) {
+                if (bestScore < captureFutilityValue)
+                    bestScore = captureFutilityValue;
+                return true; // continue;
+            }
+
             // History pruning
             if (!inCheck && !moveIsTactical && depth <= 4 && statScore < -4096 * depth) {
                 return true; // continue;
