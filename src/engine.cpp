@@ -236,8 +236,6 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         node.pv.clear();
     }
 
-    node.doubleExts = RootNode ? 0 : sd->node(ply-1).doubleExts;
-
     if (ply >= MAX_PLY) [[unlikely]] {
         return evaluate<Me>(pos); // TODO: verify if we are in check ?
     }
@@ -365,7 +363,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
     // Singular extensions
     int extension = 0;
-    if (!RootNode && !excludedMove && depth >= 6 + ttPv
+    if (!RootNode && !excludedMove && depth >= 6 + ttPv && ply < 2 * depth
         && ttHit && isValidMove(ttMove) && std::abs(ttScore) < SCORE_MATE_MAX_PLY
         && ttLower && ttDepth >= depth - 3
         && pos.isLegal<Me>(ttMove))
@@ -384,10 +382,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             int corrAdj = std::abs(node.staticEval - rawEval) / 8;
 
             // Double extension
-            if (!PvNode && node.doubleExts <= 8 && score < singularBeta + 20) {
+            if (!PvNode && score < singularBeta + 20)
                 extension++;
-                node.doubleExts++;
-            }
 
             // Triple extension
             int tripleMargin = pos.isTactical(ttMove) ? 150 : -35 - sd->moveHistory.getHistory<Me>(pos, ttMove, contHist) / 512;
@@ -395,6 +391,10 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
                 extension++;
         } else if (score >= beta && std::abs(score) < SCORE_MATE_MAX_PLY) {
             return score;
+        } else if (ttScore >= beta) {
+            extension = -2 - !PvNode;
+        } else if (cutNode) {
+            extension = -2;
         }
     }
 
