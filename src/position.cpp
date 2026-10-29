@@ -906,13 +906,17 @@ bool Position::see(Move move, int threshold) const {
     Square from = moveFrom(move);
     Square to = moveTo(move);
 
-    Score value = PieceValue<MG>(getPieceAt(to)) - threshold;
+    bool enPassant = moveType(move) == EN_PASSANT;
+
+    Score value = (enPassant ? PieceValue<MG>(PAWN) : PieceValue<MG>(getPieceAt(to))) - threshold;
     if (value < 0) return false;
 
     value = PieceValue<MG>(getPieceAt(from)) - value;
     if (value <= 0) return true;
 
     Bitboard occupied = getPiecesBB() ^ from ^ to;
+    if (enPassant)
+        occupied ^= to - pawnDirection(getSideToMove());
     Side me = ~getSideToMove();
     Bitboard allAttackers = getAttackers(to, occupied) & occupied;
     int result = 1;
