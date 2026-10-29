@@ -906,6 +906,9 @@ bool Position::see(Move move, int threshold) const {
     Square from = moveFrom(move);
     Square to = moveTo(move);
 
+    if (moveType(move) == EN_PASSANT)
+        return threshold <= 0;
+
     Score value = PieceValue<MG>(getPieceAt(to)) - threshold;
     if (value < 0) return false;
 
