@@ -497,6 +497,12 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             if (score > alpha && R != 1) {
                 // Full depth, Zero window
                 score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, newDepth, ply+1, !cutNode);
+
+                // Post LMR continuation history update
+                if (!moveIsTactical) {
+                    MoveScore bonus = sd->moveHistory.historyBonus(newDepth);
+                    sd->moveHistory.updateContHist(node.movedPiece, node.movedTo, score > alpha ? bonus : -bonus, contHist);
+                }
             }
 
         } else if (!PvNode || nbMoves > 1) {

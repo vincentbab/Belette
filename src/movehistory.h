@@ -232,6 +232,16 @@ public:
             updateCapture(pos, m, -bonus);
         }
     }
+
+    inline void updateContHist(Piece pc, Square to, MoveScore bonus, PieceToHistory* const* contHist) {
+        for (int i = 0; i < CONT_HIST_PLIES; i++)
+            if (contHist[i] != getDefaultContHist())
+                updateHistoryEntry((*contHist[i])[pc][to], bonus);
+    }
+
+    inline MoveScore historyBonus(int depth) {
+        return std::min(1536, 128*depth - 64);
+    }
 private:
     Move counterMoves[NB_PIECE][NB_SQUARE];
     Move killerMoves[MAX_PLY+1][2];
@@ -250,10 +260,6 @@ private:
     inline MoveScore& getButterfly(const Position& pos, Move m) const {
         Bitboard threats = pos.threatsFor(KING);
         return (*history)[Me][bool(threats & moveFrom(m))][bool(threats & moveTo(m))][moveFromTo(m)];
-    }
-
-    inline MoveScore historyBonus(int depth) {
-        return std::min(1536, 128*depth - 64);
     }
 
     inline void updateKiller(Move move, int ply) {
@@ -295,9 +301,7 @@ private:
 
         Piece pc = pos.getPieceAt(moveFrom(m));
         Square to = moveTo(m);
-        for (int i = 0; i < CONT_HIST_PLIES; i++)
-            if (contHist[i] != getDefaultContHist())
-                updateHistoryEntry((*contHist[i])[pc][to], bonus);
+        updateContHist(pc, to, bonus, contHist);
 
         updateHistoryEntry((*pawnHistory)[pos.pawnHash() & (PAWN_HIST_SIZE - 1)][pc][to], bonus);
     }
