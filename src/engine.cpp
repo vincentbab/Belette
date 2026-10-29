@@ -10,12 +10,13 @@ namespace Belette {
 
 constexpr int LMR_FACTOR = 1024;
 
-int Engine::LMRTable[MAX_PLY][MAX_MOVE];
+int Engine::LMRTable[2][MAX_PLY][MAX_MOVE];
 
 void Engine::init() {
     for (int d=1; d<MAX_PLY; d++) {
         for (int m=1; m<MAX_MOVE; m++) {
-            LMRTable[d][m] = int(LMR_FACTOR * (0.25 + 0.46 * std::log(d) * std::log(m)));
+            LMRTable[0][d][m] = int(LMR_FACTOR * (0.75 + 0.45 * std::log(d) * std::log(m)));
+            LMRTable[1][d][m] = int(LMR_FACTOR * (0.20 + 0.30 * std::log(d) * std::log(m)));
         }
     }
 }
@@ -421,7 +422,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         MoveScore statScore = moveIsTactical ? sd->moveHistory.getCaptureHistory(pos, move)
                                              : sd->moveHistory.getHistory<Me, 2>(pos, move, contHist);
 
-        int lmrDepth = std::max(0, depth - 1 - LMRTable[depth][nbMoves] / LMR_FACTOR);
+        int lmrDepth = std::max(0, depth - 1 - LMRTable[0][depth][nbMoves] / LMR_FACTOR);
 
         // Late move pruning
         if (!RootNode && bestScore > -SCORE_MATE_MAX_PLY) {
@@ -475,7 +476,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         // Late move reduction (LMR)
         if (depth >= 2 && nbMoves > 1) {
-            int R = LMRTable[depth][nbMoves];
+            int R = LMRTable[moveIsTactical][depth][nbMoves];
 
             R -= 1024 * PvNode;
             R -= 1024 * pos.inCheck();
