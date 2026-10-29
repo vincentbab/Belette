@@ -442,7 +442,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
             // Captures futility pruning
             Score captureFutilityValue = eval + 100*depth + PieceValue<MG>(pos.getPieceAt(moveTo(move))) + statScore/16;
-            if (!inCheck && moveIsTactical && depth <= 8 && captureFutilityValue <= alpha) {
+            if (!inCheck && moveIsTactical && moveType(move) != PROMOTION && depth <= 8 && captureFutilityValue <= alpha) {
                 if (bestScore < captureFutilityValue)
                     bestScore = captureFutilityValue;
                 return true; // continue;
