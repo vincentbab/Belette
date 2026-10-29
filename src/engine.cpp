@@ -451,7 +451,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             }
 
             // SEE Pruning
-            if (depth <= 8 && !pos.see(move, moveIsTactical ? -100*depth : -60*depth)) {
+            if (depth <= 8 && !pos.see(move, moveIsTactical ? -100*depth - std::clamp(statScore/32, -100*depth, 100*depth) : -60*depth)) {
                 return true; // continue;
             }
         }
