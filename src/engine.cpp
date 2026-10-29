@@ -429,7 +429,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             skipQuiets |= (nbMoves >= 3 + depth*depth/(improving ? 1 : 2));
 
             // Futility pruning
-            Score futilityValue = eval + 100 + 120*depth + statScore/64;
+            Score futilityValue = eval + 100 + 120*lmrDepth + statScore/64;
             if (!inCheck && !moveIsTactical && lmrDepth <= 6 && futilityValue <= alpha) {
                 skipQuiets = true;
                 if (bestScore < futilityValue && futilityValue < SCORE_MATE_MAX_PLY)
