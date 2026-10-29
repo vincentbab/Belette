@@ -487,12 +487,18 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
             R = std::min(depth - 1, std::max(1, R / LMR_FACTOR));
 
-            // Reduced depth, Zero window
-            score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, depth-R, ply+1, true);
+            int reducedDepth = depth - R;
 
-            if (score > alpha && R != 1) {
+            // Reduced depth, Zero window
+            score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, reducedDepth, ply+1, true);
+
+            if (score > alpha) {
+                // Deeper or shallower re-search
+                newDepth += (reducedDepth < newDepth && score > bestScore + 50) - (score < bestScore + 10);
+
                 // Full depth, Zero window
-                score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, newDepth, ply+1, !cutNode);
+                if (newDepth > reducedDepth)
+                    score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, newDepth, ply+1, !cutNode);
             }
 
         } else if (!PvNode || nbMoves > 1) {
