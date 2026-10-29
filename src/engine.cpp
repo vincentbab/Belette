@@ -243,6 +243,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         return evaluate<Me>(pos); // TODO: verify if we are in check ?
     }
 
+    sd->node(ply+1).nbCutoffs = 0;
+
     // Query Transposition Table
     auto&&[ttHit, tte] = tt.get(pos.hash());
     Score ttScore = tte->score(ply);
@@ -484,6 +486,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             R += 1024 * ttTactical;
             R += 2048 * cutNode;
             R += 1024 * !improving;
+            R += 1024 * (sd->node(ply+1).nbCutoffs > 2);
             R -= statScore / 4;
 
             R = std::min(depth - 1, std::max(1, R / LMR_FACTOR));
@@ -524,6 +527,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
                     updatePv(node.pv, move, sd->node(ply+1).pv);
 
                 if (alpha >= beta) {
+                    node.nbCutoffs++;
                     sd->moveHistory.update<Me>(pos, bestMove, ply, depth + failedLow, quietMoves, captureMoves, contHist);
                     return false; // break
                 }

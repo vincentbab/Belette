@@ -35,6 +35,7 @@ struct Node {
     Square movedTo;
     Move excludedMove = MOVE_NONE;
     int doubleExts = 0;
+    int nbCutoffs = 0;
     PvList pv;
     //MovePicker mp;
 
