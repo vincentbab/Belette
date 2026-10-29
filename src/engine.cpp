@@ -662,7 +662,11 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
     Score futilityBase = eval + 100;
     Square prevSq = isValidMove(pos.previousMove()) ? moveTo(pos.previousMove()) : SQ_NONE;
 
+    int nbMoves = 0;
+
     mp.enumerate<QUIESCENCE, Me>([&](Move move, /*unused*/bool& skipQuiets) -> bool {
+        nbMoves++;
+
         if (bestScore > -SCORE_MATE_MAX_PLY) {
             // Futility Pruning
             if (!inCheck && moveType(move) == NORMAL && moveTo(move) != prevSq) {
@@ -710,6 +714,11 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
     // no legal move: the pruning above cannot produce this state.
     if (inCheck && bestScore == -SCORE_INFINITE) {
         bestScore = -SCORE_MATE + ply;
+    }
+
+    // Stalemate detection
+    if (!inCheck && nbMoves == 0 && enumerateLegalMoves<Me, QUIET_MOVES>(pos, [](Move) { return false; })) {
+        bestScore = SCORE_DRAW;
     }
 
     // Update Transposition Table
