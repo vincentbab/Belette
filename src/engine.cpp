@@ -446,7 +446,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             }
 
             // History pruning
-            if (!inCheck && !moveIsTactical && depth <= 4 && statScore < -4096 * depth) {
+            if (!inCheck && !moveIsTactical && lmrDepth <= 4 && statScore < -4096 * lmrDepth) {
                 return true; // continue;
             }
 
