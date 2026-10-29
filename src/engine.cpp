@@ -421,7 +421,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         MoveScore statScore = moveIsTactical ? sd->moveHistory.getCaptureHistory(pos, move)
                                              : sd->moveHistory.getHistory<Me, 2>(pos, move, contHist);
 
-        int lmrDepth = std::max(0, depth - 1 - LMRTable[depth][nbMoves] / LMR_FACTOR);
+        int lmrDepth = std::max(0, depth - 1 - (LMRTable[depth][nbMoves] - (moveIsTactical ? 0 : statScore/8)) / LMR_FACTOR);
 
         // Late move pruning
         if (!RootNode && bestScore > -SCORE_MATE_MAX_PLY) {
