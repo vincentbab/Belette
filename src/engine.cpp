@@ -228,6 +228,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     PieceToHistory* contHist[CONT_HIST_PLIES] = {
         sd->node(ply-1).contHist,
         sd->node(ply-2).contHist,
+        sd->node(ply-3).contHist,
         sd->node(ply-4).contHist
     };
 
@@ -653,6 +654,7 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
     PieceToHistory* contHist[CONT_HIST_PLIES] = {
         sd->node(ply-1).contHist,
         sd->node(ply-2).contHist,
+        sd->node(ply-3).contHist,
         sd->node(ply-4).contHist
     };
 
