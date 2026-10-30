@@ -366,39 +366,6 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         depth++;
     }
 
-    // Singular extensions
-    int extension = 0;
-    if (!RootNode && !excludedMove && depth >= 6 + ttPv
-        && ttHit && isValidMove(ttMove) && std::abs(ttScore) < SCORE_MATE_MAX_PLY
-        && ttLower && ttDepth >= depth - 3
-        && pos.isLegal<Me>(ttMove))
-    {
-        Score singularBeta = ttScore - depth;
-        int corrAdj = std::abs(node.staticEval - rawEval) / 4;
-
-        node.excludedMove = ttMove;
-        Score score = pvSearch<Me, NodeType::NonPV>(singularBeta-1, singularBeta, (depth-1)/2, ply, cutNode);
-        node.excludedMove = MOVE_NONE;
-
-        if (!PvNode && depth < 12 && score < singularBeta + 10)
-            depth++;
-
-        if (score < singularBeta) {
-            extension = 1;
-
-            // Double extension
-            if (!PvNode && node.doubleExts <= 8) {
-                extension = 2;
-                node.doubleExts++;
-
-                if (score < singularBeta - 60 + corrAdj)
-                    extension = 3;
-            }
-        } else if (score >= beta && std::abs(score) < SCORE_MATE_MAX_PLY) {
-            return score;
-        }
-    }
-
     if (!excludedMove)
         sd->moveHistory.clearKillers(ply+1);
 
@@ -407,6 +374,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     MovePicker mp(pos, ttMove, &sd->moveHistory, ply, contHist);
     //MovePicker *mp = new (&node.mp) MovePicker(pos, ttMove, &sd->moveHistory, ply);
     PartialMoveList quietMoves, captureMoves;
+    Score singularCutoff = SCORE_NONE;
 
     mp.enumerate<MAIN, Me>([&](Move move, bool& skipQuiets) -> bool {
         // Honor UCI searchmoves
@@ -459,6 +427,38 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             }
         }
 
+        // Singular extensions
+        int extension = 0;
+        if (!RootNode && move == ttMove && !excludedMove && depth >= 6 + ttPv
+            && std::abs(ttScore) < SCORE_MATE_MAX_PLY && ttLower && ttDepth >= depth - 3)
+        {
+            Score singularBeta = ttScore - depth;
+            int corrAdj = std::abs(node.staticEval - rawEval) / 4;
+
+            node.excludedMove = ttMove;
+            Score score = pvSearch<Me, NodeType::NonPV>(singularBeta-1, singularBeta, (depth-1)/2, ply, cutNode);
+            node.excludedMove = MOVE_NONE;
+
+            if (!PvNode && depth < 12 && score < singularBeta + 10)
+                depth++;
+
+            if (score < singularBeta) {
+                extension = 1;
+
+                // Double extension
+                if (!PvNode && node.doubleExts <= 8) {
+                    extension = 2;
+                    node.doubleExts++;
+
+                    if (score < singularBeta - 60 + corrAdj)
+                        extension = 3;
+                }
+            } else if (score >= beta && std::abs(score) < SCORE_MATE_MAX_PLY) {
+                singularCutoff = score;
+                return false; // break;
+            }
+        }
+
         const size_t nodesBefore = sd->nbNodes;
 
         sd->nbNodes++;
@@ -474,7 +474,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         sd->moveHistory.prefetchCorrection<~Me>(pos);
 
         Score score;
-        int newDepth = depth - 1 + (move == ttMove ? extension : 0);
+        int newDepth = depth - 1 + extension;
 
         // Late move reduction (LMR)
         if (depth >= 2 && nbMoves > 1) {
@@ -545,6 +545,9 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         return true;
     }); if (searchAborted()) return bestScore;
+
+    if (singularCutoff != SCORE_NONE)
+        return singularCutoff;
 
     // Checkmate / Stalemate detection
     if (nbMoves == 0) {
