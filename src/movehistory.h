@@ -272,8 +272,8 @@ private:
     }
 
     template<typename T>
-    inline void updateHistoryEntry(T &entry, MoveScore bonus) {
-        entry += bonus - entry * std::abs(bonus) / 8192;
+    inline void updateHistoryEntry(T &entry, MoveScore bonus, MoveScore gravity = 8192) {
+        entry += bonus - entry * std::abs(bonus) / gravity;
     }
 
     inline void updateCorrEntry(MoveScore &entry, MoveScore diff, MoveScore weight) {
@@ -297,7 +297,7 @@ private:
         Square to = moveTo(m);
         for (int i = 0; i < CONT_HIST_PLIES; i++)
             if (contHist[i] != getDefaultContHist())
-                updateHistoryEntry((*contHist[i])[pc][to], bonus);
+                updateHistoryEntry((*contHist[i])[pc][to], bonus, 16384);
 
         updateHistoryEntry((*pawnHistory)[pos.pawnHash() & (PAWN_HIST_SIZE - 1)][pc][to], bonus);
     }
