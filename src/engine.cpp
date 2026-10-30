@@ -228,7 +228,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     PieceToHistory* contHist[CONT_HIST_PLIES] = {
         sd->node(ply-1).contHist,
         sd->node(ply-2).contHist,
-        sd->node(ply-4).contHist
+        sd->node(ply-4).contHist,
+        sd->node(ply-5).contHist
     };
 
     const ContCorrContext corrCtx = sd->contCorrContext(ply);
@@ -653,7 +654,8 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
     PieceToHistory* contHist[CONT_HIST_PLIES] = {
         sd->node(ply-1).contHist,
         sd->node(ply-2).contHist,
-        sd->node(ply-4).contHist
+        sd->node(ply-4).contHist,
+        sd->node(ply-5).contHist
     };
 
     MovePicker mp(pos, useTTMove ? ttMove : MOVE_NONE, &sd->moveHistory, contHist);
