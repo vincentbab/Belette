@@ -483,6 +483,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             R -= 1024 * PvNode;
             R -= 1024 * pos.inCheck();
             R += 1024 * !ttPv;
+            R -= 1024 * (ttPv && ttHit && ttScore > alpha && ttDepth >= depth);
             R += 1024 * ttTactical;
             R += 2048 * cutNode;
             R += 1024 * !improving;
