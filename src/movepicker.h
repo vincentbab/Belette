@@ -29,6 +29,15 @@ struct ScoredMove {
 
 using ScoredMoveList = fixed_vector<ScoredMove, MAX_MOVE, uint8_t>;
 
+inline void pickBest(ScoredMove* first, ScoredMove* last) {
+    ScoredMove* best = first;
+    for (ScoredMove* p = first + 1; p != last; p++)
+        if (p->score > best->score)
+            best = p;
+
+    std::rotate(first, best, best + 1);
+}
+
 enum MovePickerType {
     MAIN,
     QUIESCENCE
@@ -96,7 +105,7 @@ bool MovePicker::enumerate(const Handler &handler) {
     }
     
     ScoredMoveList moves;
-    ScoredMove *current, *endBadTacticals, *beginQuiets, *endBadQuiets;
+    ScoredMove *current, *endBadTacticals, *beginQuiets, *endGoodQuiets;
 
     auto compare = [](const ScoredMove& a, const ScoredMove& b) { return a.score > b.score; };
 
@@ -181,21 +190,20 @@ bool MovePicker::enumerate(const Handler &handler) {
         if (moves.size() < 48)
             tt.prefetch(pos->getHashAfter(m));
 
-        ScoredMove newMove = ScoredMove(m, scoreQuiet<Me>(m));
-        moves.insert_sorted(newMove, compare, beginQuiets);
+        moves.emplace_back(m, scoreQuiet<Me>(m));
         
         return true;
     });
 
     // Good quiets
-    for (current = endBadQuiets = beginQuiets; current != moves.end() && !skipQuiets; current++) {
-        if (current->score < 0) {
-            *endBadQuiets++ = *current;
-            continue;
-        }
+    for (current = beginQuiets; current != moves.end() && !skipQuiets; current++) {
+        pickBest(current, moves.end());
+        if (current->score < 0)
+            break;
 
         CALL_HANDLER(current->move, skipQuiets);
     }
+    endGoodQuiets = current;
 
     // Bad tacticals
     for (current = moves.begin(); current != endBadTacticals; current++) {
@@ -204,7 +212,8 @@ bool MovePicker::enumerate(const Handler &handler) {
     }
 
     // Bad quiets
-    for (current = beginQuiets; current != endBadQuiets && !skipQuiets; current++) {
+    for (current = endGoodQuiets; current != moves.end() && !skipQuiets; current++) {
+        pickBest(current, moves.end());
         tt.prefetch(pos->getHashAfter(current->move));
         CALL_HANDLER(current->move, skipQuiets);
     }
