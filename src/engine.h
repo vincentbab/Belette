@@ -36,6 +36,7 @@ struct Node {
     Move excludedMove = MOVE_NONE;
     int doubleExts = 0;
     int nbCutoffs = 0;
+    int reduction = 0;
     PvList pv;
     //MovePicker mp;
 

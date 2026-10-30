@@ -245,6 +245,9 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
     sd->node(ply+1).nbCutoffs = 0;
 
+    int priorReduction = sd->node(ply-1).reduction;
+    sd->node(ply-1).reduction = 0;
+
     // Query Transposition Table
     auto&&[ttHit, tte] = tt.get(pos.hash());
     Score ttScore = tte->score(ply);
@@ -283,6 +286,14 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             improving = (node.staticEval > sd->node(ply - 4).staticEval);
     } else {
         node.staticEval = eval = SCORE_NONE;
+    }
+
+    // Hindsight depth adjustment
+    if (!inCheck && sd->node(ply-1).staticEval != SCORE_NONE) {
+        if (priorReduction >= 3 && node.staticEval <= -sd->node(ply-1).staticEval)
+            depth++;
+        if (priorReduction >= 2 && depth >= 2 && node.staticEval + sd->node(ply-1).staticEval > 100)
+            depth--;
     }
 
     // Internal Iterative Reduction (IIR)
@@ -492,7 +503,9 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             R = R <= 0 ? 0 : std::min(depth - 1, std::max(1, R / LMR_FACTOR));
 
             // Reduced depth, Zero window
+            node.reduction = newDepth - (depth - R);
             score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, depth-R, ply+1, true);
+            node.reduction = 0;
 
             if (score > alpha && R > 1) {
                 // Full depth, Zero window
