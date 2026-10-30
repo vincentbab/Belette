@@ -256,6 +256,10 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
     // Transposition Table cutoff
     if (!PvNode && !excludedMove && ttHit && ttDepth >= depth && tte->canCutoff(ttScore, beta)) {
+        // TT move history update
+        if (ttScore >= beta && isValidMove(ttMove) && !ttTactical && pos.isLegal<Me>(ttMove))
+            sd->moveHistory.updateTTMove<Me>(pos, ttMove, depth, contHist);
+
         return ttScore;
     }
 

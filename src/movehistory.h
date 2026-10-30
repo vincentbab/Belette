@@ -232,6 +232,11 @@ public:
             updateCapture(pos, m, -bonus);
         }
     }
+
+    template<Side Me>
+    inline void updateTTMove(const Position& pos, Move ttMove, int depth, PieceToHistory* const* contHist) {
+        updateQuiet<Me>(pos, ttMove, historyBonus(depth) / 2, contHist);
+    }
 private:
     Move counterMoves[NB_PIECE][NB_SQUARE];
     Move killerMoves[MAX_PLY+1][2];
