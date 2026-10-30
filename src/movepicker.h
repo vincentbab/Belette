@@ -198,7 +198,7 @@ bool MovePicker::enumerate(const Handler &handler) {
     // Good quiets
     for (current = beginQuiets; current != moves.end() && !skipQuiets; current++) {
         pickBest(current, moves.end());
-        if (current->score < 0)
+        if (current->score < -500)
             break;
 
         CALL_HANDLER(current->move, skipQuiets);
