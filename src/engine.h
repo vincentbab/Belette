@@ -31,6 +31,7 @@ struct Node {
     PieceToHistory* contHist;
     PieceToHistory* contCorr;
     PieceToHistory* contCorr2;
+    MoveScore* butterfly;
     Piece movedPiece;
     Square movedTo;
     Move excludedMove = MOVE_NONE;
@@ -43,6 +44,7 @@ struct Node {
         contHist = moveHistory.getContHistEntry(pos, move);
         contCorr = moveHistory.getContCorrEntry(pos, move);
         contCorr2 = moveHistory.getContCorr2Entry(pos, move);
+        butterfly = pos.isTactical(move) ? nullptr : moveHistory.getButterflyEntry(pos, move);
         movedPiece = pos.getPieceAt(moveFrom(move));
         movedTo = moveTo(move);
     }
@@ -51,6 +53,7 @@ struct Node {
         contHist = moveHistory.getDefaultContHist();
         contCorr = moveHistory.getDefaultContCorr();
         contCorr2 = moveHistory.getDefaultContCorr2();
+        butterfly = nullptr;
         movedPiece = NO_PIECE;
         movedTo = SQ_FIRST;
     }

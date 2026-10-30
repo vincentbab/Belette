@@ -124,6 +124,14 @@ public:
         return &(*continuationHistory)[pc][to];
     }
 
+    inline MoveScore* getButterflyEntry(const Position& pos, Move m) {
+        return pos.getSideToMove() == WHITE ? &getButterfly<WHITE>(pos, m) : &getButterfly<BLACK>(pos, m);
+    }
+
+    inline void updateEvalDiff(MoveScore* entry, MoveScore bonus) {
+        updateHistoryEntry(*entry, bonus);
+    }
+
     inline PieceToHistory* getContHistEntry(const Position& pos, Move m) {
         return getContHistEntry(pos.getPieceAt(moveFrom(m)), moveTo(m));
     }
