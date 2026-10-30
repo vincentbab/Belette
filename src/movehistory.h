@@ -253,7 +253,7 @@ private:
     }
 
     inline MoveScore historyBonus(int depth) {
-        return std::min(1536, 128*depth - 64);
+        return std::min(2048, 100*depth);
     }
 
     inline void updateKiller(Move move, int ply) {
