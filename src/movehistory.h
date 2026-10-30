@@ -112,6 +112,15 @@ public:
         return score;
     }
 
+    template<Side Me>
+    inline MoveScore getQuietHistory(const Position& pos, Move m, const PieceToHistory* const* contHist) const {
+        Piece pc = pos.getPieceAt(moveFrom(m));
+        Square to = moveTo(m);
+
+        return (16 * getButterfly<Me>(pos, m) + 12 * (*contHist[0])[pc][to] + 6 * (*contHist[1])[pc][to]
+              + 5 * (*contHist[2])[pc][to] + 9 * getPawnHistory(pos, m)) / 8;
+    }
+
     inline MoveScore getPawnHistory(const Position& pos, Move m) const {
         return (*pawnHistory)[pos.pawnHash() & (PAWN_HIST_SIZE - 1)][pos.getPieceAt(moveFrom(m))][moveTo(m)];
     }

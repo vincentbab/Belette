@@ -14,7 +14,7 @@
 namespace Belette {
 
 constexpr MoveScore PieceThreatenedValue[NB_PIECE_TYPE] = {
-    0, 0, 15000, 15000, 25000, 50000, 0
+    0, 0, 20000, 20000, 22000, 26000, 0
 };
 
 struct ScoredMove {
@@ -259,33 +259,33 @@ MoveScore MovePicker::scoreQuiet(Move m) {
     score += ((threatened & from) && !(threatened & to)) * PieceThreatenedValue[pt];
 
     if (moveHistory != nullptr) [[likely]]
-        score += moveHistory->getHistory<Me>(*pos, m, contHist) + 2 * moveHistory->getPawnHistory(*pos, m);
+        score += moveHistory->getQuietHistory<Me>(*pos, m, contHist);
 
     // TODO: refactor this!
     switch (pt) {
         case PAWN:
             if (pawnAttacks<Me>(bb(to)) & pos->getPiecesBB(~Me, KING)) {
-                score += 10000;
+                score += 9000;
             }
             break;
         case KNIGHT:
             if (attacks<KNIGHT>(to, pos->getPiecesBB()) & pos->getPiecesBB(~Me, KING)) {
-                score += 10000;
+                score += 9000;
             }
             break;
         case BISHOP:
             if (attacks<BISHOP>(to, pos->getPiecesBB()) & pos->getPiecesBB(~Me, KING)) {
-                score += 10000;
+                score += 9000;
             }
             break;
         case ROOK:
             if (attacks<ROOK>(to, pos->getPiecesBB()) & pos->getPiecesBB(~Me, KING)) {
-                score += 10000;
+                score += 9000;
             }
             break;
         case QUEEN:
             if (attacks<QUEEN>(to, pos->getPiecesBB()) & pos->getPiecesBB(~Me, KING)) {
-                score += 10000;
+                score += 9000;
             }
             break;
         default:
