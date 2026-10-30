@@ -107,8 +107,6 @@ bool MovePicker::enumerate(const Handler &handler) {
     ScoredMoveList moves;
     ScoredMove *current, *endBadTacticals, *beginQuiets, *endGoodQuiets;
 
-    auto compare = [](const ScoredMove& a, const ScoredMove& b) { return a.score > b.score; };
-
     // Evasions
     if (pos->inCheck()) {
         enumerateLegalMoves<Me, ALL_MOVES>(*pos, [&](Move m) {
@@ -116,14 +114,14 @@ bool MovePicker::enumerate(const Handler &handler) {
 
             tt.prefetch(pos->getHashAfter(m));
 
-            ScoredMove newMove = ScoredMove(m, scoreEvasion<Me, Type == QUIESCENCE ? QSEARCH_CONT_HIST_PLIES : 2>(m));
-            moves.insert_sorted(newMove, compare);
+            moves.emplace_back(m, scoreEvasion<Me, Type == QUIESCENCE ? QSEARCH_CONT_HIST_PLIES : 2>(m));
             
             return true;
         });
 
-        for (auto m : moves) {
-            CALL_HANDLER(m.move, skipQuiets);
+        for (current = moves.begin(); current != moves.end(); current++) {
+            pickBest(current, moves.end());
+            CALL_HANDLER(current->move, skipQuiets);
         }
 
         return true;
@@ -136,13 +134,14 @@ bool MovePicker::enumerate(const Handler &handler) {
         if (moves.size() < 16)
             tt.prefetch(pos->getHashAfter(m));
 
-        ScoredMove newMove = ScoredMove(m, scoreTactical<Me>(m));
-        moves.insert_sorted(newMove, compare);
+        moves.emplace_back(m, scoreTactical<Me>(m));
 
         return true;
     });
 
     for (current = endBadTacticals = moves.begin(); current != moves.end(); current++) {
+        pickBest(current, moves.end());
+
         if constexpr(Type == MAIN) { // For quiescence prunning of bad captures is done in search
             // Bad captures threshold with capture history
             MoveScore captHist = moveHistory != nullptr ? moveHistory->getCaptureHistory(*pos, current->move) : 0;
