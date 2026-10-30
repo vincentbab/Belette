@@ -274,8 +274,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         // Static eval difference history
         const Node& prevNode = sd->node(ply-1);
         if (!excludedMove && prevNode.butterfly != nullptr && prevNode.staticEval != SCORE_NONE) {
-            int evalDiff = std::clamp(-(prevNode.staticEval + node.staticEval), -200, 200);
-            sd->moveHistory.updateEvalDiff(prevNode.butterfly, 4 * evalDiff);
+            int evalDiff = std::clamp(-(prevNode.staticEval + node.staticEval), -200, 200) + 25;
+            sd->moveHistory.updateEvalDiff(prevNode.butterfly, 2 * evalDiff);
         }
 
         // Use score instead of eval if available.
