@@ -466,6 +466,9 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         if (PvNode)
             sd->node(ply+1).pv.clear();
 
+        bool isRefutation = move == sd->moveHistory.getKiller<0>(ply) || move == sd->moveHistory.getKiller<1>(ply)
+                         || move == sd->moveHistory.getCounter(pos);
+
         // Continuation history
         node.setMove(sd->moveHistory, pos, move);
 
@@ -487,6 +490,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             R += 2048 * cutNode;
             R += 1024 * !improving;
             R += 1024 * (sd->node(ply+1).nbCutoffs > 2);
+            R -= 1024 * isRefutation;
             R -= statScore / 4;
 
             R = R <= 0 ? 0 : std::min(depth - 1, std::max(1, R / LMR_FACTOR));
