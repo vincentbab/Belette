@@ -50,8 +50,6 @@ void Engine::waitForSearchFinish() {
 void Engine::search(const SearchLimits &limits) {
     waitForSearchFinish();
 
-    moveHistory.clearAllKillers();
-
     sd = std::make_unique<SearchData>(position(), limits, moveHistory);
     aborted = false;
     searching = true;
@@ -366,12 +364,9 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         depth++;
     }
 
-    if (!excludedMove)
-        sd->moveHistory.clearKillers(ply+1);
-
     int nbMoves = 0;
     bool failedLow = !inCheck && eval <= alpha;
-    MovePicker mp(pos, ttMove, &sd->moveHistory, ply, contHist);
+    MovePicker mp(pos, ttMove, &sd->moveHistory, contHist);
     //MovePicker *mp = new (&node.mp) MovePicker(pos, ttMove, &sd->moveHistory, ply);
     PartialMoveList quietMoves, captureMoves;
     Score singularCutoff = SCORE_NONE;
@@ -528,7 +523,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
                 if (alpha >= beta) {
                     node.nbCutoffs++;
-                    sd->moveHistory.update<Me>(pos, bestMove, ply, depth + failedLow, quietMoves, captureMoves, contHist);
+                    sd->moveHistory.update<Me>(pos, bestMove, depth + failedLow, quietMoves, captureMoves, contHist);
                     return false; // break
                 }
             }

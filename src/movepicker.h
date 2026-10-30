@@ -40,25 +40,14 @@ public:
 
     // Simple
     MovePicker(const Position &pos_, Move ttMove_ = MOVE_NONE, const MoveHistory* moveHistory_ = nullptr)
-    : pos(&pos_),  moveHistory(moveHistory_), ttMove(ttMove_), refutations{}, contHist(nullptr)
+    : pos(&pos_),  moveHistory(moveHistory_), ttMove(ttMove_), contHist(nullptr)
     { }
 
-    // Quiescence
+    // Search
     MovePicker(const Position &pos_, Move ttMove_, const MoveHistory* moveHistory_,
                const PieceToHistory* const* contHist_)
-    : pos(&pos_), moveHistory(moveHistory_), ttMove(ttMove_), refutations{}, contHist(contHist_)
+    : pos(&pos_), moveHistory(moveHistory_), ttMove(ttMove_), contHist(contHist_)
     {
-        assert(contHist != nullptr);
-    }
-
-    // Main
-    MovePicker(const Position &pos_, Move ttMove_, const MoveHistory* moveHistory_, int ply_,
-               const PieceToHistory* const* contHist_)
-    : pos(&pos_), moveHistory(moveHistory_), ttMove(ttMove_),
-      refutations{moveHistory->getKiller<0>(ply_), moveHistory->getKiller<1>(ply_), moveHistory->getCounter(pos_)},
-      contHist(contHist_)
-    {
-        assert(refutations[0] != refutations[1] || refutations[0] == MOVE_NONE);
         assert(contHist != nullptr);
     }
 
@@ -72,7 +61,6 @@ private:
     const Position* const pos;
     const MoveHistory* const moveHistory;
     Move ttMove;
-    Move refutations[3];
     const PieceToHistory* const* contHist;
 
     template<Side Me, int NbContHist> inline MoveScore scoreEvasion(Move m);
@@ -149,34 +137,12 @@ bool MovePicker::enumerate(const Handler &handler) {
     // Stop here for Quiescence
     if constexpr(Type == QUIESCENCE) return true;
 
-    if (moveHistory != nullptr) [[likely]] {
-        if (isValidMove(refutations[0])) tt.prefetch(pos->getHashAfter(refutations[0]));
-        if (isValidMove(refutations[1])) tt.prefetch(pos->getHashAfter(refutations[1]));
-        if (isValidMove(refutations[2])) tt.prefetch(pos->getHashAfter(refutations[2]));
-        
-        // Killer 1
-        if (refutations[0] != ttMove && !pos->isTactical(refutations[0]) && pos->isLegal<Me>(refutations[0])) {
-            CALL_HANDLER(refutations[0], skipQuiets);
-        }
-
-        // Killer 2
-        if (refutations[1] != ttMove && !pos->isTactical(refutations[1]) && pos->isLegal<Me>(refutations[1])) {
-            CALL_HANDLER(refutations[1], skipQuiets);
-        }
-
-        // Counter
-        if (refutations[2] != ttMove && !pos->isTactical(refutations[2]) && refutations[2] != refutations[0] && refutations[2] != refutations[1] && pos->isLegal<Me>(refutations[2])) {
-            CALL_HANDLER(refutations[2], skipQuiets);
-        }
-    }
-
     // Quiets
     moves.resize(endBadTacticals - moves.begin()); // Keep only bad tacticals
     beginQuiets = endBadTacticals;
 
     enumerateLegalMoves<Me, QUIET_MOVES>(*pos, [&](Move m) {
         if (m == ttMove) return true; // continue;
-        if (refutations[0] == m || refutations[1] == m || refutations[2] == m) return true; // continue
 
         if (moves.size() < 48)
             tt.prefetch(pos->getHashAfter(m));
