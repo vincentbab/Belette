@@ -121,7 +121,7 @@ public:
     }
 
     inline MoveScore getLowPlyHistory(int ply, Move m) const {
-        return ply < LOW_PLY_HIST_SIZE ? 8 * (*lowPlyHistory)[ply][moveFromTo(m)] / (1 + ply) : 0;
+        return ply < LOW_PLY_HIST_SIZE ? (*lowPlyHistory)[ply][moveFromTo(m)] / (1 + ply) : 0;
     }
 
     inline MoveScore getPawnHistory(const Position& pos, Move m) const {
