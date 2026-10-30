@@ -487,7 +487,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             R += 2048 * cutNode;
             R += 1024 * !improving;
             R += 1024 * (sd->node(ply+1).nbCutoffs > 2);
-            R -= statScore / 4;
+            R -= statScore / 8;
 
             R = R <= 0 ? 0 : std::min(depth - 1, std::max(1, R / LMR_FACTOR));
 
