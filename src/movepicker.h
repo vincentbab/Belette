@@ -65,7 +65,7 @@ public:
                const PieceToHistory* const* contHist_)
     : pos(&pos_), moveHistory(moveHistory_), ttMove(ttMove_),
       refutations{moveHistory->getKiller<0>(ply_), moveHistory->getKiller<1>(ply_), moveHistory->getCounter(pos_)},
-      contHist(contHist_)
+      contHist(contHist_), ply(ply_)
     {
         assert(refutations[0] != refutations[1] || refutations[0] == MOVE_NONE);
         assert(contHist != nullptr);
@@ -83,6 +83,7 @@ private:
     Move ttMove;
     Move refutations[3];
     const PieceToHistory* const* contHist;
+    int ply = MAX_PLY;
 
     template<Side Me, int NbContHist> inline MoveScore scoreEvasion(Move m);
     template<Side Me> inline MoveScore scoreTactical(Move m);
@@ -259,7 +260,8 @@ MoveScore MovePicker::scoreQuiet(Move m) {
     score += ((threatened & from) && !(threatened & to)) * PieceThreatenedValue[pt];
 
     if (moveHistory != nullptr) [[likely]]
-        score += moveHistory->getHistory<Me>(*pos, m, contHist) + 2 * moveHistory->getPawnHistory(*pos, m);
+        score += moveHistory->getHistory<Me>(*pos, m, contHist) + 2 * moveHistory->getPawnHistory(*pos, m)
+               + moveHistory->getLowPlyHistory(ply, m);
 
     // TODO: refactor this!
     switch (pt) {

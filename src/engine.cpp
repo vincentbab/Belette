@@ -51,6 +51,7 @@ void Engine::search(const SearchLimits &limits) {
     waitForSearchFinish();
 
     moveHistory.clearAllKillers();
+    moveHistory.clearLowPly();
 
     sd = std::make_unique<SearchData>(position(), limits, moveHistory);
     aborted = false;

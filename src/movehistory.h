@@ -22,6 +22,10 @@ using PieceToHistory = std::array<std::array<MoveScore, NB_SQUARE>, NB_PIECE>;
 // Indexed by [piece][to] of a previous move
 using ContinuationHistory = std::array<std::array<PieceToHistory, NB_SQUARE>, NB_PIECE>;
 
+constexpr int LOW_PLY_HIST_SIZE = 5;
+
+using LowPlyHistory = std::array<std::array<MoveScore, NB_SQUARE*NB_SQUARE>, LOW_PLY_HIST_SIZE>;
+
 using ButterflyHistory = std::array<std::array<std::array<std::array<MoveScore, NB_SQUARE*NB_SQUARE>, 2>, 2>, NB_SIDE>;
 
 constexpr int CONT_HIST_PLIES = 3;
@@ -54,7 +58,7 @@ using MajorCorrHist = std::array<std::array<MoveScore, CORR_HIST_SIZE>, NB_SIDE>
 
 class MoveHistory {
 public:
-    MoveHistory(): counterMoves{}, killerMoves{}, history(std::make_unique<ButterflyHistory>()), captureHistory{}, corrHist{},
+    MoveHistory(): counterMoves{}, killerMoves{}, lowPlyHistory(std::make_unique<LowPlyHistory>()), history(std::make_unique<ButterflyHistory>()), captureHistory{}, corrHist{},
         nonPawnCorrHist(std::make_unique<NonPawnCorrHist>()),
         minorCorrHist(std::make_unique<MinorCorrHist>()),
         majorCorrHist(std::make_unique<MajorCorrHist>()),
@@ -80,6 +84,10 @@ public:
 
     inline void clearAllKillers() {
         std::memset(killerMoves, 0, sizeof(killerMoves));
+    }
+
+    inline void clearLowPly() {
+        std::memset(lowPlyHistory.get(), 0, sizeof(LowPlyHistory));
     }
 
     inline void clearKillers(int ply) {
@@ -110,6 +118,10 @@ public:
             score += (*contHist[i])[pc][to];
 
         return score;
+    }
+
+    inline MoveScore getLowPlyHistory(int ply, Move m) const {
+        return ply < LOW_PLY_HIST_SIZE ? 8 * (*lowPlyHistory)[ply][moveFromTo(m)] / (1 + ply) : 0;
     }
 
     inline MoveScore getPawnHistory(const Position& pos, Move m) const {
@@ -220,9 +232,11 @@ public:
             updateCounter(pos, bestMove);
 
             updateQuiet<Me>(pos, bestMove, bonus, contHist);
+            updateLowPly(ply, bestMove, bonus);
 
             for (auto m : quietMoves) {
                 updateQuiet<Me>(pos, m, -bonus, contHist);
+                updateLowPly(ply, m, -bonus);
             }
         } else {
             updateCapture(pos, bestMove, bonus);
@@ -235,6 +249,7 @@ public:
 private:
     Move counterMoves[NB_PIECE][NB_SQUARE];
     Move killerMoves[MAX_PLY+1][2];
+    std::unique_ptr<LowPlyHistory> lowPlyHistory;
     std::unique_ptr<ButterflyHistory> history;
     MoveScore captureHistory[NB_PIECE][NB_SQUARE][NB_PIECE_TYPE];
     MoveScore corrHist[NB_SIDE][CORR_HIST_SIZE];
@@ -254,6 +269,11 @@ private:
 
     inline MoveScore historyBonus(int depth) {
         return std::min(1536, 128*depth - 64);
+    }
+
+    inline void updateLowPly(int ply, Move m, MoveScore bonus) {
+        if (ply < LOW_PLY_HIST_SIZE)
+            updateHistoryEntry((*lowPlyHistory)[ply][moveFromTo(m)], bonus);
     }
 
     inline void updateKiller(Move move, int ply) {
