@@ -214,6 +214,7 @@ public:
     inline void update(const Position& pos, Move bestMove, int ply, int depth, const PartialMoveList& quietMoves,
                        const PartialMoveList& captureMoves, PieceToHistory* const* contHist) {
         MoveScore bonus = historyBonus(depth);
+        MoveScore malus = historyMalus(depth);
 
         if (!pos.isTactical(bestMove)) {
             updateKiller(bestMove, ply);
@@ -222,7 +223,7 @@ public:
             updateQuiet<Me>(pos, bestMove, bonus, contHist);
 
             for (auto m : quietMoves) {
-                updateQuiet<Me>(pos, m, -bonus, contHist);
+                updateQuiet<Me>(pos, m, -malus, contHist);
             }
         } else {
             updateCapture(pos, bestMove, bonus);
@@ -254,6 +255,10 @@ private:
 
     inline MoveScore historyBonus(int depth) {
         return std::min(1536, 128*depth - 64);
+    }
+
+    inline MoveScore historyMalus(int depth) {
+        return std::min(2500, 800*depth);
     }
 
     inline void updateKiller(Move move, int ply) {
