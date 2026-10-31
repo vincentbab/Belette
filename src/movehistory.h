@@ -105,11 +105,11 @@ public:
         Piece pc = pos.getPieceAt(moveFrom(m));
         Square to = moveTo(m);
 
-        MoveScore score = 2 * getButterfly<Me>(pos, m);
+        MoveScore score = 0;
         for (int i = 0; i < NbContHist; i++)
             score += (*contHist[i])[pc][to];
 
-        return score;
+        return 2 * getButterfly<Me>(pos, m) + score * 5 / 8;
     }
 
     inline MoveScore getPawnHistory(const Position& pos, Move m) const {
