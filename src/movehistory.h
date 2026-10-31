@@ -221,8 +221,10 @@ public:
 
             updateQuiet<Me>(pos, bestMove, bonus, contHist);
 
+            MoveScore malus = bonus;
             for (auto m : quietMoves) {
-                updateQuiet<Me>(pos, m, -bonus, contHist);
+                updateQuiet<Me>(pos, m, -malus, contHist);
+                malus = malus * 9 / 10;
             }
         } else {
             updateCapture(pos, bestMove, bonus);
