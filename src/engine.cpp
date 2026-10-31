@@ -390,7 +390,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         // Combined history, must be computed before the move is played
         MoveScore statScore = moveIsTactical ? sd->moveHistory.getCaptureHistory(pos, move)
-                                             : sd->moveHistory.getHistory<Me, 2>(pos, move, contHist);
+                                             : sd->moveHistory.getHistory<Me, 2>(pos, move, contHist) + 6500;
 
         int lmrDepth = std::max(0, depth - 1 - LMRTable[0][depth][nbMoves] / LMR_FACTOR);
 
