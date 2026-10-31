@@ -14,7 +14,8 @@
 namespace Belette {
 
 inline MoveScore pieceThreatenedValue(PieceType pt) {
-    return pt == QUEEN ? ThreatQueen : pt == ROOK ? ThreatRook : pt == KNIGHT || pt == BISHOP ? ThreatMinor : 0;
+    const MoveScore values[NB_PIECE_TYPE] = {0, 0, ThreatMinor, ThreatMinor, ThreatRook, ThreatQueen, 0};
+    return values[pt];
 }
 
 struct ScoredMove {
