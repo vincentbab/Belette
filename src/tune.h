@@ -103,9 +103,22 @@ TUNABLE(CapFpHistMult, 95, 0, 192, 8)
 TUNABLE(HpDepth, 6, 2, 8, 0.5)
 TUNABLE(HpMargin, 1420, 1024, 8192, 350)
 
-// Late move reduction (LMR), in 1/1024
-TUNABLE(LmrQuietHist, 236, 64, 512, 24)
-TUNABLE(LmrCaptHist, 402, 64, 512, 24)
+// Late move reduction (LMR)
+TUNABLE(LmrQuietBase, 750, 250, 1250, 50)
+TUNABLE(LmrQuietScale, 450, 250, 700, 22)
+TUNABLE(LmrTacticalBase, 200, -200, 800, 50)
+TUNABLE(LmrTacticalScale, 300, 100, 500, 20)
+TUNABLE(LmrPv, 1024, 0, 2560, 120)
+TUNABLE(LmrInCheck, 1024, 0, 2560, 120)
+TUNABLE(LmrNoTtPv, 1024, 0, 2560, 120)
+TUNABLE(LmrTtTactical, 1024, 0, 2560, 120)
+TUNABLE(LmrCutNode, 2048, 512, 4096, 180)
+TUNABLE(LmrNotImproving, 1024, 0, 2560, 120)
+TUNABLE(LmrChildCutoffs, 1024, 0, 2560, 120)
+
+// LMR history weights, in 1/1024
+TUNABLE(LmrQuietHist, 236, 64, 1024, 24)
+TUNABLE(LmrCaptHist, 402, 64, 1024, 24)
 
 } /* namespace Belette */
 

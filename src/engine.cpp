@@ -15,8 +15,8 @@ int Engine::LMRTable[2][MAX_PLY][MAX_MOVE];
 void Engine::init() {
     for (int d=1; d<MAX_PLY; d++) {
         for (int m=1; m<MAX_MOVE; m++) {
-            LMRTable[0][d][m] = int(LMR_FACTOR * (0.75 + 0.45 * std::log(d) * std::log(m)));
-            LMRTable[1][d][m] = int(LMR_FACTOR * (0.20 + 0.30 * std::log(d) * std::log(m)));
+            LMRTable[0][d][m] = int(LMR_FACTOR * (LmrQuietBase / 1000.0 + LmrQuietScale / 1000.0 * std::log(d) * std::log(m)));
+            LMRTable[1][d][m] = int(LMR_FACTOR * (LmrTacticalBase / 1000.0 + LmrTacticalScale / 1000.0 * std::log(d) * std::log(m)));
         }
     }
 }
@@ -480,13 +480,13 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         if (depth >= 2 && nbMoves > 1) {
             int R = LMRTable[moveIsTactical][depth][nbMoves];
 
-            R -= 1024 * PvNode;
-            R -= 1024 * pos.inCheck();
-            R += 1024 * !ttPv;
-            R += 1024 * ttTactical;
-            R += 2048 * cutNode;
-            R += 1024 * !improving;
-            R += 1024 * (sd->node(ply+1).nbCutoffs > 2);
+            R -= LmrPv * PvNode;
+            R -= LmrInCheck * pos.inCheck();
+            R += LmrNoTtPv * !ttPv;
+            R += LmrTtTactical * ttTactical;
+            R += LmrCutNode * cutNode;
+            R += LmrNotImproving * !improving;
+            R += LmrChildCutoffs * (sd->node(ply+1).nbCutoffs > 2);
             R -= statScore * (moveIsTactical ? LmrCaptHist : LmrQuietHist) / 1024;
 
             R = R <= 0 ? 0 : std::min(depth - 1, std::max(1, R / LMR_FACTOR));

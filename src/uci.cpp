@@ -42,6 +42,7 @@ Uci::Uci()  {
     for (auto p : tunableParams()) {
         options[p->name] = UciOption(p->defaultValue, p->min, p->max, [p] (const UciOption &opt) {
             p->value = int(int64_t(opt));
+            Engine::init();
         });
     }
 #endif
