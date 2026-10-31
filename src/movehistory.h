@@ -9,6 +9,7 @@
 #include "chess.h"
 #include "position.h"
 #include "fixed_vector.h"
+#include "tune.h"
 
 namespace Belette {
 
@@ -100,16 +101,38 @@ public:
         return counterMoves[pos.getPieceAt(moveTo(prevMove))][moveTo(prevMove)];
     }
 
-    template<Side Me, int NbContHist = CONT_HIST_PLIES>
-    inline MoveScore getHistory(const Position& pos, Move m, const PieceToHistory* const* contHist) const {
+    template<Side Me>
+    inline MoveScore getQuietHistory(const Position& pos, Move m, const PieceToHistory* const* contHist) const {
         Piece pc = pos.getPieceAt(moveFrom(m));
         Square to = moveTo(m);
 
-        MoveScore score = 2 * getButterfly<Me>(pos, m);
-        for (int i = 0; i < NbContHist; i++)
-            score += (*contHist[i])[pc][to];
+        return (OrderMain * getButterfly<Me>(pos, m)
+              + OrderCont1 * (*contHist[0])[pc][to]
+              + OrderCont2 * (*contHist[1])[pc][to]
+              + OrderCont4 * (*contHist[2])[pc][to]
+              + OrderPawn * getPawnHistory(pos, m)) / 1024;
+    }
 
-        return score;
+    template<Side Me>
+    inline MoveScore getStatScore(const Position& pos, Move m, const PieceToHistory* const* contHist) const {
+        Piece pc = pos.getPieceAt(moveFrom(m));
+        Square to = moveTo(m);
+
+        return (StatMain * getButterfly<Me>(pos, m)
+              + StatCont1 * (*contHist[0])[pc][to]
+              + StatCont2 * (*contHist[1])[pc][to]) / 1024;
+    }
+
+    template<Side Me, int NbContHist>
+    inline MoveScore getEvasionHistory(const Position& pos, Move m, const PieceToHistory* const* contHist) const {
+        Piece pc = pos.getPieceAt(moveFrom(m));
+        Square to = moveTo(m);
+
+        MoveScore score = 2048 * getButterfly<Me>(pos, m);
+        for (int i = 0; i < NbContHist; i++)
+            score += EvasionCont * (*contHist[i])[pc][to];
+
+        return score / 1024;
     }
 
     inline MoveScore getPawnHistory(const Position& pos, Move m) const {
@@ -213,23 +236,29 @@ public:
     template<Side Me>
     inline void update(const Position& pos, Move bestMove, int ply, int depth, const PartialMoveList& quietMoves,
                        const PartialMoveList& captureMoves, PieceToHistory* const* contHist) {
-        MoveScore bonus = historyBonus(depth);
+        MoveScore captureMalus = historyValue(depth, MalusCaptMult, MalusCaptBase, MalusCaptMax);
 
         if (!pos.isTactical(bestMove)) {
             updateKiller(bestMove, ply);
             updateCounter(pos, bestMove);
 
-            updateQuiet<Me>(pos, bestMove, bonus, contHist);
+            updateQuiet<Me>(pos, bestMove, historyValue(depth, BonusMainMult, BonusMainBase, BonusMainMax),
+                                           historyValue(depth, BonusContMult, BonusContBase, BonusContMax),
+                                           historyValue(depth, BonusPawnMult, BonusPawnBase, BonusPawnMax), contHist);
+
+            MoveScore mainMalus = historyValue(depth, MalusMainMult, MalusMainBase, MalusMainMax);
+            MoveScore contMalus = historyValue(depth, MalusContMult, MalusContBase, MalusContMax);
+            MoveScore pawnMalus = historyValue(depth, MalusPawnMult, MalusPawnBase, MalusPawnMax);
 
             for (auto m : quietMoves) {
-                updateQuiet<Me>(pos, m, -bonus, contHist);
+                updateQuiet<Me>(pos, m, -mainMalus, -contMalus, -pawnMalus, contHist);
             }
         } else {
-            updateCapture(pos, bestMove, bonus);
+            updateCapture(pos, bestMove, historyValue(depth, BonusCaptMult, BonusCaptBase, BonusCaptMax));
         }
 
         for (auto m : captureMoves) {
-            updateCapture(pos, m, -bonus);
+            updateCapture(pos, m, -captureMalus);
         }
     }
 private:
@@ -252,8 +281,8 @@ private:
         return (*history)[Me][bool(threats & moveFrom(m))][bool(threats & moveTo(m))][moveFromTo(m)];
     }
 
-    inline MoveScore historyBonus(int depth) {
-        return std::min(1536, 128*depth - 64);
+    inline MoveScore historyValue(int depth, int mult, int base, int max) {
+        return std::clamp(mult*depth - base, 0, max);
     }
 
     inline void updateKiller(Move move, int ply) {
@@ -272,8 +301,8 @@ private:
     }
 
     template<typename T>
-    inline void updateHistoryEntry(T &entry, MoveScore bonus) {
-        entry += bonus - entry * std::abs(bonus) / 8192;
+    inline void updateHistoryEntry(T &entry, MoveScore bonus, MoveScore gravity = 8192) {
+        entry += bonus - entry * std::abs(bonus) / gravity;
     }
 
     inline void updateCorrEntry(MoveScore &entry, MoveScore diff, MoveScore weight) {
@@ -286,20 +315,20 @@ private:
     }
 
     inline void updateCapture(const Position& pos, Move m, MoveScore bonus) {
-        updateHistoryEntry(captureHistory[pos.getPieceAt(moveFrom(m))][moveTo(m)][capturedType(pos, m)], bonus);
+        updateHistoryEntry(captureHistory[pos.getPieceAt(moveFrom(m))][moveTo(m)][capturedType(pos, m)], bonus, GravityCapt * 1024);
     }
 
     template<Side Me>
-    inline void updateQuiet(const Position& pos, Move m, MoveScore bonus, PieceToHistory* const* contHist) {
-        updateHistoryEntry(getButterfly<Me>(pos, m), bonus);
+    inline void updateQuiet(const Position& pos, Move m, MoveScore main, MoveScore cont, MoveScore pawn, PieceToHistory* const* contHist) {
+        updateHistoryEntry(getButterfly<Me>(pos, m), main);
 
         Piece pc = pos.getPieceAt(moveFrom(m));
         Square to = moveTo(m);
         for (int i = 0; i < CONT_HIST_PLIES; i++)
             if (contHist[i] != getDefaultContHist())
-                updateHistoryEntry((*contHist[i])[pc][to], bonus);
+                updateHistoryEntry((*contHist[i])[pc][to], cont, GravityCont * 1024);
 
-        updateHistoryEntry((*pawnHistory)[pos.pawnHash() & (PAWN_HIST_SIZE - 1)][pc][to], bonus);
+        updateHistoryEntry((*pawnHistory)[pos.pawnHash() & (PAWN_HIST_SIZE - 1)][pc][to], pawn);
     }
 };
 

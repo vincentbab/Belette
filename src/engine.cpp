@@ -390,7 +390,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         // Combined history, must be computed before the move is played
         MoveScore statScore = moveIsTactical ? sd->moveHistory.getCaptureHistory(pos, move)
-                                             : sd->moveHistory.getHistory<Me, 2>(pos, move, contHist);
+                                             : sd->moveHistory.getStatScore<Me>(pos, move, contHist);
 
         int lmrDepth = std::max(0, depth - 1 - LMRTable[0][depth][nbMoves] / LMR_FACTOR);
 
@@ -400,7 +400,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             skipQuiets |= (nbMoves >= 3 + depth*depth/(improving ? 1 : 2));
 
             // Futility pruning
-            Score futilityValue = eval + 100 + 120*depth + statScore/64;
+            Score futilityValue = eval + 100 + 120*depth + statScore*FpHistMult/1024;
             if (!inCheck && !moveIsTactical && lmrDepth <= 6 && futilityValue <= alpha) {
                 skipQuiets = true;
                 if (bestScore < futilityValue && futilityValue < SCORE_MATE_MAX_PLY)
@@ -409,7 +409,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             }
 
             // Captures futility pruning
-            Score captureFutilityValue = eval + 100*depth + PieceValue<MG>(pos.getPieceAt(moveTo(move))) + statScore/16;
+            Score captureFutilityValue = eval + 100*depth + PieceValue<MG>(pos.getPieceAt(moveTo(move))) + statScore*CapFpHistMult/1024;
             if (!inCheck && moveIsTactical && depth <= 8 && captureFutilityValue <= alpha) {
                 if (bestScore < captureFutilityValue)
                     bestScore = captureFutilityValue;
@@ -417,7 +417,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             }
 
             // History pruning
-            if (!inCheck && !moveIsTactical && depth <= 4 && statScore < -4096 * depth) {
+            if (!inCheck && !moveIsTactical && depth <= HpDepth && statScore < -HpMargin * depth) {
                 return true; // continue;
             }
 
@@ -487,7 +487,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             R += 2048 * cutNode;
             R += 1024 * !improving;
             R += 1024 * (sd->node(ply+1).nbCutoffs > 2);
-            R -= statScore / 4;
+            R -= statScore * (moveIsTactical ? LmrCaptHist : LmrQuietHist) / 1024;
 
             R = R <= 0 ? 0 : std::min(depth - 1, std::max(1, R / LMR_FACTOR));
 

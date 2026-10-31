@@ -122,6 +122,9 @@ private:
     bool cmdPerftmp(std::istringstream& is);
     bool cmdTest(std::istringstream& is);
     bool cmdBench(std::istringstream& is);
+#ifdef TUNE
+    bool cmdSpsa(std::istringstream& is);
+#endif
 };
 
 } /* namespace Belette */

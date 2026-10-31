@@ -13,9 +13,9 @@
 
 namespace Belette {
 
-constexpr MoveScore PieceThreatenedValue[NB_PIECE_TYPE] = {
-    0, 0, 15000, 15000, 25000, 50000, 0
-};
+inline MoveScore pieceThreatenedValue(PieceType pt) {
+    return pt == QUEEN ? ThreatQueen : pt == ROOK ? ThreatRook : pt == KNIGHT || pt == BISHOP ? ThreatMinor : 0;
+}
 
 struct ScoredMove {
     ScoredMove() { };
@@ -146,7 +146,7 @@ bool MovePicker::enumerate(const Handler &handler) {
         if constexpr(Type == MAIN) { // For quiescence prunning of bad captures is done in search
             // Bad captures threshold with capture history
             MoveScore captHist = moveHistory != nullptr ? moveHistory->getCaptureHistory(*pos, current->move) : 0;
-            if (!pos->see(current->move, -50 - captHist/32)) {
+            if (!pos->see(current->move, -BadCaptureSee - captHist*BadCaptureHist/1024)) {
                 *endBadTacticals++ = *current;
                 continue;
             }
@@ -198,7 +198,7 @@ bool MovePicker::enumerate(const Handler &handler) {
     // Good quiets
     for (current = beginQuiets; current != moves.end() && !skipQuiets; current++) {
         pickBest(current, moves.end());
-        if (current->score < 0)
+        if (current->score < GoodQuietThreshold)
             break;
 
         CALL_HANDLER(current->move, skipQuiets);
@@ -227,7 +227,7 @@ MoveScore MovePicker::scoreEvasion(Move m) {
         return scoreTactical<Me>(m) + 1000000;
     } else {
         if (contHist != nullptr) [[likely]]
-            return moveHistory->getHistory<Me, NbContHist>(*pos, m, contHist);
+            return moveHistory->getEvasionHistory<Me, NbContHist>(*pos, m, contHist);
     }
 
     return 0;
@@ -235,7 +235,7 @@ MoveScore MovePicker::scoreEvasion(Move m) {
 
 template<Side Me>
 MoveScore MovePicker::scoreTactical(Move m) {
-    MoveScore score = 8*PieceValue<MG>(pos->getPieceAt(moveTo(m))) - (int)pieceType(pos->getPieceAt(moveFrom(m))); // MVV-LVA
+    MoveScore score = TacticalMvv*PieceValue<MG>(pos->getPieceAt(moveTo(m))) - (int)pieceType(pos->getPieceAt(moveFrom(m))); // MVV-LVA
 
     // Capture history
     if (moveHistory != nullptr) [[likely]]
@@ -256,36 +256,36 @@ MoveScore MovePicker::scoreQuiet(Move m) {
         return -40000;
 
     Bitboard threatened = pos->threatsFor(pt);
-    score += ((threatened & from) && !(threatened & to)) * PieceThreatenedValue[pt];
+    score += ((threatened & from) && !(threatened & to)) * pieceThreatenedValue(pt);
 
     if (moveHistory != nullptr) [[likely]]
-        score += moveHistory->getHistory<Me>(*pos, m, contHist) + 2 * moveHistory->getPawnHistory(*pos, m);
+        score += moveHistory->getQuietHistory<Me>(*pos, m, contHist);
 
     // TODO: refactor this!
     switch (pt) {
         case PAWN:
             if (pawnAttacks<Me>(bb(to)) & pos->getPiecesBB(~Me, KING)) {
-                score += 10000;
+                score += CheckBonus;
             }
             break;
         case KNIGHT:
             if (attacks<KNIGHT>(to, pos->getPiecesBB()) & pos->getPiecesBB(~Me, KING)) {
-                score += 10000;
+                score += CheckBonus;
             }
             break;
         case BISHOP:
             if (attacks<BISHOP>(to, pos->getPiecesBB()) & pos->getPiecesBB(~Me, KING)) {
-                score += 10000;
+                score += CheckBonus;
             }
             break;
         case ROOK:
             if (attacks<ROOK>(to, pos->getPiecesBB()) & pos->getPiecesBB(~Me, KING)) {
-                score += 10000;
+                score += CheckBonus;
             }
             break;
         case QUEEN:
             if (attacks<QUEEN>(to, pos->getPiecesBB()) & pos->getPiecesBB(~Me, KING)) {
-                score += 10000;
+                score += CheckBonus;
             }
             break;
         default:
