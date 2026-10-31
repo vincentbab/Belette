@@ -392,28 +392,31 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         MoveScore statScore = moveIsTactical ? sd->moveHistory.getCaptureHistory(pos, move)
                                              : sd->moveHistory.getStatScore<Me>(pos, move, contHist);
 
-        int lmrDepth = std::max(0, depth - 1 - LMRTable[0][depth][nbMoves] / LMR_FACTOR);
-
         // Late move pruning
         if (!RootNode && bestScore > -SCORE_MATE_MAX_PLY) {
             // Move count pruning
             skipQuiets |= (nbMoves >= 3 + depth*depth/(improving ? 1 : 2));
 
             // Futility pruning
-            Score futilityValue = eval + 100 + 120*depth + statScore*FpHistMult/1024;
-            if (!inCheck && !moveIsTactical && lmrDepth <= 6 && futilityValue <= alpha) {
-                skipQuiets = true;
-                if (bestScore < futilityValue && futilityValue < SCORE_MATE_MAX_PLY)
-                    bestScore = futilityValue;
-                return true; // continue;
+            if (!inCheck && !moveIsTactical) {
+                int lmrDepth = std::max(0, depth - 1 - LMRTable[0][depth][nbMoves] / LMR_FACTOR);
+                Score futilityValue = eval + 100 + 120*depth + statScore*FpHistMult/1024;
+                if (lmrDepth <= 6 && futilityValue <= alpha) {
+                    skipQuiets = true;
+                    if (bestScore < futilityValue && futilityValue < SCORE_MATE_MAX_PLY)
+                        bestScore = futilityValue;
+                    return true; // continue;
+                }
             }
 
             // Captures futility pruning
-            Score captureFutilityValue = eval + 100*depth + PieceValue<MG>(pos.getPieceAt(moveTo(move))) + statScore*CapFpHistMult/1024;
-            if (!inCheck && moveIsTactical && depth <= 8 && captureFutilityValue <= alpha) {
-                if (bestScore < captureFutilityValue)
-                    bestScore = captureFutilityValue;
-                return true; // continue;
+            if (!inCheck && moveIsTactical && depth <= 8) {
+                Score captureFutilityValue = eval + 100*depth + PieceValue<MG>(pos.getPieceAt(moveTo(move))) + statScore*CapFpHistMult/1024;
+                if (captureFutilityValue <= alpha) {
+                    if (bestScore < captureFutilityValue)
+                        bestScore = captureFutilityValue;
+                    return true; // continue;
+                }
             }
 
             // History pruning
