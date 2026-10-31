@@ -70,20 +70,20 @@ TUNABLE(MalusCaptMax, 1690, 512, 3072, 128)
 TUNABLE(GravityCont, 11, 4, 24, 1)
 TUNABLE(GravityCapt, 8, 4, 24, 1)
 
-// Quiet ordering weights, in 1/1024
-TUNABLE(OrderMain, 2170, 512, 4096, 200)
-TUNABLE(OrderCont1, 1060, 256, 2560, 100)
-TUNABLE(OrderCont2, 1440, 256, 2560, 100)
-TUNABLE(OrderCont4, 974, 256, 2560, 100)
-TUNABLE(OrderPawn, 2410, 512, 4096, 200)
+// Quiet ordering weights, in 1/4
+TUNABLE(OrderMain, 8, 1, 16, 1)
+TUNABLE(OrderCont1, 4, 1, 16, 1)
+TUNABLE(OrderCont2, 6, 1, 16, 1)
+TUNABLE(OrderCont4, 4, 1, 16, 1)
+TUNABLE(OrderPawn, 9, 1, 16, 1)
 
-// Evasion ordering weight, in 1/1024
-TUNABLE(EvasionCont, 760, 256, 2560, 100)
+// Evasion ordering weight, in 1/4
+TUNABLE(EvasionCont, 3, 1, 16, 1)
 
-// statScore weights, in 1/1024
-TUNABLE(StatMain, 1810, 512, 4096, 200)
-TUNABLE(StatCont1, 1240, 256, 2560, 100)
-TUNABLE(StatCont2, 1110, 256, 2560, 100)
+// statScore weights, in 1/4
+TUNABLE(StatMain, 7, 1, 16, 1)
+TUNABLE(StatCont1, 5, 1, 16, 1)
+TUNABLE(StatCont2, 4, 1, 16, 1)
 
 // Move picker
 TUNABLE(GoodQuietThreshold, -597, -16000, 8000, 1000)
