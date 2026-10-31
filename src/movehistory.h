@@ -224,6 +224,7 @@ public:
 
             for (auto m : quietMoves) {
                 updateQuiet<Me>(pos, m, -malus, contHist);
+                malus = malus * 960 / 1024;
             }
         } else {
             updateCapture(pos, bestMove, bonus);
