@@ -110,7 +110,7 @@ public:
               + OrderCont1 * (*contHist[0])[pc][to]
               + OrderCont2 * (*contHist[1])[pc][to]
               + OrderCont4 * (*contHist[2])[pc][to]
-              + OrderPawn * getPawnHistory(pos, m)) / 1024;
+              + OrderPawn * getPawnHistory(pos, m)) >> 10;
     }
 
     template<Side Me>
@@ -120,7 +120,7 @@ public:
 
         return (StatMain * getButterfly<Me>(pos, m)
               + StatCont1 * (*contHist[0])[pc][to]
-              + StatCont2 * (*contHist[1])[pc][to]) / 1024;
+              + StatCont2 * (*contHist[1])[pc][to]) >> 10;
     }
 
     template<Side Me, int NbContHist>
@@ -132,7 +132,7 @@ public:
         for (int i = 0; i < NbContHist; i++)
             score += EvasionCont * (*contHist[i])[pc][to];
 
-        return score / 1024;
+        return score >> 10;
     }
 
     inline MoveScore getPawnHistory(const Position& pos, Move m) const {
