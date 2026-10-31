@@ -95,13 +95,54 @@ TUNABLE(TacticalMvv, 8, 2, 20, 1)
 TUNABLE(BadCaptureSee, 39, 0, 150, 8)
 TUNABLE(BadCaptureHist, 39, 0, 128, 6)
 
-// Futility pruning, in 1/1024
+// Reverse futility pruning (RFP)
+TUNABLE(RfpDepth, 8, 4, 12, 0.5)
+TUNABLE(RfpMargin, 120, 60, 200, 7)
+TUNABLE(RfpMarginImproving, 60, 20, 120, 5)
+
+// Razoring
+TUNABLE(RazorDepth, 2, 1, 4, 0.5)
+TUNABLE(RazorMargin, 400, 200, 700, 25)
+
+// Null move pruning (NMP)
+TUNABLE(NmpDepth, 3, 2, 5, 0.5)
+TUNABLE(NmpBase, 4, 2, 6, 0.5)
+TUNABLE(NmpDepthMult, 256, 128, 512, 20)
+TUNABLE(NmpEvalDiv, 200, 100, 400, 15)
+TUNABLE(NmpEvalMax, 3, 1, 6, 0.5)
+
+// ProbCut
+TUNABLE(ProbCutDepth, 5, 3, 8, 0.5)
+TUNABLE(ProbCutMargin, 180, 80, 300, 10)
+TUNABLE(ProbCutImproving, 60, 0, 120, 6)
+TUNABLE(ProbCutTtDepth, 3, 1, 5, 0.5)
+
+// Move count pruning, in 1/1024
+TUNABLE(LmpBase, 3072, 1024, 6144, 256)
+TUNABLE(LmpImproving, 1024, 512, 2048, 64)
+TUNABLE(LmpNotImproving, 512, 256, 1024, 40)
+
+// Futility pruning
+TUNABLE(FpLmrDepth, 6, 3, 10, 0.5)
+TUNABLE(FpBase, 100, 30, 200, 8)
+TUNABLE(FpDepthMargin, 120, 60, 200, 7)
+
+// Captures futility pruning
+TUNABLE(CapFpDepth, 8, 4, 12, 0.5)
+TUNABLE(CapFpMargin, 100, 50, 200, 8)
+
+// SEE Pruning
+TUNABLE(SeeDepth, 8, 4, 12, 0.5)
+TUNABLE(SeeTacticalMargin, 100, 40, 200, 8)
+TUNABLE(SeeQuietMargin, 60, 20, 120, 5)
+
+// Futility pruning history weights, in 1/1024
 TUNABLE(FpHistMult, 19, 0, 64, 2.5)
 TUNABLE(CapFpHistMult, 95, 0, 192, 8)
 
 // History pruning
 TUNABLE(HpDepth, 6, 2, 8, 0.5)
-TUNABLE(HpMargin, 1420, 1024, 8192, 350)
+TUNABLE(HpMargin, 1420, 256, 8192, 350)
 
 // Late move reduction (LMR), in 1/1024
 TUNABLE(LmrQuietHist, 236, 64, 512, 24)

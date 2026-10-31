@@ -291,15 +291,15 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     }
 
     // Reverse futility pruning (RFP)
-    if (!PvNode && !inCheck && depth <= 8
-        && eval - ((improving ? 60 : 120) * depth) >= beta)
+    if (!PvNode && !inCheck && depth <= RfpDepth
+        && eval - ((improving ? RfpMarginImproving : RfpMargin) * depth) >= beta)
     {
         return eval;
     }
 
     // Razoring
-    if (!PvNode && !inCheck && depth <= 2
-        && eval + (400 * depth) <= alpha)
+    if (!PvNode && !inCheck && depth <= RazorDepth
+        && eval + (RazorMargin * depth) <= alpha)
     {
         Score score = qSearch<Me, QNodeType>(alpha, beta, ply);
         if (score <= alpha)
@@ -307,11 +307,11 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     }
 
     // Null move pruning (NMP)
-    if (!PvNode && !inCheck && !excludedMove && depth >= 3
+    if (!PvNode && !inCheck && !excludedMove && depth >= NmpDepth
         && pos.previousMove() != MOVE_NULL && pos.hasNonPawnMateriel<Me>() && eval >= beta)
     {
         tt.prefetch(pos.getHashAfterNullMove());
-        int R = 4 + depth / 4 + std::min((eval - beta) / 200, 3);
+        int R = NmpBase + depth * NmpDepthMult / 1024 + std::min((eval - beta) / NmpEvalDiv, NmpEvalMax);
 
         node.setNullMove(sd->moveHistory);
         pos.doNullMove<Me>();
@@ -324,9 +324,9 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         }
     }
 
-    Score probCutBeta = beta + 180 - 60*improving;
-    if (!PvNode && !inCheck && depth >= 5 && std::abs(beta) < SCORE_MATE_MAX_PLY
-        && !(ttHit && ttDepth >= depth - 3 && ttScore != SCORE_NONE && ttScore < probCutBeta))
+    Score probCutBeta = beta + ProbCutMargin - ProbCutImproving*improving;
+    if (!PvNode && !inCheck && depth >= ProbCutDepth && std::abs(beta) < SCORE_MATE_MAX_PLY
+        && !(ttHit && ttDepth >= depth - ProbCutTtDepth && ttScore != SCORE_NONE && ttScore < probCutBeta))
     {
         MovePicker mp(pos, ttMove, &sd->moveHistory, contHist);
         Score probCutScore = -SCORE_INFINITE;
@@ -397,11 +397,11 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         // Late move pruning
         if (!RootNode && bestScore > -SCORE_MATE_MAX_PLY) {
             // Move count pruning
-            skipQuiets |= (nbMoves >= 3 + depth*depth/(improving ? 1 : 2));
+            skipQuiets |= (nbMoves >= (LmpBase + depth*depth*(improving ? LmpImproving : LmpNotImproving)) / 1024);
 
             // Futility pruning
-            Score futilityValue = eval + 100 + 120*depth + statScore*FpHistMult/1024;
-            if (!inCheck && !moveIsTactical && lmrDepth <= 6 && futilityValue <= alpha) {
+            Score futilityValue = eval + FpBase + FpDepthMargin*depth + statScore*FpHistMult/1024;
+            if (!inCheck && !moveIsTactical && lmrDepth <= FpLmrDepth && futilityValue <= alpha) {
                 skipQuiets = true;
                 if (bestScore < futilityValue && futilityValue < SCORE_MATE_MAX_PLY)
                     bestScore = futilityValue;
@@ -409,8 +409,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             }
 
             // Captures futility pruning
-            Score captureFutilityValue = eval + 100*depth + PieceValue<MG>(pos.getPieceAt(moveTo(move))) + statScore*CapFpHistMult/1024;
-            if (!inCheck && moveIsTactical && depth <= 8 && captureFutilityValue <= alpha) {
+            Score captureFutilityValue = eval + CapFpMargin*depth + PieceValue<MG>(pos.getPieceAt(moveTo(move))) + statScore*CapFpHistMult/1024;
+            if (!inCheck && moveIsTactical && depth <= CapFpDepth && captureFutilityValue <= alpha) {
                 if (bestScore < captureFutilityValue)
                     bestScore = captureFutilityValue;
                 return true; // continue;
@@ -422,7 +422,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             }
 
             // SEE Pruning
-            if (depth <= 8 && !pos.see(move, moveIsTactical ? -100*depth : -60*depth)) {
+            if (depth <= SeeDepth && !pos.see(move, moveIsTactical ? -SeeTacticalMargin*depth : -SeeQuietMargin*depth)) {
                 return true; // continue;
             }
         }
