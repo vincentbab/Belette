@@ -29,6 +29,7 @@ PGO_MERGE := llvm-profdata merge -output=$(PGO_DATA) *.profraw
 PGO_USE := -fprofile-instr-use=$(PGO_DATA)
 
 CPPFLAGS := -Wall -std=c++20 -fno-rtti -mbmi -mbmi2 -mpopcnt -msse2 -msse3 -msse4.1 -mavx2 -D_CRT_SECURE_NO_WARNINGS
+TUNE := 1
 ifeq ($(TUNE),1)
 	CPPFLAGS += -DTUNE
 endif
