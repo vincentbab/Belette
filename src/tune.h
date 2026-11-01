@@ -167,8 +167,6 @@ TUNABLE(SeDepthIncMax, 11, 8, 18, 0.5)
 TUNABLE(SeDepthIncMargin, 2, -20, 40, 3)
 TUNABLE(SeDoubleMax, 7, 2, 16, 0.5)
 TUNABLE(SeTripleMargin, 64, 10, 150, 6)
-TUNABLE(SeNegTt, 1, -2, 2, 0.5)
-TUNABLE(SeNegCut, 1, -2, 2, 0.5)
 
 // Quiescence search
 TUNABLE(QsFpMargin, 95, 30, 200, 8)
