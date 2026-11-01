@@ -112,7 +112,7 @@ TUNABLE(NmpEvalDiv, 206, 100, 400, 15)
 TUNABLE(NmpEvalMax, 3, 1, 6, 0.5)
 
 // ProbCut
-TUNABLE(ProbCutDepth, 3, 3, 8, 0.5)
+TUNABLE(ProbCutDepth, 3, 2, 8, 0.5)
 TUNABLE(ProbCutMargin, 148, 80, 300, 10)
 TUNABLE(ProbCutImproving, 68, 0, 120, 6)
 TUNABLE(ProbCutTtDepth, 4, 1, 5, 0.5)
@@ -141,7 +141,7 @@ TUNABLE(FpHistMult, 21, 0, 64, 2.5)
 TUNABLE(CapFpHistMult, 97, 0, 192, 8)
 
 // History pruning
-TUNABLE(HpDepth, 7, 2, 8, 0.5)
+TUNABLE(HpDepth, 7, 2, 10, 0.5)
 TUNABLE(HpMargin, 1000, 256, 8192, 350)
 
 // Late move reduction (LMR), in 1/1024
