@@ -87,8 +87,8 @@ void Engine::idSearch() {
         searchDepth = depth;
 
         // Aspiration window
-        if (depth > 4) {
-            delta = 16 + std::abs(bestScore)/100;
+        if (depth > AspDepth) {
+            delta = AspDelta + std::abs(bestScore)/AspScoreDiv;
             alpha = std::max(-SCORE_INFINITE, bestScore - delta);
             beta  = std::min( SCORE_INFINITE, bestScore + delta);
         }
@@ -115,7 +115,7 @@ void Engine::idSearch() {
                 break;
             }
 
-            delta += delta / 2;
+            delta += delta * AspGrowth / 1024;
         }
 
         if (searchAborted() && (depth > 1 || score == -SCORE_INFINITE)) break;
@@ -286,7 +286,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     }
 
     // Internal Iterative Reduction (IIR)
-    if (depth >= 4 && ttMove == MOVE_NONE) {
+    if (depth >= IirDepth && ttMove == MOVE_NONE) {
         depth--;
     }
 
@@ -362,7 +362,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     }
 
     // Check extension
-    if (PvNode && inCheck && depth <= 2) {
+    if (PvNode && inCheck && depth <= CheckExtDepth) {
         depth++;
     }
 
@@ -430,28 +430,28 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         // Singular extensions
         int extension = 0;
-        if (!RootNode && move == ttMove && !excludedMove && depth >= 6 + ttPv
-            && std::abs(ttScore) < SCORE_MATE_MAX_PLY && ttLower && ttDepth >= depth - 3)
+        if (!RootNode && move == ttMove && !excludedMove && depth >= SeDepth + SeTtPvDepth*ttPv
+            && std::abs(ttScore) < SCORE_MATE_MAX_PLY && ttLower && ttDepth >= depth - SeTtDepth)
         {
-            Score singularBeta = ttScore - depth;
-            int corrAdj = std::abs(node.staticEval - rawEval) / 4;
+            Score singularBeta = ttScore - depth*SeMargin/1024;
+            int corrAdj = std::abs(node.staticEval - rawEval) * SeCorrMult / 1024;
 
             node.excludedMove = ttMove;
-            Score score = pvSearch<Me, NodeType::NonPV, Frc>(singularBeta-1, singularBeta, (depth-1)/2, ply, cutNode);
+            Score score = pvSearch<Me, NodeType::NonPV, Frc>(singularBeta-1, singularBeta, (depth-1)*SeSearchDepth/1024, ply, cutNode);
             node.excludedMove = MOVE_NONE;
 
-            if (!PvNode && depth < 12 && score < singularBeta + 10)
+            if (!PvNode && depth < SeDepthIncMax && score < singularBeta + SeDepthIncMargin)
                 depth++;
 
             if (score < singularBeta) {
                 extension = 1;
 
                 // Double extension
-                if (!PvNode && node.doubleExts <= 8) {
+                if (!PvNode && node.doubleExts <= SeDoubleMax) {
                     extension = 2;
                     node.doubleExts++;
 
-                    if (score < singularBeta - 60 + corrAdj)
+                    if (score < singularBeta - SeTripleMargin + corrAdj)
                         extension = 3;
                 }
             } else if (score >= beta && std::abs(score) < SCORE_MATE_MAX_PLY) {
@@ -663,7 +663,7 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
     MovePicker mp(pos, useTTMove ? ttMove : MOVE_NONE, &sd->moveHistory, contHist);
     //MovePicker *mp = new (&node.mp) MovePicker(pos, useTTMove ? ttMove : MOVE_NONE);
 
-    Score futilityBase = eval + 100;
+    Score futilityBase = eval + QsFpMargin;
     Square prevSq = isValidMove(pos.previousMove()) ? moveTo(pos.previousMove()) : SQ_NONE;
 
     mp.enumerate<QUIESCENCE, Me, Frc>([&](Move move, /*unused*/bool& skipQuiets) -> bool {
@@ -678,7 +678,7 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
             }
 
             // SEE Pruning
-            if (!pos.see(move, 0)) {
+            if (!pos.see(move, -QsSeeMargin)) {
                 return true; // continue;
             }
         }
