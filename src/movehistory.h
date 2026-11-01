@@ -47,7 +47,6 @@ using PawnHistory = std::array<std::array<std::array<int16_t, NB_SQUARE>, NB_PIE
 
 constexpr int CORR_HIST_SIZE = 16384;
 constexpr MoveScore CORR_HIST_GRAIN = 256;
-constexpr MoveScore CORR_HIST_LIMIT = 32 * CORR_HIST_GRAIN;
 
 using NonPawnCorrHist = std::array<std::array<std::array<MoveScore, CORR_HIST_SIZE>, NB_SIDE>, NB_SIDE>;
 using MinorCorrHist = std::array<std::array<MoveScore, CORR_HIST_SIZE>, NB_SIDE>;
@@ -184,32 +183,32 @@ public:
 
     template<Side Me>
     inline Score correctEval(const Position& pos, Score eval, const ContCorrContext& ctx) const {
-        MoveScore correction = corrHist[Me][pos.pawnHash() & (CORR_HIST_SIZE - 1)]
-                             + (*nonPawnCorrHist)[Me][WHITE][pos.nonPawnHash(WHITE) & (CORR_HIST_SIZE - 1)]
-                             + (*nonPawnCorrHist)[Me][BLACK][pos.nonPawnHash(BLACK) & (CORR_HIST_SIZE - 1)]
-                             + (*minorCorrHist)[Me][pos.minorHash() & (CORR_HIST_SIZE - 1)]
-                             + (*majorCorrHist)[Me][pos.majorHash() & (CORR_HIST_SIZE - 1)];
+        MoveScore correction = CorrPawn * corrHist[Me][pos.pawnHash() & (CORR_HIST_SIZE - 1)]
+                             + CorrNonPawn * ((*nonPawnCorrHist)[Me][WHITE][pos.nonPawnHash(WHITE) & (CORR_HIST_SIZE - 1)]
+                                            + (*nonPawnCorrHist)[Me][BLACK][pos.nonPawnHash(BLACK) & (CORR_HIST_SIZE - 1)])
+                             + CorrMinor * (*minorCorrHist)[Me][pos.minorHash() & (CORR_HIST_SIZE - 1)]
+                             + CorrMajor * (*majorCorrHist)[Me][pos.majorHash() & (CORR_HIST_SIZE - 1)];
 
         Move prevMove = pos.previousMove();
         if (isValidMove(prevMove)) {
             Piece pc = pos.getPieceAt(moveTo(prevMove));
             Square to = moveTo(prevMove);
             for (int i = 0; i < CONT_CORR_PLIES; i++)
-                correction += (*ctx.contCorr[i])[pc][to];
+                correction += CorrCont * (*ctx.contCorr[i])[pc][to];
         }
 
         if (ctx.prevPiece2 != NO_PIECE) {
             for (int i = 0; i < CONT_CORR2_PLIES; i++)
-                correction += (*ctx.contCorr2[i])[ctx.prevPiece2][ctx.prevTo2];
+                correction += CorrCont2 * (*ctx.contCorr2[i])[ctx.prevPiece2][ctx.prevTo2];
         }
 
-        return std::clamp<Score>(eval + correction / CORR_HIST_GRAIN, -SCORE_MATE_MAX_PLY + 1, SCORE_MATE_MAX_PLY - 1);
+        return std::clamp<Score>(eval + correction / (1024 * CORR_HIST_GRAIN), -SCORE_MATE_MAX_PLY + 1, SCORE_MATE_MAX_PLY - 1);
     }
 
     template<Side Me>
     inline void updateCorrection(const Position& pos, Score bestScore, Score staticEval, int depth, const ContCorrContext& ctx) {
         MoveScore diff = (bestScore - staticEval) * CORR_HIST_GRAIN;
-        MoveScore weight = std::min(depth + 1, 16);
+        MoveScore weight = std::min(depth + CorrUpdateBase, CorrUpdateMax);
 
         updateCorrEntry(corrHist[Me][pos.pawnHash() & (CORR_HIST_SIZE - 1)], diff, weight);
         updateCorrEntry((*nonPawnCorrHist)[Me][WHITE][pos.nonPawnHash(WHITE) & (CORR_HIST_SIZE - 1)], diff, weight);
@@ -307,7 +306,7 @@ private:
 
     inline void updateCorrEntry(MoveScore &entry, MoveScore diff, MoveScore weight) {
         entry = (entry * (256 - weight) + diff * weight) / 256;
-        entry = std::clamp(entry, -CORR_HIST_LIMIT, CORR_HIST_LIMIT);
+        entry = std::clamp(entry, -CorrLimit * CORR_HIST_GRAIN, CorrLimit * CORR_HIST_GRAIN);
     }
 
     inline PieceType capturedType(const Position& pos, Move m) const {
