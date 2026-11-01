@@ -193,13 +193,19 @@ public:
         if (isValidMove(prevMove)) {
             Piece pc = pos.getPieceAt(moveTo(prevMove));
             Square to = moveTo(prevMove);
+            const int weights[CONT_CORR_PLIES] = {CorrContPly2, CorrContPly3, CorrContPly4, CorrContPly5,
+                                                  CorrContPly6to8, CorrContPly6to8, CorrContPly6to8,
+                                                  CorrContPly9to11, CorrContPly9to11, CorrContPly9to11};
             for (int i = 0; i < CONT_CORR_PLIES; i++)
-                correction += CorrCont * (*ctx.contCorr[i])[pc][to];
+                correction += weights[i] * (*ctx.contCorr[i])[pc][to];
         }
 
         if (ctx.prevPiece2 != NO_PIECE) {
+            const int weights[CONT_CORR2_PLIES] = {CorrCont2Ply3, CorrCont2Ply4, CorrCont2Ply5,
+                                                   CorrCont2Ply6to8, CorrCont2Ply6to8, CorrCont2Ply6to8,
+                                                   CorrCont2Ply9to11, CorrCont2Ply9to11, CorrCont2Ply9to11};
             for (int i = 0; i < CONT_CORR2_PLIES; i++)
-                correction += CorrCont2 * (*ctx.contCorr2[i])[ctx.prevPiece2][ctx.prevTo2];
+                correction += weights[i] * (*ctx.contCorr2[i])[ctx.prevPiece2][ctx.prevTo2];
         }
 
         return std::clamp<Score>(eval + correction / (1024 * CORR_HIST_GRAIN), -SCORE_MATE_MAX_PLY + 1, SCORE_MATE_MAX_PLY - 1);
