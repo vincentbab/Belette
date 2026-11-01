@@ -146,27 +146,29 @@ TUNABLE(HpMargin, 592, 256, 8192, 350)
 
 // Aspiration window
 TUNABLE(AspDepth, 4, 2, 8, 0.5)
-TUNABLE(AspDelta, 8, 6, 32, 2)
+TUNABLE(AspDelta, 8, 3, 32, 2)
 TUNABLE(AspScoreDiv, 93, 40, 300, 10)
 TUNABLE(AspGrowth, 480, 128, 1024, 40)
 
 // Internal Iterative Reduction (IIR)
-TUNABLE(IirDepth, 7, 2, 8, 0.5)
+TUNABLE(IirDepth, 7, 2, 12, 0.5)
 
 // Check extension
 TUNABLE(CheckExtDepth, 2, 0, 5, 0.5)
 
 // Singular extensions
-TUNABLE(SeDepth, 5, 4, 10, 0.5)
+TUNABLE(SeDepth, 5, 3, 10, 0.5)
 TUNABLE(SeTtPvDepth, 1, 0, 3, 0.5)
 TUNABLE(SeTtDepth, 3, 1, 6, 0.5)
 TUNABLE(SeMargin, 1220, 256, 3072, 100)
 TUNABLE(SeSearchDepth, 480, 256, 768, 30)
 TUNABLE(SeCorrMult, 289, 0, 768, 30)
 TUNABLE(SeDepthIncMax, 11, 8, 18, 0.5)
-TUNABLE(SeDepthIncMargin, 4, 0, 40, 3)
+TUNABLE(SeDepthIncMargin, 4, -20, 40, 3)
 TUNABLE(SeDoubleMax, 8, 2, 16, 0.5)
 TUNABLE(SeTripleMargin, 60, 10, 150, 6)
+TUNABLE(SeNegTt, 0, -2, 2, 0.5)
+TUNABLE(SeNegCut, 0, -2, 2, 0.5)
 
 // Quiescence search
 TUNABLE(QsFpMargin, 91, 30, 200, 8)
