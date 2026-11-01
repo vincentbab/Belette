@@ -31,6 +31,9 @@ Specify the hash table size in megabytes
 ### Threads
 For now this option doesn't do anything. It's only for compatibility purpose
 
+### UCI_Chess960
+Use the Chess960 castling notation (king takes own rook) for moves. Chess960 positions are detected from the FEN
+
 ## Internals
 
 ### Board & Move generation

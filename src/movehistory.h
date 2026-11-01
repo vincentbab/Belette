@@ -233,12 +233,12 @@ public:
         }
     }
 
-    template<Side Me>
+    template<Side Me, bool Frc = false>
     inline void update(const Position& pos, Move bestMove, int ply, int depth, const PartialMoveList& quietMoves,
                        const PartialMoveList& captureMoves, PieceToHistory* const* contHist) {
         MoveScore captureMalus = historyValue(depth, MalusCaptMult, MalusCaptBase, MalusCaptMax);
 
-        if (!pos.isTactical(bestMove)) {
+        if (!pos.isTactical<Frc>(bestMove)) {
             updateKiller(bestMove, ply);
             updateCounter(pos, bestMove);
 

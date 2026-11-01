@@ -51,11 +51,10 @@ public:
     bool setFromFEN(const std::string &fen);
     std::string fen() const;
     
-    inline void doMove(Move m) { getSideToMove() == WHITE ? doMove<WHITE>(m) : doMove<BLACK>(m); }
-    template<Side Me> inline void doMove(Move m);
+    inline void doMove(Move m);
+    template<Side Me, bool Frc = false> inline void doMove(Move m);
 
-    inline void undoMove(Move m) { getSideToMove() == WHITE ? undoMove<WHITE>(m) : undoMove<BLACK>(m); }
-    template<Side Me> inline void undoMove(Move m);
+    template<Side Me, bool Frc = false> inline void undoMove(Move m);
 
     template<Side Me> void doNullMove();
     template<Side Me> void undoNullMove();
@@ -138,23 +137,24 @@ public:
     inline bool isDraw(int ply) const { return isFiftyMoveDraw() || isRepetitionDraw(ply) || isMaterialDraw(); }
     template<Side Me> inline bool hasNonPawnMateriel() { return getPiecesBB(Me, PAWN, KING) != getPiecesBB(Me); }
 
-    template<Side Me> bool isLegal(Move m) const;
+    template<Side Me, bool Frc = false> bool isLegal(Move m) const;
     inline bool isLegal(Move m) const { return getSideToMove() == WHITE ? isLegal<WHITE>(m) : isLegal<BLACK>(m); };
-    inline bool isCapture(Move m) const { return getPieceAt(moveTo(m)) != NO_PIECE || moveType(m) == EN_PASSANT; }
-    inline bool isTactical(Move m) const { return isCapture(m) || (moveType(m) == PROMOTION && movePromotionType(m) == QUEEN); }
+    template<bool Frc = false> inline bool isCapture(Move m) const;
+    template<bool Frc = false> inline bool isTactical(Move m) const { return isCapture<Frc>(m) || (moveType(m) == PROMOTION && movePromotionType(m) == QUEEN); }
 
     inline Move previousMove() const { return state->move; }
     
     bool see(Move m, int threshold) const ;
-    template<Side Me> inline bool givesCheck(Move m) const;
+    template<Side Me, bool Frc = false> inline bool givesCheck(Move m) const;
 
     std::string debugHistory();
 
 private:
-    void setCastlingRights(CastlingRight cr);
+    void setCastlingRights(Side s, Square rookFrom);
+    Square getCastlingRook(Side s, bool kingSide) const;
 
-    template<Side Me, MoveType Mt> void doMove(Move m);
-    template<Side Me, MoveType Mt> void undoMove(Move m);
+    template<Side Me, MoveType Mt, bool Frc> void doMove(Move m);
+    template<Side Me, MoveType Mt, bool Frc> void undoMove(Move m);
 
     template<Side Me, bool InCheck, bool IsCapture> bool isLegal(Move m, Piece pc) const;
 
@@ -189,7 +189,15 @@ private:
 
 std::ostream& operator<<(std::ostream& os, const Position& pos);
 
-template<Side Me>
+template<bool Frc>
+inline bool Position::isCapture(Move m) const {
+    if constexpr (Frc)
+        if (moveType(m) == CASTLING) return false;
+
+    return getPieceAt(moveTo(m)) != NO_PIECE || moveType(m) == EN_PASSANT;
+}
+
+template<Side Me, bool Frc>
 inline bool Position::givesCheck(Move m) const {
     constexpr Side Opp = ~Me;
     const Square from = moveFrom(m), to = moveTo(m);
@@ -204,8 +212,12 @@ inline bool Position::givesCheck(Move m) const {
         occupied ^= bb(epsq);
         vacated |= bb(epsq);
     } else if (mt == CASTLING) {
-        const CastlingRight cr = Me & (to > from ? KING_SIDE : QUEEN_SIDE);
-        occupied ^= bb(CastlingRookFrom[cr]) | bb(CastlingRookTo[cr]);
+        const CastlingRight cr = castlingRight<Me, Frc>(from, to);
+
+        if constexpr (Frc)
+            occupied = ((getPiecesBB() ^ from) & ~bb(castlingRookFrom<Frc>(cr))) | to | CastlingRookTo[cr];
+        else
+            occupied ^= bb(CastlingRookFrom[cr]) | bb(CastlingRookTo[cr]);
 
         return !!(attacks<ROOK>(CastlingRookTo[cr], occupied) & ksq);
     }
@@ -258,23 +270,30 @@ inline bool Position::isMaterialDraw() const {
     return false;
 }
 
-template<Side Me>
+inline void Position::doMove(Move m) {
+    if (Frc960::active)
+        getSideToMove() == WHITE ? doMove<WHITE, true>(m) : doMove<BLACK, true>(m);
+    else
+        getSideToMove() == WHITE ? doMove<WHITE>(m) : doMove<BLACK>(m);
+}
+
+template<Side Me, bool Frc>
 inline void Position::doMove(Move m) {
     switch(moveType(m)) {
-        case NORMAL:     doMove<Me, NORMAL>(m); return;
-        case CASTLING:   doMove<Me, CASTLING>(m); return;
-        case PROMOTION:  doMove<Me, PROMOTION>(m); return;
-        case EN_PASSANT: doMove<Me, EN_PASSANT>(m); return;
+        case NORMAL:     doMove<Me, NORMAL, Frc>(m); return;
+        case CASTLING:   doMove<Me, CASTLING, Frc>(m); return;
+        case PROMOTION:  doMove<Me, PROMOTION, Frc>(m); return;
+        case EN_PASSANT: doMove<Me, EN_PASSANT, Frc>(m); return;
     }
 }
 
-template<Side Me>
+template<Side Me, bool Frc>
 inline void Position::undoMove(Move m) {
     switch(moveType(m)) {
-        case NORMAL:     undoMove<Me, NORMAL>(m); return;
-        case CASTLING:   undoMove<Me, CASTLING>(m); return;
-        case PROMOTION:  undoMove<Me, PROMOTION>(m); return;
-        case EN_PASSANT: undoMove<Me, EN_PASSANT>(m); return;
+        case NORMAL:     undoMove<Me, NORMAL, Frc>(m); return;
+        case CASTLING:   undoMove<Me, CASTLING, Frc>(m); return;
+        case PROMOTION:  undoMove<Me, PROMOTION, Frc>(m); return;
+        case EN_PASSANT: undoMove<Me, EN_PASSANT, Frc>(m); return;
     }
 }
 

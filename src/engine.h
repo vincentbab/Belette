@@ -205,12 +205,17 @@ private:
     std::atomic<bool> aborted = true;
     std::atomic<bool> searching = false;
 
-    inline void idSearch() { sd->position.getSideToMove() == WHITE ? idSearch<WHITE>() : idSearch<BLACK>(); }
-    template<Side Me> void idSearch();
+    inline void idSearch() {
+        if (Frc960::active)
+            sd->position.getSideToMove() == WHITE ? idSearch<WHITE, true>() : idSearch<BLACK, true>();
+        else
+            sd->position.getSideToMove() == WHITE ? idSearch<WHITE, false>() : idSearch<BLACK, false>();
+    }
+    template<Side Me, bool Frc> void idSearch();
 
-    template<Side Me, NodeType NT> Score pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode);
+    template<Side Me, NodeType NT, bool Frc> Score pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode);
 
-    template<Side Me, NodeType NT> Score qSearch(Score alpha, Score beta, int ply);
+    template<Side Me, NodeType NT, bool Frc> Score qSearch(Score alpha, Score beta, int ply);
 };
 
 } /* namespace Belette */

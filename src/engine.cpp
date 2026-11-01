@@ -68,14 +68,14 @@ void Engine::stop() {
 }
 
 // Iterative deepening loop
-template<Side Me>
+template<Side Me, bool Frc>
 void Engine::idSearch() {
     PvList bestPv;
     Score bestScore = SCORE_DRAW;
     int depth, searchDepth, completedDepth = 0;
 
     MoveList rootMoves;
-    generateLegalMoves(sd->position, rootMoves);
+    generateLegalMoves<Frc>(sd->position, rootMoves);
 
     for (depth = 1; depth < MAX_PLY; depth++) {
         Score alpha = -SCORE_INFINITE, beta = SCORE_INFINITE;
@@ -97,7 +97,7 @@ void Engine::idSearch() {
             if (alpha < -SCORE_MATE_MAX_PLY) alpha = -SCORE_INFINITE;
             if (beta > SCORE_MATE_MAX_PLY) beta = SCORE_INFINITE;
             //std::cout << "  depth=" << searchDepth << " d=" << delta << std::endl;
-            score = pvSearch<Me, NodeType::Root>(alpha, beta, searchDepth, 0, false);
+            score = pvSearch<Me, NodeType::Root, Frc>(alpha, beta, searchDepth, 0, false);
 
             if (searchAborted()) break;
 
@@ -170,7 +170,7 @@ void Engine::idSearch() {
 }
 
 // Negamax search
-template<Side Me, NodeType NT>
+template<Side Me, NodeType NT, bool Frc>
 Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode) {
     constexpr bool PvNode = (NT != NodeType::NonPV);
     constexpr bool RootNode = (NT == NodeType::Root);
@@ -178,7 +178,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
     // Quiescence
     if (depth <= 0) {
-        return qSearch<Me, QNodeType>(alpha, beta, ply);
+        return qSearch<Me, QNodeType, Frc>(alpha, beta, ply);
     }
 
     // Update selDepth
@@ -250,7 +250,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     Score ttScore = tte->score(ply);
     bool ttPv = PvNode || (ttHit && tte->isPv());
     Move ttMove = ttHit ? tte->move() : MOVE_NONE;
-    bool ttTactical = ttHit && isValidMove(ttMove) && pos.isTactical(ttMove);
+    bool ttTactical = ttHit && isValidMove(ttMove) && pos.isTactical<Frc>(ttMove);
     int ttDepth = tte->depth();
     bool ttLower = tte->isLowerBound();
 
@@ -301,7 +301,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     if (!PvNode && !inCheck && depth <= 2
         && eval + (400 * depth) <= alpha)
     {
-        Score score = qSearch<Me, QNodeType>(alpha, beta, ply);
+        Score score = qSearch<Me, QNodeType, Frc>(alpha, beta, ply);
         if (score <= alpha)
             return score;
     }
@@ -315,7 +315,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         node.setNullMove(sd->moveHistory);
         pos.doNullMove<Me>();
-        Score score = -pvSearch<~Me, NodeType::NonPV>(-beta, -beta+1, depth-R, ply+1, !cutNode);
+        Score score = -pvSearch<~Me, NodeType::NonPV, Frc>(-beta, -beta+1, depth-R, ply+1, !cutNode);
         pos.undoNullMove<Me>();
 
         if (score >= beta) {
@@ -331,21 +331,21 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         MovePicker mp(pos, ttMove, &sd->moveHistory, contHist);
         Score probCutScore = -SCORE_INFINITE;
 
-        mp.enumerate<QUIESCENCE, Me>([&](Move move, /*unused*/bool& skipQuiets) -> bool {
-            if (move == excludedMove || !pos.isTactical(move)) return true;
+        mp.enumerate<QUIESCENCE, Me, Frc>([&](Move move, /*unused*/bool& skipQuiets) -> bool {
+            if (move == excludedMove || !pos.isTactical<Frc>(move)) return true;
             if (!pos.see(move, probCutBeta - node.staticEval)) return true;
 
             sd->nbNodes++;
 
             node.setMove(sd->moveHistory, pos, move);
 
-            pos.doMove<Me>(move);
-            probCutScore = -qSearch<~Me, NodeType::NonPV>(-probCutBeta, -probCutBeta+1, ply+1);
+            pos.doMove<Me, Frc>(move);
+            probCutScore = -qSearch<~Me, NodeType::NonPV, Frc>(-probCutBeta, -probCutBeta+1, ply+1);
 
             if (probCutScore >= probCutBeta)
-                probCutScore = -pvSearch<~Me, NodeType::NonPV>(-probCutBeta, -probCutBeta+1, depth-4, ply+1, !cutNode);
+                probCutScore = -pvSearch<~Me, NodeType::NonPV, Frc>(-probCutBeta, -probCutBeta+1, depth-4, ply+1, !cutNode);
 
-            pos.undoMove<Me>(move);
+            pos.undoMove<Me, Frc>(move);
 
             if (searchAborted()) return false;
 
@@ -376,7 +376,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     PartialMoveList quietMoves, captureMoves;
     Score singularCutoff = SCORE_NONE;
 
-    mp.enumerate<MAIN, Me>([&](Move move, bool& skipQuiets) -> bool {
+    mp.enumerate<MAIN, Me, Frc>([&](Move move, bool& skipQuiets) -> bool {
         // Honor UCI searchmoves
         if (RootNode && sd->limits.searchMoves.size() > 0 && !sd->limits.searchMoves.contains(move))
             return true; // continue
@@ -386,7 +386,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         nbMoves++;
 
-        bool moveIsTactical = pos.isTactical(move);
+        bool moveIsTactical = pos.isTactical<Frc>(move);
 
         // Combined history, must be computed before the move is played
         MoveScore statScore = moveIsTactical ? sd->moveHistory.getCaptureHistory(pos, move)
@@ -422,7 +422,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             }
 
             // SEE Pruning
-            if (depth <= 8 && !pos.see(move, moveIsTactical ? -100*depth : -60*depth)) {
+            if (depth <= 8 && !(Frc && moveType(move) == CASTLING && !pos.isEmpty(moveTo(move)))
+                && !pos.see(move, moveIsTactical ? -100*depth : -60*depth)) {
                 return true; // continue;
             }
         }
@@ -436,7 +437,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             int corrAdj = std::abs(node.staticEval - rawEval) / 4;
 
             node.excludedMove = ttMove;
-            Score score = pvSearch<Me, NodeType::NonPV>(singularBeta-1, singularBeta, (depth-1)/2, ply, cutNode);
+            Score score = pvSearch<Me, NodeType::NonPV, Frc>(singularBeta-1, singularBeta, (depth-1)/2, ply, cutNode);
             node.excludedMove = MOVE_NONE;
 
             if (!PvNode && depth < 12 && score < singularBeta + 10)
@@ -470,7 +471,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         node.setMove(sd->moveHistory, pos, move);
 
         // Do move
-        pos.doMove<Me>(move);
+        pos.doMove<Me, Frc>(move);
         sd->moveHistory.prefetchCorrection<~Me>(pos);
 
         Score score;
@@ -492,25 +493,25 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             R = R <= 0 ? 0 : std::min(depth - 1, std::max(1, R / LMR_FACTOR));
 
             // Reduced depth, Zero window
-            score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, depth-R, ply+1, true);
+            score = -pvSearch<~Me, NodeType::NonPV, Frc>(-alpha-1, -alpha, depth-R, ply+1, true);
 
             if (score > alpha && R > 1) {
                 // Full depth, Zero window
-                score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, newDepth, ply+1, !cutNode);
+                score = -pvSearch<~Me, NodeType::NonPV, Frc>(-alpha-1, -alpha, newDepth, ply+1, !cutNode);
             }
 
         } else if (!PvNode || nbMoves > 1) {
             // Zero window (PVS)
-            score = -pvSearch<~Me, NodeType::NonPV>(-alpha-1, -alpha, newDepth, ply+1, !cutNode);
+            score = -pvSearch<~Me, NodeType::NonPV, Frc>(-alpha-1, -alpha, newDepth, ply+1, !cutNode);
         }
 
         if (PvNode && (nbMoves == 1 || (score > alpha && (RootNode || score < beta)))) {
             // Full window (PVS)
-            score = -pvSearch<~Me, NodeType::PV>(-beta, -alpha, newDepth, ply+1, false);
+            score = -pvSearch<~Me, NodeType::PV, Frc>(-beta, -alpha, newDepth, ply+1, false);
         }
 
         // Undo move
-        pos.undoMove<Me>(move);
+        pos.undoMove<Me, Frc>(move);
 
         if constexpr (RootNode)
             sd->rootMoveNodes[moveFromTo(move)] += sd->nbNodes - nodesBefore;
@@ -528,7 +529,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
                 if (alpha >= beta) {
                     node.nbCutoffs++;
-                    sd->moveHistory.update<Me>(pos, bestMove, ply, depth + failedLow, quietMoves, captureMoves, contHist);
+                    sd->moveHistory.update<Me, Frc>(pos, bestMove, ply, depth + failedLow, quietMoves, captureMoves, contHist);
                     return false; // break
                 }
             }
@@ -555,7 +556,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     }
 
     // Update correction history
-    if (!inCheck && !excludedMove && !(bestMove != MOVE_NONE && pos.isTactical(bestMove)) && std::abs(bestScore) < SCORE_MATE_MAX_PLY
+    if (!inCheck && !excludedMove && !(bestMove != MOVE_NONE && pos.isTactical<Frc>(bestMove)) && std::abs(bestScore) < SCORE_MATE_MAX_PLY
         && ((bestScore < node.staticEval && bestScore < beta) || (bestScore > node.staticEval && bestMove != MOVE_NONE)))
     {
         sd->moveHistory.updateCorrection<Me>(pos, bestScore, node.staticEval, depth, corrCtx);
@@ -572,7 +573,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 }
 
 // Quiescence search
-template<Side Me, NodeType NT>
+template<Side Me, NodeType NT, bool Frc>
 Score Engine::qSearch(Score alpha, Score beta, int ply) {
     constexpr bool PvNode = (NT != NodeType::NonPV);
 
@@ -651,7 +652,7 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
     }
 
     Move ttMove = tte->move();
-    bool useTTMove = ttHit && isValidMove(ttMove) && (inCheck || pos.isTactical(ttMove));
+    bool useTTMove = ttHit && isValidMove(ttMove) && (inCheck || pos.isTactical<Frc>(ttMove));
 
     PieceToHistory* contHist[CONT_HIST_PLIES] = {
         sd->node(ply-1).contHist,
@@ -665,13 +666,13 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
     Score futilityBase = eval + 100;
     Square prevSq = isValidMove(pos.previousMove()) ? moveTo(pos.previousMove()) : SQ_NONE;
 
-    mp.enumerate<QUIESCENCE, Me>([&](Move move, /*unused*/bool& skipQuiets) -> bool {
+    mp.enumerate<QUIESCENCE, Me, Frc>([&](Move move, /*unused*/bool& skipQuiets) -> bool {
         if (bestScore > -SCORE_MATE_MAX_PLY) {
             // Futility Pruning
             if (!inCheck && moveType(move) == NORMAL && moveTo(move) != prevSq) {
                 Score futilityScore = futilityBase + PieceValue<EG>(pos.getPieceAt(moveTo(move)));
 
-                if (futilityScore <= alpha && !pos.givesCheck<Me>(move)) {
+                if (futilityScore <= alpha && !pos.givesCheck<Me, Frc>(move)) {
                     return true; // continue;
                 }
             }
@@ -686,10 +687,10 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
 
         sd->node(ply).setMove(sd->moveHistory, pos, move);
 
-        pos.doMove<Me>(move);
+        pos.doMove<Me, Frc>(move);
         sd->moveHistory.prefetchCorrection<~Me>(pos);
-        Score score = -qSearch<~Me, NT>(-beta, -alpha, ply+1);
-        pos.undoMove<Me>(move);
+        Score score = -qSearch<~Me, NT, Frc>(-beta, -alpha, ply+1);
+        pos.undoMove<Me, Frc>(move);
 
         if (searchAborted()) return false; // break
 

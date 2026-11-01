@@ -342,6 +342,47 @@ constexpr Direction pawnDirection(Side s) {
     return s == WHITE ? UP : DOWN;
 }
 
+namespace Frc960 {
+
+inline bool active = false;
+inline bool uciFormat = false;
+inline Square rookFrom[NB_CASTLING_RIGHT];
+inline CastlingRight rightsMask[NB_SQUARE];
+inline Bitboard path[NB_CASTLING_RIGHT];
+inline Bitboard kingPath[NB_CASTLING_RIGHT];
+
+}
+
+template<bool Frc>
+inline Square castlingRookFrom(CastlingRight cr) {
+    if constexpr (Frc) return Frc960::rookFrom[cr];
+    else return CastlingRookFrom[cr];
+}
+
+template<bool Frc>
+inline CastlingRight castlingRightsMask(Square sq) {
+    if constexpr (Frc) return Frc960::rightsMask[sq];
+    else return CastlingRightsMask[sq];
+}
+
+template<bool Frc>
+inline Bitboard castlingPath(CastlingRight cr) {
+    if constexpr (Frc) return Frc960::path[cr];
+    else return CastlingPath[cr];
+}
+
+template<bool Frc>
+inline Bitboard castlingKingPath(CastlingRight cr) {
+    if constexpr (Frc) return Frc960::kingPath[cr];
+    else return CastlingKingPath[cr];
+}
+
+template<Side Me, bool Frc>
+constexpr CastlingRight castlingRight(Square from, Square to) {
+    if constexpr (Frc) return Me & (fileOf(to) == FILE_G ? KING_SIDE : QUEEN_SIDE);
+    else return Me & (to > from ? KING_SIDE : QUEEN_SIDE);
+}
+
 inline Bitboard operator&(Bitboard b, Square s) { return b & bb(s); }
 inline Bitboard operator|(Bitboard b, Square s) { return b | bb(s); }
 inline Bitboard operator^(Bitboard b, Square s) { return b ^ bb(s); }

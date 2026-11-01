@@ -72,11 +72,16 @@ public:
         assert(contHist != nullptr);
     }
 
-    template<MovePickerType Type, Side Me, typename Handler>
+    template<MovePickerType Type, Side Me, bool Frc = false, typename Handler>
     inline bool enumerate(const Handler &handler);
 
     template<MovePickerType Type, typename Handler>
-    inline bool enumerate(const Handler &handler) { return pos->getSideToMove() == WHITE ? enumerate<Type, WHITE, Handler>(handler) : enumerate<Type, BLACK, Handler>(handler); }
+    inline bool enumerate(const Handler &handler) {
+        if (Frc960::active)
+            return pos->getSideToMove() == WHITE ? enumerate<Type, WHITE, true, Handler>(handler) : enumerate<Type, BLACK, true, Handler>(handler);
+
+        return pos->getSideToMove() == WHITE ? enumerate<Type, WHITE, false, Handler>(handler) : enumerate<Type, BLACK, false, Handler>(handler);
+    }
 
 private:
     const Position* const pos;
@@ -90,7 +95,7 @@ private:
     template<Side Me> inline MoveScore scoreQuiet(Move m);
 };
 
-template<MovePickerType Type, Side Me, typename Handler>
+template<MovePickerType Type, Side Me, bool Frc, typename Handler>
 bool MovePicker::enumerate(const Handler &handler) {
     assert(pos != nullptr);
     assert(pos->getSideToMove() == Me);
@@ -101,7 +106,7 @@ bool MovePicker::enumerate(const Handler &handler) {
         tt.prefetch(pos->getHashAfter(ttMove));
 
     // TT Move
-    if (pos->isLegal<Me>(ttMove)) {
+    if (pos->isLegal<Me, Frc>(ttMove)) {
         CALL_HANDLER(ttMove, skipQuiets);
     }
     
@@ -112,7 +117,7 @@ bool MovePicker::enumerate(const Handler &handler) {
 
     // Evasions
     if (pos->inCheck()) {
-        enumerateLegalMoves<Me, ALL_MOVES>(*pos, [&](Move m) {
+        enumerateLegalMoves<Me, ALL_MOVES, Frc>(*pos, [&](Move m) {
             if (m == ttMove) return true; // continue;
 
             tt.prefetch(pos->getHashAfter(m));
@@ -131,7 +136,7 @@ bool MovePicker::enumerate(const Handler &handler) {
     }
 
     // Tacticals
-    enumerateLegalMoves<Me, TACTICAL_MOVES>(*pos, [&](Move m) {
+    enumerateLegalMoves<Me, TACTICAL_MOVES, Frc>(*pos, [&](Move m) {
         if (m == ttMove) return true; // continue;
         
         if (moves.size() < 16)
@@ -165,17 +170,17 @@ bool MovePicker::enumerate(const Handler &handler) {
         if (isValidMove(refutations[2])) tt.prefetch(pos->getHashAfter(refutations[2]));
         
         // Killer 1
-        if (refutations[0] != ttMove && !pos->isTactical(refutations[0]) && pos->isLegal<Me>(refutations[0])) {
+        if (refutations[0] != ttMove && !pos->isTactical<Frc>(refutations[0]) && pos->isLegal<Me, Frc>(refutations[0])) {
             CALL_HANDLER(refutations[0], skipQuiets);
         }
 
         // Killer 2
-        if (refutations[1] != ttMove && !pos->isTactical(refutations[1]) && pos->isLegal<Me>(refutations[1])) {
+        if (refutations[1] != ttMove && !pos->isTactical<Frc>(refutations[1]) && pos->isLegal<Me, Frc>(refutations[1])) {
             CALL_HANDLER(refutations[1], skipQuiets);
         }
 
         // Counter
-        if (refutations[2] != ttMove && !pos->isTactical(refutations[2]) && refutations[2] != refutations[0] && refutations[2] != refutations[1] && pos->isLegal<Me>(refutations[2])) {
+        if (refutations[2] != ttMove && !pos->isTactical<Frc>(refutations[2]) && refutations[2] != refutations[0] && refutations[2] != refutations[1] && pos->isLegal<Me, Frc>(refutations[2])) {
             CALL_HANDLER(refutations[2], skipQuiets);
         }
     }
@@ -184,7 +189,7 @@ bool MovePicker::enumerate(const Handler &handler) {
     moves.resize(endBadTacticals - moves.begin()); // Keep only bad tacticals
     beginQuiets = endBadTacticals;
 
-    enumerateLegalMoves<Me, QUIET_MOVES>(*pos, [&](Move m) {
+    enumerateLegalMoves<Me, QUIET_MOVES, Frc>(*pos, [&](Move m) {
         if (m == ttMove) return true; // continue;
         if (refutations[0] == m || refutations[1] == m || refutations[2] == m) return true; // continue
 

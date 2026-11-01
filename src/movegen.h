@@ -229,12 +229,16 @@ inline bool enumeratePawnMoves(const Position &pos, Bitboard source, const Handl
     return true;
 }
 
-template<Side Me, typename Handler>
+template<Side Me, bool Frc = false, typename Handler>
 inline bool enumerateCastlingMoves(const Position &pos, const Handler& handler) {
     Square kingSquare = pos.getKingSquare(Me);
 
     for (auto cr : {Me & KING_SIDE, Me & QUEEN_SIDE}) {
-        if (pos.canCastle(cr) && pos.isEmpty(CastlingPath[cr]) && !(pos.checkedSquares() & CastlingKingPath[cr])) {
+        if (pos.canCastle(cr) && pos.isEmpty(castlingPath<Frc>(cr)) && !(pos.checkedSquares() & castlingKingPath<Frc>(cr))) {
+            if constexpr (Frc) {
+                if (pos.pinOrtho() & castlingRookFrom<Frc>(cr)) continue;
+            }
+
             Square from = kingSquare;
             Square to = CastlingKingTo[cr];
             CALL_HANDLER(makeMove<CASTLING>(from, to));
@@ -368,7 +372,7 @@ inline bool enumerateQueenSliderMoves(const Position &pos, Bitboard source, cons
     return true;
 }
 
-template<Side Me, MoveGenType MGType = ALL_MOVES, typename Handler>
+template<Side Me, MoveGenType MGType = ALL_MOVES, bool Frc = false, typename Handler>
 inline bool enumerateLegalMoves(const Position &pos, const Handler& handler) {
     assert(pos.nbCheckers() < 3);
 
@@ -378,7 +382,7 @@ inline bool enumerateLegalMoves(const Position &pos, const Handler& handler) {
             CALL_ENUMERATOR(enumerateKnightMoves<Me, false, MGType, Handler>(pos, pos.getPiecesBB(Me, KNIGHT), handler));
             CALL_ENUMERATOR(enumerateBishopSliderMoves<Me, false, MGType, Handler>(pos, pos.getPiecesBB(Me, BISHOP, QUEEN), handler));
             CALL_ENUMERATOR(enumerateRookSliderMoves<Me, false, MGType, Handler>(pos, pos.getPiecesBB(Me, ROOK, QUEEN), handler));
-            if constexpr (MGType & QUIET_MOVES) CALL_ENUMERATOR(enumerateCastlingMoves<Me, Handler>(pos, handler));
+            if constexpr (MGType & QUIET_MOVES) CALL_ENUMERATOR(enumerateCastlingMoves<Me, Frc, Handler>(pos, handler));
             CALL_ENUMERATOR(enumerateKingMoves<Me, MGType, Handler>(pos, pos.getKingSquare(Me), handler));
 
             return true;
@@ -398,15 +402,21 @@ inline bool enumerateLegalMoves(const Position &pos, const Handler& handler) {
     }
 }
 
-template<MoveGenType MGType = ALL_MOVES, typename Handler>
+template<MoveGenType MGType = ALL_MOVES, bool Frc = false, typename Handler>
 inline bool enumerateLegalMoves(const Position &pos, const Handler& handler) {
-    return pos.getSideToMove() == WHITE 
-            ? enumerateLegalMoves<WHITE, MGType, Handler>(pos, handler)
-            : enumerateLegalMoves<BLACK, MGType, Handler>(pos, handler);
+    return pos.getSideToMove() == WHITE
+            ? enumerateLegalMoves<WHITE, MGType, Frc, Handler>(pos, handler)
+            : enumerateLegalMoves<BLACK, MGType, Frc, Handler>(pos, handler);
 }
 
+template<typename Handler>
+inline bool enumerateCurrentVariantMoves(const Position &pos, const Handler& handler) {
+    return Frc960::active ? enumerateLegalMoves<ALL_MOVES, true>(pos, handler) : enumerateLegalMoves(pos, handler);
+}
+
+template<bool Frc = false>
 inline void generateLegalMoves(const Position &pos, MoveList &moves) {
-    enumerateLegalMoves(pos, [&](Move m) {
+    enumerateLegalMoves<ALL_MOVES, Frc>(pos, [&](Move m) {
         moves.push_back(m); return true;
     });
 }

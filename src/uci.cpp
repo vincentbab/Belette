@@ -37,6 +37,7 @@ Uci::Uci()  {
         engine.setHashSize(int64_t(opt)*1024*1024);
     });
     options["Threads"] = UciOption(1, 1, 1);
+    options["UCI_Chess960"] = UciOption(false, [&] (const UciOption &opt) { Frc960::uciFormat = bool(opt); });
 
 #ifdef TUNE
     for (auto p : tunableParams()) {
@@ -104,8 +105,15 @@ std::string Uci::formatMove(Move m) {
         return "(null)";
     }
     
-    std::string str = formatSquare(moveFrom(m)) + formatSquare(moveTo(m));
-    
+    Square to = moveTo(m);
+
+    if (moveType(m) == CASTLING && (Frc960::uciFormat || Frc960::active)) {
+        const Side side = rankOf(moveFrom(m)) == RANK_1 ? WHITE : BLACK;
+        to = Frc960::rookFrom[side & (fileOf(to) == FILE_G ? KING_SIDE : QUEEN_SIDE)];
+    }
+
+    std::string str = formatSquare(moveFrom(m)) + formatSquare(to);
+
     if (moveType(m) == PROMOTION) {
         str += " pnbrqk"[movePromotionType(m)];
     }
@@ -117,7 +125,7 @@ Move Uci::parseMove(std::string str) const {
     if (str.length() == 5) str[4] = char(tolower(str[4]));
 
     Move move = MOVE_NONE;
-    enumerateLegalMoves(engine.position(), [&](Move m) {
+    enumerateCurrentVariantMoves(engine.position(), [&](Move m) {
         if (str == formatMove(m)) {
             move = m;
             return false;
@@ -242,6 +250,9 @@ bool Uci::cmdPosition(std::istringstream& is) {
         return true;
     }
 
+    engine.stop();
+    engine.waitForSearchFinish();
+
     if (!engine.position().setFromFEN(fen)) {
         console << "Invalid FEN position" << std::endl;
         return true;
@@ -317,7 +328,7 @@ bool Uci::cmdDebug(std::istringstream& is) {
     is >> token;
 
     if (token == "moves") {
-        enumerateLegalMoves(engine.position(), [&] (Move m) {
+        enumerateCurrentVariantMoves(engine.position(), [&] (Move m) {
             console << Uci::formatMove(m) << std::endl;
             return true;
         });
@@ -383,8 +394,12 @@ bool Uci::cmdQuit(std::istringstream& is) {
 }
 
 bool Uci::cmdTest(std::istringstream& is) {
+    const std::string fen = engine.position().fen();
+
     Test::run();
-    
+
+    engine.position().setFromFEN(fen);
+
     return true;
 }
 
@@ -392,8 +407,12 @@ bool Uci::cmdBench(std::istringstream& is) {
     int depth = DEFAULT_BENCH_DEPTH;
     is >> depth;
 
+    const std::string fen = engine.position().fen();
+
     bench(depth);
-    
+
+    engine.position().setFromFEN(fen);
+
     return true;
 }
 
@@ -430,7 +449,7 @@ void UciEngine::onSearchFinish(const SearchEvent &event) {
     if (!event.pv.empty()) {
         bestMove = event.pv.front();
     } else { // Fallback on first legal move
-        enumerateLegalMoves(position(), [&](Move m) {
+        enumerateCurrentVariantMoves(position(), [&](Move m) {
             bestMove = m;
             return false;
         });

@@ -166,12 +166,34 @@ void Position::reset() {
     sideToMove = WHITE;
 }
 
-void Position::setCastlingRights(CastlingRight cr) {
-    Side s = (cr & WHITE_CASTLING) ? WHITE : BLACK;
+void Position::setCastlingRights(Side s, Square rookFrom) {
+    const Square ksq = getKingSquare(s);
 
-    if (getKingSquare(s) == relativeSquare(s, SQ_E1) && getPieceAt(CastlingRookFrom[cr]) == piece(s, ROOK)) {
-        state->castlingRights |= cr;
-    }
+    if (relativeRank(s, ksq) != RANK_1 || rankOf(rookFrom) != rankOf(ksq) || getPieceAt(rookFrom) != piece(s, ROOK))
+        return;
+
+    const CastlingRight cr = s & (rookFrom > ksq ? KING_SIDE : QUEEN_SIDE);
+    const Square kingTo = CastlingKingTo[cr], rookTo = CastlingRookTo[cr];
+    const Bitboard kingPath = betweenBB(ksq, kingTo) | ksq | kingTo;
+
+    state->castlingRights |= cr;
+    Frc960::rookFrom[cr] = rookFrom;
+    Frc960::rightsMask[ksq] |= cr;
+    Frc960::rightsMask[rookFrom] |= cr;
+    Frc960::path[cr] = (kingPath | betweenBB(rookFrom, rookTo) | rookTo) & ~(ksq | rookFrom);
+    Frc960::kingPath[cr] = kingPath;
+    Frc960::active |= (ksq != relativeSquare(s, SQ_E1) || rookFrom != CastlingRookFrom[cr]);
+}
+
+Square Position::getCastlingRook(Side s, bool kingSide) const {
+    const Rank rank = relativeRank(s, RANK_1);
+    const int kingFile = fileOf(getKingSquare(s));
+    int f = kingSide ? FILE_H : FILE_A;
+
+    while (f != kingFile && getPieceAt(square(File(f), rank)) != piece(s, ROOK))
+        f += kingSide ? -1 : 1;
+
+    return square(File(f), rank);
 }
 
 std::string Position::fen() const {
@@ -197,10 +219,15 @@ std::string Position::fen() const {
 
     ss << (sideToMove == WHITE ? " w " : " b ");
 
-    if (canCastle(WHITE_KING_SIDE)) ss << 'K';
-    if (canCastle(WHITE_QUEEN_SIDE)) ss << 'Q';
-    if (canCastle(BLACK_KING_SIDE)) ss << 'k';
-    if (canCastle(BLACK_QUEEN_SIDE)) ss << 'q';
+    const auto writeRight = [&](CastlingRight cr, char standard, char fileA) {
+        if (canCastle(cr))
+            ss << (Frc960::active ? char(fileA + fileOf(Frc960::rookFrom[cr])) : standard);
+    };
+
+    writeRight(WHITE_KING_SIDE, 'K', 'A');
+    writeRight(WHITE_QUEEN_SIDE, 'Q', 'A');
+    writeRight(BLACK_KING_SIDE, 'k', 'a');
+    writeRight(BLACK_QUEEN_SIDE, 'q', 'a');
     if (!canCastle(ANY_CASTLING)) ss << '-';
 
     ss << (getEpSquare() == SQ_NONE ? " - " : " " + Uci::formatSquare(getEpSquare()) + " ");
@@ -247,11 +274,15 @@ bool Position::setFromFEN(const std::string &fen) {
 
     // Casteling
     parser >> std::skipws >> token;
+    Frc960::active = false;
+    std::fill(std::begin(Frc960::rightsMask), std::end(Frc960::rightsMask), NO_CASTLING);
     for(auto c : token) {
-        if (c == 'K') setCastlingRights(WHITE_KING_SIDE);
-        else if (c == 'Q') setCastlingRights(WHITE_QUEEN_SIDE);
-        else if (c == 'k') setCastlingRights(BLACK_KING_SIDE);
-        else if (c == 'q') setCastlingRights(BLACK_QUEEN_SIDE);
+        if (c == 'K') setCastlingRights(WHITE, getCastlingRook(WHITE, true));
+        else if (c == 'Q') setCastlingRights(WHITE, getCastlingRook(WHITE, false));
+        else if (c == 'k') setCastlingRights(BLACK, getCastlingRook(BLACK, true));
+        else if (c == 'q') setCastlingRights(BLACK, getCastlingRook(BLACK, false));
+        else if (c >= 'A' && c <= 'H') setCastlingRights(WHITE, square(File(c - 'A'), RANK_1));
+        else if (c >= 'a' && c <= 'h') setCastlingRights(BLACK, square(File(c - 'a'), RANK_8));
         else if (c == '-') continue;
         else {
             reset();
@@ -373,9 +404,14 @@ inline bool Position::givesCheck(Move m) {
 
 */
 
-template<Side Me>
+template<Side Me, bool Frc>
 bool Position::isLegal(Move move) const {
     if (!isValidMove(move)) return false;
+
+    if constexpr (Frc) {
+        if (moveType(move) == CASTLING)
+            return !checkers() && !enumerateCastlingMoves<Me, true>(*this, [move](Move m) { return move != m; });
+    }
 
     Square from = moveFrom(move);
     Square to = moveTo(move);
@@ -395,8 +431,10 @@ bool Position::isLegal(Move move) const {
     return capture != NO_PIECE ? isLegal<Me, false, true>(move, pc) : isLegal<Me, false, false>(move, pc);
 }
 
-template bool Position::isLegal<WHITE>(Move move) const;
-template bool Position::isLegal<BLACK>(Move move) const;
+template bool Position::isLegal<WHITE, false>(Move move) const;
+template bool Position::isLegal<BLACK, false>(Move move) const;
+template bool Position::isLegal<WHITE, true>(Move move) const;
+template bool Position::isLegal<BLACK, true>(Move move) const;
 
 template<Side Me, bool InCheck, bool IsCapture>
 inline bool Position::isLegal(Move move, Piece pc) const {
@@ -509,7 +547,7 @@ inline void Position::movePiece(Square from, Square to) {
     return v;
 }
 
-template<Side Me, MoveType Mt>
+template<Side Me, MoveType Mt, bool Frc>
 void Position::doMove(Move m) {
     assert(isValidMove(m));
     assert(getSideToMove() == Me);
@@ -517,7 +555,7 @@ void Position::doMove(Move m) {
 
     const Square from = moveFrom(m), to = moveTo(m);
     const Piece p = getPieceAt(from);
-    const Piece capture = getPieceAt(to);
+    const Piece capture = (Frc && Mt == CASTLING) ? NO_PIECE : getPieceAt(to);
 
     assert(side(getPieceAt(from)) == Me);
     assert(capture == NO_PIECE || side(capture) == ~Me);
@@ -554,7 +592,7 @@ void Position::doMove(Move m) {
 
         // Update castling right (no branching)
         h ^= Zobrist::castlingKeys[state->castlingRights];
-        state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
+        state->castlingRights &= ~(castlingRightsMask<Frc>(from) | castlingRightsMask<Frc>(to));
         h ^= Zobrist::castlingKeys[state->castlingRights];
 
         if (p == piece(Me, PAWN)) {
@@ -572,22 +610,30 @@ void Position::doMove(Move m) {
             }
         }
     } else if constexpr (Mt == CASTLING) {
-        CastlingRight cr = Me & (to > from ? KING_SIDE : QUEEN_SIDE);
-        const Square rookFrom = CastlingRookFrom[cr];
+        CastlingRight cr = castlingRight<Me, Frc>(from, to);
+        const Square rookFrom = castlingRookFrom<Frc>(cr);
         const Square rookTo = CastlingRookTo[cr];
 
         assert(pieceType(getPieceAt(from)) == KING);
         assert(getPieceAt(rookFrom) == piece(Me, ROOK));
-        assert(isEmpty(CastlingPath[cr]));
+        assert(isEmpty(castlingPath<Frc>(cr)));
 
         h ^= Zobrist::keys[piece(Me, KING)][from] ^ Zobrist::keys[piece(Me, KING)][to];
         h ^= Zobrist::keys[piece(Me, ROOK)][rookFrom] ^ Zobrist::keys[piece(Me, ROOK)][rookTo];
-        movePiece<Me>(from, to);
-        movePiece<Me>(rookFrom, rookTo);
+
+        if constexpr (Frc) {
+            unsetPiece<Me>(from);
+            unsetPiece<Me>(rookFrom);
+            setPiece<Me>(to, piece(Me, KING));
+            setPiece<Me>(rookTo, piece(Me, ROOK));
+        } else {
+            movePiece<Me>(from, to);
+            movePiece<Me>(rookFrom, rookTo);
+        }
 
         // Update castling right
         h ^= Zobrist::castlingKeys[state->castlingRights];
-        state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
+        state->castlingRights &= ~(castlingRightsMask<Frc>(from) | castlingRightsMask<Frc>(to));
         h ^= Zobrist::castlingKeys[state->castlingRights];
     } else if constexpr (Mt == PROMOTION) {
         const PieceType promotionType = movePromotionType(m);
@@ -607,7 +653,7 @@ void Position::doMove(Move m) {
 
         // Update castling right
         h ^= Zobrist::castlingKeys[state->castlingRights];
-        state->castlingRights &= ~(CastlingRightsMask[from] | CastlingRightsMask[to]);
+        state->castlingRights &= ~(castlingRightsMask<Frc>(from) | castlingRightsMask<Frc>(to));
         h ^= Zobrist::castlingKeys[state->castlingRights];
     } else if constexpr (Mt == EN_PASSANT) {
         assert(pieceType(getPieceAt(from)) == PAWN);
@@ -650,16 +696,24 @@ void Position::doMove(Move m) {
     updateBitboards<~Me>();
 }
 
-template void Position::doMove<WHITE, NORMAL>(Move m);
-template void Position::doMove<WHITE, PROMOTION>(Move m);
-template void Position::doMove<WHITE, EN_PASSANT>(Move m);
-template void Position::doMove<WHITE, CASTLING>(Move m);
-template void Position::doMove<BLACK, NORMAL>(Move m);
-template void Position::doMove<BLACK, PROMOTION>(Move m);
-template void Position::doMove<BLACK, EN_PASSANT>(Move m);
-template void Position::doMove<BLACK, CASTLING>(Move m);
+template void Position::doMove<WHITE, NORMAL, false>(Move m);
+template void Position::doMove<WHITE, PROMOTION, false>(Move m);
+template void Position::doMove<WHITE, EN_PASSANT, false>(Move m);
+template void Position::doMove<WHITE, CASTLING, false>(Move m);
+template void Position::doMove<BLACK, NORMAL, false>(Move m);
+template void Position::doMove<BLACK, PROMOTION, false>(Move m);
+template void Position::doMove<BLACK, EN_PASSANT, false>(Move m);
+template void Position::doMove<BLACK, CASTLING, false>(Move m);
+template void Position::doMove<WHITE, NORMAL, true>(Move m);
+template void Position::doMove<WHITE, PROMOTION, true>(Move m);
+template void Position::doMove<WHITE, EN_PASSANT, true>(Move m);
+template void Position::doMove<WHITE, CASTLING, true>(Move m);
+template void Position::doMove<BLACK, NORMAL, true>(Move m);
+template void Position::doMove<BLACK, PROMOTION, true>(Move m);
+template void Position::doMove<BLACK, EN_PASSANT, true>(Move m);
+template void Position::doMove<BLACK, CASTLING, true>(Move m);
 
-template<Side Me, MoveType Mt>
+template<Side Me, MoveType Mt, bool Frc>
 void Position::undoMove(Move m) {
     assert(getSideToMove() == ~Me);
 
@@ -677,12 +731,19 @@ void Position::undoMove(Move m) {
             setPiece<~Me>(to, capture);
         }
     } else if constexpr (Mt == CASTLING) {
-        const CastlingRight cr = Me & (to > from ? KING_SIDE : QUEEN_SIDE);
-        const Square rookFrom = CastlingRookFrom[cr];
+        const CastlingRight cr = castlingRight<Me, Frc>(from, to);
+        const Square rookFrom = castlingRookFrom<Frc>(cr);
         const Square rookTo = CastlingRookTo[cr];
 
-        movePiece<Me>(to, from);
-        movePiece<Me>(rookTo, rookFrom);
+        if constexpr (Frc) {
+            unsetPiece<Me>(to);
+            unsetPiece<Me>(rookTo);
+            setPiece<Me>(from, piece(Me, KING));
+            setPiece<Me>(rookFrom, piece(Me, ROOK));
+        } else {
+            movePiece<Me>(to, from);
+            movePiece<Me>(rookTo, rookFrom);
+        }
     } else if constexpr (Mt == PROMOTION){
         unsetPiece<Me>(to);
         setPiece<Me>(from, piece(Me, PAWN));
@@ -705,14 +766,22 @@ void Position::undoMove(Move m) {
     assert(computePsq(*this, MG) == psq(MG) && computePsq(*this, EG) == psq(EG));
 }
 
-template void Position::undoMove<WHITE, NORMAL>(Move m);
-template void Position::undoMove<WHITE, PROMOTION>(Move m);
-template void Position::undoMove<WHITE, EN_PASSANT>(Move m);
-template void Position::undoMove<WHITE, CASTLING>(Move m);
-template void Position::undoMove<BLACK, NORMAL>(Move m);
-template void Position::undoMove<BLACK, PROMOTION>(Move m);
-template void Position::undoMove<BLACK, EN_PASSANT>(Move m);
-template void Position::undoMove<BLACK, CASTLING>(Move m);
+template void Position::undoMove<WHITE, NORMAL, false>(Move m);
+template void Position::undoMove<WHITE, PROMOTION, false>(Move m);
+template void Position::undoMove<WHITE, EN_PASSANT, false>(Move m);
+template void Position::undoMove<WHITE, CASTLING, false>(Move m);
+template void Position::undoMove<BLACK, NORMAL, false>(Move m);
+template void Position::undoMove<BLACK, PROMOTION, false>(Move m);
+template void Position::undoMove<BLACK, EN_PASSANT, false>(Move m);
+template void Position::undoMove<BLACK, CASTLING, false>(Move m);
+template void Position::undoMove<WHITE, NORMAL, true>(Move m);
+template void Position::undoMove<WHITE, PROMOTION, true>(Move m);
+template void Position::undoMove<WHITE, EN_PASSANT, true>(Move m);
+template void Position::undoMove<WHITE, CASTLING, true>(Move m);
+template void Position::undoMove<BLACK, NORMAL, true>(Move m);
+template void Position::undoMove<BLACK, PROMOTION, true>(Move m);
+template void Position::undoMove<BLACK, EN_PASSANT, true>(Move m);
+template void Position::undoMove<BLACK, CASTLING, true>(Move m);
 
 template<Side Me> void Position::doNullMove() {
     assert(!inCheck());
