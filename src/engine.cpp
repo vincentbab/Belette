@@ -457,6 +457,10 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             } else if (score >= beta && std::abs(score) < SCORE_MATE_MAX_PLY) {
                 singularCutoff = score;
                 return false; // break;
+            } else if (ttScore >= beta) {
+                extension = -SeNegTt;
+            } else if (cutNode) {
+                extension = -SeNegCut;
             }
         }
 
