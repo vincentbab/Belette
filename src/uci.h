@@ -12,7 +12,7 @@
 #include "uci_option.h"
 #include "engine.h"
 
-#define VERSION "3.1.0-DEV"
+#define VERSION "4.0.0-DEV"
 
 namespace Belette {
 

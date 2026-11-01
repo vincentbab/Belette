@@ -7,16 +7,16 @@ For now it only supports CPUs with AVX2 and BMI2 instructions. Support for other
 
 See [Release page](https://github.com/vincentbab/Belette/releases) for precompiled binaries
 
-You can play against the engine on lichess: https://lichess.org/@/BabChess-Engine
+You can play against the engine on lichess: https://lichess.org/@/Belette-Bot
 <br>
-The Bot is hosted on a machine with a Core i7 4785T. It will accept challenges up to 15min+10s, rated and casual.
+The Bot will only accept one challenge at a time.
 
 ## Compiling
 
-Tested on Windows and Linux with GCC >= 12. Might also work with CLang
+Tested on Windows and Linux with GCC >= 12 and CLang >= 19
 
 ```sh
-make release
+make
 ```
 Executable will be in `./build/Release/bin/belette[.exe]`
 
@@ -32,7 +32,7 @@ Specify the hash table size in megabytes
 For now this option doesn't do anything. It's only for compatibility purpose
 
 ### UCI_Chess960
-Use the Chess960 castling notation (king takes own rook) for moves. Chess960 positions are detected from the FEN
+Use the Chess960 castling notation (king takes own rook) for moves.
 
 ## Internals
 
@@ -54,11 +54,16 @@ Time: 3455ms
  - Negamax
  - Transpositation Table
  - Check extension
- - Null move pruning (NMP)
+ - Null move pruning (NMP), with dynamic reduction
  - Reverse futility pruning (RFP)
+ - Futility pruning (fail-soft)
+ - History pruning
+ - ProbCut
+ - Singular extensions (including double and triple extensions)
  - Internal iterative reduction (IIR)
  - Late move reduction (LMR)
  - Late move pruning (LMP)
+ - Improving heuristic
  - SEE pruning
  - Quiescence
 
@@ -69,18 +74,35 @@ Time: 3455ms
   - Counter move
   - Threats
   - Checks
-  - Butterfly history heuristic
-  - Staged move generation (good captures, good quiets, bad captures, bad quiets)
+  - Butterfly history (threat-indexed)
+  - Pawn history
+  - Continuation history
+  - Capture history
+  - Correction history (pawn, non-pawn, major, minor, continuation)
+  - Staged move generation (good captures, good quiets, bad captures, bad quiets), with lazy selection of quiet moves
 
 ### Evaluation
  - Tapered
  - Material
  - PSQT ([PeSTO](https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function))
 
+### Time management
+ - Soft and hard time limits
+ - Scaling from best move stability, best move effort and score trend
+
+### Tuning
+ - Search parameters tuned with SPSA
+ - Evaluation tuned with Texel's method on lichess-big3-resolved
+
 ## Credits
 
 Resources and other engines that inspired me:
+ - People at the Stockfish Discord
  - [Chess Programming Wiki](https://www.chessprogramming.org/)
  - [Gigantua](https://github.com/Gigantua/Gigantua)
+ - [OpenBench](https://github.com/andygrant/openbench)
  - [Stockfish](https://stockfishchess.org/)
  - [Ethereal](https://github.com/AndyGrant/Ethereal)
+ - [Stormphrax](https://github.com/Ciekce/Stormphrax)
+ - [Potential](https://github.com/ProgramciDusunur/Potential)
+ 
