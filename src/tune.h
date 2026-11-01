@@ -96,53 +96,53 @@ TUNABLE(BadCaptureSee, 39, 0, 150, 8)
 TUNABLE(BadCaptureHist, 39, 0, 128, 6)
 
 // Reverse futility pruning (RFP)
-TUNABLE(RfpDepth, 8, 4, 12, 0.5)
-TUNABLE(RfpMargin, 122, 60, 200, 7)
-TUNABLE(RfpMarginImproving, 54, 20, 120, 5)
+TUNABLE(RfpDepth, 9, 4, 12, 0.5)
+TUNABLE(RfpMargin, 102, 60, 200, 7)
+TUNABLE(RfpMarginImproving, 49, 20, 120, 5)
 
 // Razoring
 TUNABLE(RazorDepth, 3, 1, 4, 0.5)
-TUNABLE(RazorMargin, 351, 200, 700, 25)
+TUNABLE(RazorMargin, 326, 200, 700, 25)
 
 // Null move pruning (NMP)
 TUNABLE(NmpDepth, 4, 2, 5, 0.5)
 TUNABLE(NmpBase, 5, 2, 6, 0.5)
-TUNABLE(NmpDepthMult, 272, 128, 512, 20)
-TUNABLE(NmpEvalDiv, 206, 100, 400, 15)
+TUNABLE(NmpDepthMult, 260, 128, 512, 20)
+TUNABLE(NmpEvalDiv, 198, 100, 400, 15)
 TUNABLE(NmpEvalMax, 3, 1, 6, 0.5)
 
 // ProbCut
-TUNABLE(ProbCutDepth, 3, 3, 8, 0.5)
-TUNABLE(ProbCutMargin, 148, 80, 300, 10)
-TUNABLE(ProbCutImproving, 68, 0, 120, 6)
+TUNABLE(ProbCutDepth, 3, 2, 8, 0.5)
+TUNABLE(ProbCutMargin, 133, 80, 300, 10)
+TUNABLE(ProbCutImproving, 75, 0, 120, 6)
 TUNABLE(ProbCutTtDepth, 4, 1, 5, 0.5)
 
 // Move count pruning, in 1/1024
-TUNABLE(LmpBase, 3640, 1024, 6144, 256)
-TUNABLE(LmpImproving, 1000, 512, 2048, 64)
-TUNABLE(LmpNotImproving, 347, 256, 1024, 40)
+TUNABLE(LmpBase, 4290, 1024, 6144, 256)
+TUNABLE(LmpImproving, 1060, 512, 2048, 64)
+TUNABLE(LmpNotImproving, 260, 256, 1024, 40)
 
 // Futility pruning
 TUNABLE(FpLmrDepth, 6, 3, 10, 0.5)
-TUNABLE(FpBase, 93, 30, 200, 8)
-TUNABLE(FpDepthMargin, 132, 60, 200, 7)
+TUNABLE(FpBase, 97, 30, 200, 8)
+TUNABLE(FpDepthMargin, 122, 60, 200, 7)
 
 // Captures futility pruning
 TUNABLE(CapFpDepth, 9, 4, 12, 0.5)
-TUNABLE(CapFpMargin, 93, 50, 200, 8)
+TUNABLE(CapFpMargin, 82, 50, 200, 8)
 
 // SEE Pruning
-TUNABLE(SeeDepth, 9, 4, 12, 0.5)
-TUNABLE(SeeTacticalMargin, 103, 40, 200, 8)
-TUNABLE(SeeQuietMargin, 50, 20, 120, 5)
+TUNABLE(SeeDepth, 10, 4, 12, 0.5)
+TUNABLE(SeeTacticalMargin, 85, 40, 200, 8)
+TUNABLE(SeeQuietMargin, 35, 20, 120, 5)
 
 // Futility pruning history weights, in 1/1024
-TUNABLE(FpHistMult, 21, 0, 64, 2.5)
-TUNABLE(CapFpHistMult, 97, 0, 192, 8)
+TUNABLE(FpHistMult, 23, 0, 64, 2.5)
+TUNABLE(CapFpHistMult, 101, 0, 192, 8)
 
 // History pruning
-TUNABLE(HpDepth, 7, 2, 8, 0.5)
-TUNABLE(HpMargin, 1000, 256, 8192, 350)
+TUNABLE(HpDepth, 7, 2, 10, 0.5)
+TUNABLE(HpMargin, 592, 256, 8192, 350)
 
 // Late move reduction (LMR), in 1/1024
 TUNABLE(LmrQuietHist, 236, 64, 512, 24)
