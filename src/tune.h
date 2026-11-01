@@ -144,6 +144,34 @@ TUNABLE(CapFpHistMult, 101, 0, 192, 8)
 TUNABLE(HpDepth, 7, 2, 10, 0.5)
 TUNABLE(HpMargin, 592, 256, 8192, 350)
 
+// Aspiration window
+TUNABLE(AspDepth, 4, 2, 8, 0.5)
+TUNABLE(AspDelta, 16, 6, 32, 2)
+TUNABLE(AspScoreDiv, 100, 40, 300, 10)
+TUNABLE(AspGrowth, 512, 128, 1024, 40)
+
+// Internal Iterative Reduction (IIR)
+TUNABLE(IirDepth, 4, 2, 8, 0.5)
+
+// Check extension
+TUNABLE(CheckExtDepth, 2, 0, 5, 0.5)
+
+// Singular extensions
+TUNABLE(SeDepth, 6, 4, 10, 0.5)
+TUNABLE(SeTtPvDepth, 1, 0, 3, 0.5)
+TUNABLE(SeTtDepth, 3, 1, 6, 0.5)
+TUNABLE(SeMargin, 1024, 256, 3072, 100)
+TUNABLE(SeSearchDepth, 512, 256, 768, 30)
+TUNABLE(SeCorrMult, 256, 0, 768, 30)
+TUNABLE(SeDepthIncMax, 12, 8, 18, 0.5)
+TUNABLE(SeDepthIncMargin, 10, 0, 40, 3)
+TUNABLE(SeDoubleMax, 8, 2, 16, 0.5)
+TUNABLE(SeTripleMargin, 60, 10, 150, 6)
+
+// Quiescence search
+TUNABLE(QsFpMargin, 100, 30, 200, 8)
+TUNABLE(QsSeeMargin, 0, -50, 100, 6)
+
 // Late move reduction (LMR), in 1/1024
 TUNABLE(LmrQuietHist, 236, 64, 512, 24)
 TUNABLE(LmrCaptHist, 402, 64, 512, 24)
