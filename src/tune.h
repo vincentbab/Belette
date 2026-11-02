@@ -174,6 +174,28 @@ TUNABLE(SeNegCut, 1, -2, 2, 0.5)
 TUNABLE(QsFpMargin, 95, 30, 200, 8)
 TUNABLE(QsSeeMargin, -5, -50, 100, 6)
 
+// Correction history weights, in 1/1024
+TUNABLE(CorrPawn, 1280, 256, 2048, 80)
+TUNABLE(CorrNonPawn, 1150, 256, 2048, 80)
+TUNABLE(CorrMinor, 1170, 256, 2048, 80)
+TUNABLE(CorrMajor, 1150, 256, 2048, 80)
+TUNABLE(CorrContPly2, 1260, 0, 2560, 80)
+TUNABLE(CorrContPly3, 1150, 0, 2560, 80)
+TUNABLE(CorrContPly4, 1110, 0, 2560, 80)
+TUNABLE(CorrContPly5, 1160, 0, 2560, 80)
+TUNABLE(CorrContPly6to8, 1250, 0, 2560, 80)
+TUNABLE(CorrContPly9to11, 1200, 0, 2560, 80)
+TUNABLE(CorrCont2Ply3, 1180, 0, 2560, 80)
+TUNABLE(CorrCont2Ply4, 1030, 0, 2560, 80)
+TUNABLE(CorrCont2Ply5, 934, 0, 2560, 80)
+TUNABLE(CorrCont2Ply6to8, 1050, 0, 2560, 80)
+TUNABLE(CorrCont2Ply9to11, 1050, 0, 2560, 80)
+
+// Correction history update
+TUNABLE(CorrUpdateBase, 2, 0, 4, 0.5)
+TUNABLE(CorrUpdateMax, 13, 8, 32, 1.5)
+TUNABLE(CorrLimit, 30, 16, 64, 3)
+
 // Late move reduction (LMR), in 1/1024
 TUNABLE(LmrQuietHist, 236, 64, 512, 24)
 TUNABLE(LmrCaptHist, 402, 64, 512, 24)
