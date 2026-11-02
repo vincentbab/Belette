@@ -120,7 +120,7 @@ TUNABLE(ProbCutTtDepth, 4, 1, 5, 0.5)
 // Move count pruning, in 1/1024
 TUNABLE(LmpBase, 4290, 1024, 6144, 256)
 TUNABLE(LmpImproving, 1060, 512, 2048, 64)
-TUNABLE(LmpNotImproving, 260, 256, 1024, 40)
+TUNABLE(LmpNotImproving, 260, 128, 1024, 40)
 
 // Futility pruning
 TUNABLE(FpLmrDepth, 6, 3, 10, 0.5)
@@ -196,9 +196,22 @@ TUNABLE(CorrUpdateBase, 2, 0, 4, 0.5)
 TUNABLE(CorrUpdateMax, 13, 8, 32, 1.5)
 TUNABLE(CorrLimit, 30, 16, 64, 3)
 
-// Late move reduction (LMR), in 1/1024
-TUNABLE(LmrQuietHist, 236, 64, 512, 24)
-TUNABLE(LmrCaptHist, 402, 64, 512, 24)
+// Late move reduction (LMR)
+TUNABLE(LmrQuietBase, 750, 250, 1250, 50)
+TUNABLE(LmrQuietScale, 450, 250, 700, 22)
+TUNABLE(LmrTacticalBase, 200, -200, 800, 50)
+TUNABLE(LmrTacticalScale, 300, 100, 500, 20)
+TUNABLE(LmrPv, 1024, 0, 2560, 120)
+TUNABLE(LmrInCheck, 1024, 0, 2560, 120)
+TUNABLE(LmrNoTtPv, 1024, 0, 2560, 120)
+TUNABLE(LmrTtTactical, 1024, 0, 2560, 120)
+TUNABLE(LmrCutNode, 2048, 512, 4096, 180)
+TUNABLE(LmrNotImproving, 1024, 0, 2560, 120)
+TUNABLE(LmrChildCutoffs, 1024, 0, 2560, 120)
+
+// LMR history weights, in 1/1024
+TUNABLE(LmrQuietHist, 236, 64, 1024, 24)
+TUNABLE(LmrCaptHist, 402, 64, 1024, 24)
 
 } /* namespace Belette */
 
