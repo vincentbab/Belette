@@ -97,8 +97,8 @@ TUNABLE(BadCaptureHist, 39, 0, 128, 6)
 
 // Reverse futility pruning (RFP)
 TUNABLE(RfpDepth, 9, 4, 12, 0.5)
-TUNABLE(RfpMargin, 102, 60, 200, 7)
-TUNABLE(RfpMarginImproving, 49, 20, 120, 5)
+TUNABLE(RfpMargin, 108, 60, 200, 7)
+TUNABLE(RfpMarginImproving, 54, 20, 120, 5)
 
 // Razoring
 TUNABLE(RazorDepth, 3, 1, 4, 0.5)
@@ -107,25 +107,25 @@ TUNABLE(RazorMargin, 326, 200, 700, 25)
 // Null move pruning (NMP)
 TUNABLE(NmpDepth, 4, 2, 5, 0.5)
 TUNABLE(NmpBase, 5, 2, 6, 0.5)
-TUNABLE(NmpDepthMult, 260, 128, 512, 20)
-TUNABLE(NmpEvalDiv, 198, 100, 400, 15)
+TUNABLE(NmpDepthMult, 272, 128, 512, 20)
+TUNABLE(NmpEvalDiv, 185, 100, 400, 15)
 TUNABLE(NmpEvalMax, 3, 1, 6, 0.5)
 
 // ProbCut
 TUNABLE(ProbCutDepth, 3, 2, 8, 0.5)
-TUNABLE(ProbCutMargin, 133, 80, 300, 10)
+TUNABLE(ProbCutMargin, 106, 80, 300, 10)
 TUNABLE(ProbCutImproving, 75, 0, 120, 6)
 TUNABLE(ProbCutTtDepth, 4, 1, 5, 0.5)
 
 // Move count pruning, in 1/1024
-TUNABLE(LmpBase, 4290, 1024, 6144, 256)
-TUNABLE(LmpImproving, 1060, 512, 2048, 64)
-TUNABLE(LmpNotImproving, 260, 256, 1024, 40)
+TUNABLE(LmpBase, 4440, 1024, 6144, 256)
+TUNABLE(LmpImproving, 1030, 512, 2048, 64)
+TUNABLE(LmpNotImproving, 131, 128, 1024, 40)
 
 // Futility pruning
 TUNABLE(FpLmrDepth, 6, 3, 10, 0.5)
-TUNABLE(FpBase, 97, 30, 200, 8)
-TUNABLE(FpDepthMargin, 122, 60, 200, 7)
+TUNABLE(FpBase, 91, 30, 200, 8)
+TUNABLE(FpDepthMargin, 119, 60, 200, 7)
 
 // Captures futility pruning
 TUNABLE(CapFpDepth, 9, 4, 12, 0.5)
@@ -133,8 +133,8 @@ TUNABLE(CapFpMargin, 82, 50, 200, 8)
 
 // SEE Pruning
 TUNABLE(SeeDepth, 10, 4, 12, 0.5)
-TUNABLE(SeeTacticalMargin, 85, 40, 200, 8)
-TUNABLE(SeeQuietMargin, 35, 20, 120, 5)
+TUNABLE(SeeTacticalMargin, 76, 40, 200, 8)
+TUNABLE(SeeQuietMargin, 40, 20, 120, 5)
 
 // Futility pruning history weights, in 1/1024
 TUNABLE(FpHistMult, 23, 0, 64, 2.5)
@@ -142,7 +142,7 @@ TUNABLE(CapFpHistMult, 101, 0, 192, 8)
 
 // History pruning
 TUNABLE(HpDepth, 7, 2, 10, 0.5)
-TUNABLE(HpMargin, 592, 256, 8192, 350)
+TUNABLE(HpMargin, 353, 256, 8192, 350)
 
 // Aspiration window
 TUNABLE(AspDepth, 4, 2, 8, 0.5)
@@ -151,22 +151,22 @@ TUNABLE(AspScoreDiv, 102, 40, 300, 10)
 TUNABLE(AspGrowth, 483, 128, 1024, 40)
 
 // Internal Iterative Reduction (IIR)
-TUNABLE(IirDepth, 8, 2, 12, 0.5)
+TUNABLE(IirDepth, 10, 2, 12, 0.5)
 
 // Check extension
 TUNABLE(CheckExtDepth, 1, 0, 5, 0.5)
 
 // Singular extensions
-TUNABLE(SeDepth, 5, 3, 10, 0.5)
+TUNABLE(SeDepth, 4, 3, 10, 0.5)
 TUNABLE(SeTtPvDepth, 1, 0, 3, 0.5)
 TUNABLE(SeTtDepth, 3, 1, 6, 0.5)
-TUNABLE(SeMargin, 1230, 256, 3072, 100)
+TUNABLE(SeMargin, 1150, 256, 3072, 100)
 TUNABLE(SeSearchDepth, 475, 256, 768, 30)
 TUNABLE(SeCorrMult, 263, 0, 768, 30)
 TUNABLE(SeDepthIncMax, 11, 8, 18, 0.5)
 TUNABLE(SeDepthIncMargin, 2, -20, 40, 3)
 TUNABLE(SeDoubleMax, 7, 2, 16, 0.5)
-TUNABLE(SeTripleMargin, 64, 10, 150, 6)
+TUNABLE(SeTripleMargin, 63, 10, 150, 6)
 TUNABLE(SeNegTt, 1, -2, 2, 0.5)
 TUNABLE(SeNegCut, 1, -2, 2, 0.5)
 
@@ -196,9 +196,22 @@ TUNABLE(CorrUpdateBase, 2, 0, 4, 0.5)
 TUNABLE(CorrUpdateMax, 13, 8, 32, 1.5)
 TUNABLE(CorrLimit, 30, 16, 64, 3)
 
-// Late move reduction (LMR), in 1/1024
-TUNABLE(LmrQuietHist, 236, 64, 512, 24)
-TUNABLE(LmrCaptHist, 402, 64, 512, 24)
+// Late move reduction (LMR)
+TUNABLE(LmrQuietBase, 874, 250, 1250, 50)
+TUNABLE(LmrQuietScale, 424, 250, 700, 22)
+TUNABLE(LmrTacticalBase, 208, -200, 800, 50)
+TUNABLE(LmrTacticalScale, 280, 100, 500, 20)
+TUNABLE(LmrPv, 1280, 0, 2560, 120)
+TUNABLE(LmrInCheck, 1130, 0, 2560, 120)
+TUNABLE(LmrNoTtPv, 1020, 0, 2560, 120)
+TUNABLE(LmrTtTactical, 1240, 0, 2560, 120)
+TUNABLE(LmrCutNode, 1910, 512, 4096, 180)
+TUNABLE(LmrNotImproving, 1020, 0, 2560, 120)
+TUNABLE(LmrChildCutoffs, 1350, 0, 2560, 120)
+
+// LMR history weights, in 1/1024
+TUNABLE(LmrQuietHist, 226, 64, 1024, 24)
+TUNABLE(LmrCaptHist, 376, 64, 1024, 24)
 
 } /* namespace Belette */
 
