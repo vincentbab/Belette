@@ -120,7 +120,7 @@ TUNABLE(ProbCutTtDepth, 4, 1, 5, 0.5)
 // Move count pruning, in 1/1024
 TUNABLE(LmpBase, 4440, 1024, 6144, 256)
 TUNABLE(LmpImproving, 1030, 512, 2048, 64)
-TUNABLE(LmpNotImproving, 131, 128, 1024, 40)
+TUNABLE(LmpNotImproving, 131, 32, 1024, 32)
 
 // Futility pruning
 TUNABLE(FpLmrDepth, 6, 3, 10, 0.5)
@@ -142,7 +142,7 @@ TUNABLE(CapFpHistMult, 101, 0, 192, 8)
 
 // History pruning
 TUNABLE(HpDepth, 7, 2, 10, 0.5)
-TUNABLE(HpMargin, 353, 256, 8192, 350)
+TUNABLE(HpMargin, 353, 64, 2048, 100)
 
 // Aspiration window
 TUNABLE(AspDepth, 4, 2, 8, 0.5)
