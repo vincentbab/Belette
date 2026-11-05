@@ -38,8 +38,7 @@ void SearchData::initAllocatedTime() {
 }
 
 Engine::~Engine() {
-    stop();
-    waitForSearchFinish();
+    abortSearch();
 }
 
 void Engine::waitForSearchFinish() {
@@ -50,7 +49,7 @@ void Engine::waitForSearchFinish() {
 
 // Search entry point
 void Engine::search(const SearchLimits &limits) {
-    waitForSearchFinish();
+    abortSearch();
 
     moveHistory.clearAllKillers();
 
@@ -67,6 +66,11 @@ void Engine::search(const SearchLimits &limits) {
 
 void Engine::stop() {
     aborted = true;
+}
+
+void Engine::abortSearch() {
+    stop();
+    waitForSearchFinish();
 }
 
 // Iterative deepening loop

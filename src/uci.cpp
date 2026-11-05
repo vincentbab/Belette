@@ -253,8 +253,7 @@ bool Uci::cmdPosition(std::istringstream& is) {
         return true;
     }
 
-    engine.stop();
-    engine.waitForSearchFinish();
+    engine.abortSearch();
 
     if (!engine.position().setFromFEN(fen)) {
         console << "Invalid FEN position" << std::endl;
@@ -400,8 +399,7 @@ bool Uci::cmdStop(std::istringstream& is) {
 }
 
 bool Uci::cmdQuit(std::istringstream& is) {
-    engine.stop();
-    engine.waitForSearchFinish();
+    engine.abortSearch();
     return false;
 }
 
