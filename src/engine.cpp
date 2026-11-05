@@ -222,6 +222,10 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             return alpha;
     }
 
+    if (ply >= MAX_PLY) [[unlikely]] {
+        return pos.inCheck() ? scoreDraw(sd->nbNodes) : evaluate<Me>(pos);
+    }
+
     Node& node = sd->node(ply);
     const Move excludedMove = node.excludedMove;
     Score bestScore = -SCORE_INFINITE;
@@ -244,10 +248,6 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     }
 
     node.doubleExts = RootNode ? 0 : sd->node(ply-1).doubleExts;
-
-    if (ply >= MAX_PLY) [[unlikely]] {
-        return evaluate<Me>(pos); // TODO: verify if we are in check ?
-    }
 
     sd->node(ply+1).nbCutoffs = 0;
 
@@ -615,7 +615,7 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
     //Node& node = sd->node(ply);
 
     if (ply >= MAX_PLY) [[unlikely]] {
-        return evaluate<Me>(pos); // TODO: check if we are in check ?
+        return pos.inCheck() ? scoreDraw(sd->nbNodes) : evaluate<Me>(pos);
     }
 
     bool inCheck = pos.inCheck();
