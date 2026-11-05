@@ -26,7 +26,7 @@ std::ostream &operator<<(std::ostream &s, const UciOption &option) {
     if (option.isButton()) {
         s << "type button";
     } else if (option.isCheck()) {
-        s << "type check default " << "false";
+        s << "type check default " << option.defaultValue;
     } else if (option.isString()) {
         s << "type string default " << option.defaultValue;
     } else if (option.isSpin()) {
