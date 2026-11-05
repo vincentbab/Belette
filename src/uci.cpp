@@ -277,16 +277,24 @@ bool Uci::cmdGo(std::istringstream& is) {
     std::string token;
     SearchLimits params;
 
+    bool inSearchMoves = false;
+
     while (is >> token) {
+        if (inSearchMoves) {
+            Move m = Uci::parseMove(token);
+            if (m != MOVE_NONE) {
+                params.searchMoves.push_back(m);
+                continue;
+            }
+            inSearchMoves = false;
+        }
+
         if (token == "perft") {
             return cmdPerft(is);
         } else if (token == "perftmp") {
             return cmdPerftmp(is);
         } else if (token == "searchmoves") {
-            while (is >> token) {
-                Move m = Uci::parseMove(token);
-                if (m != MOVE_NONE) params.searchMoves.push_back(m);
-            }
+            inSearchMoves = true;
         } else if (token == "ponder") {
             // unsupported
         } else if (token == "wtime") {
