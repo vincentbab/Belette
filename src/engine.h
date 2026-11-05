@@ -23,6 +23,7 @@ struct SearchLimits {
     int maxDepth = 0;
     size_t maxNodes = 0;
     TimeMs maxTime = 0;
+    TimeMs moveOverhead = 0;
     MoveList searchMoves;
 };
 
@@ -86,7 +87,7 @@ struct SearchData {
 
         if (useTournamentTime() && elapsed >= hardTimeLimit)
             return true;
-        if (useFixedTime() && (elapsed > limits.maxTime))
+        if (useFixedTime() && (elapsed > std::max<TimeMs>(1, limits.maxTime - limits.moveOverhead)))
             return true;
         if (useNodeCountLimit() && nbNodes >= limits.maxNodes)
             return true;

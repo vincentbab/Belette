@@ -31,8 +31,10 @@ void SearchData::initAllocatedTime() {
     int64_t moves = limits.movesToGo > 0 ? limits.movesToGo + 5 : 30;
     Side stm = position.getSideToMove();
 
-    hardTimeLimit = 0.49 * limits.timeLeft[stm];
-    softTimeLimit = std::min<TimeMs>(hardTimeLimit, limits.timeLeft[stm] / moves + 0.9 * limits.increment[stm]);
+    TimeMs timeLeft = std::max<TimeMs>(1, limits.timeLeft[stm] - limits.moveOverhead);
+
+    hardTimeLimit = 0.49 * timeLeft;
+    softTimeLimit = std::min<TimeMs>(hardTimeLimit, timeLeft / moves + 0.9 * limits.increment[stm]);
 }
 
 Engine::~Engine() {

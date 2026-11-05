@@ -37,6 +37,7 @@ Uci::Uci()  {
         engine.setHashSize(int64_t(opt)*1024*1024);
     });
     options["Threads"] = UciOption(1, 1, 1);
+    options["Move Overhead"] = UciOption(10, 0, 5000);
     options["UCI_Chess960"] = UciOption(false, [&] (const UciOption &opt) { Frc960::uciFormat = bool(opt); });
 
 #ifdef TUNE
@@ -276,6 +277,7 @@ bool Uci::cmdPosition(std::istringstream& is) {
 bool Uci::cmdGo(std::istringstream& is) {
     std::string token;
     SearchLimits params;
+    params.moveOverhead = int64_t(options["Move Overhead"]);
 
     bool inSearchMoves = false;
 

@@ -31,6 +31,9 @@ Specify the hash table size in megabytes
 ### Threads
 For now this option doesn't do anything. It's only for compatibility purpose
 
+### Move Overhead
+Time in milliseconds subtracted from the remaining time and from movetime to compensate for communication delays (default 10ms)
+
 ### UCI_Chess960
 Use the Chess960 castling notation (king takes own rook) for moves.
 
