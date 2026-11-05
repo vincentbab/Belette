@@ -28,6 +28,9 @@ Log every input and output of the engine to the specified file
 ### Hash
 Specify the hash table size in megabytes
 
+### Clear Hash
+Clear the hash table and all history tables
+
 ### Threads
 For now this option doesn't do anything. It's only for compatibility purpose
 
