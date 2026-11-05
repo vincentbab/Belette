@@ -1,6 +1,7 @@
 #include <cstring>
 #include <stdexcept>
 #include "tt.h"
+#include "utils.h"
 
 namespace Belette {
 
@@ -12,20 +13,17 @@ TranspositionTable::TranspositionTable(size_t defaultSize): buckets(nullptr), nb
 }
 
 TranspositionTable::~TranspositionTable(){
-    if (buckets != nullptr)
-        std::free(buckets);
+    largeFree(buckets);
 }
 
 void TranspositionTable::resize(size_t size){
-    if (buckets != nullptr) {
-        std::free(buckets);
-        buckets = nullptr;
-    }
+    largeFree(buckets);
+    buckets = nullptr;
 
     nbBuckets = size / sizeof(TTBucket);
 
     if (nbBuckets > 0) {
-        buckets = static_cast<TTBucket *>(std::malloc(sizeof(TTBucket) * nbBuckets));
+        buckets = static_cast<TTBucket *>(largeAlloc(sizeof(TTBucket) * nbBuckets));
         if (!buckets) throw std::runtime_error("failed to allocate memory for transposition table");
     }
 

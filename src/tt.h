@@ -88,13 +88,14 @@ public:
     inline size_t size() const { return nbBuckets; }
 
 private:
-    struct TTBucket {
+    struct alignas(32) TTBucket {
         TTEntry entries[TT_ENTRIES_PER_BUCKET];
         uint16_t padding;
 
         inline TTEntry *begin() { return &entries[0]; }
         inline TTEntry *end() { return &entries[TT_ENTRIES_PER_BUCKET]; }
-    }; // 32 Bytes
+    };
+    static_assert(sizeof(TTBucket) == 32);
 
     TTBucket *buckets;
     size_t nbBuckets;

@@ -3,6 +3,12 @@
 
 #include <chrono>
 #include <string>
+#include <cstddef>
+#include <cstdint>
+#include <new>
+#if defined(__linux__)
+#include <sys/mman.h>
+#endif
 
 namespace Belette {
 
@@ -10,6 +16,25 @@ using TimeMs = std::chrono::milliseconds::rep;
 
 inline TimeMs now() {
     return std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+#if defined(__linux__)
+constexpr size_t LARGE_ALLOC_ALIGNMENT = 2 * 1024 * 1024;
+#else
+constexpr size_t LARGE_ALLOC_ALIGNMENT = 4096;
+#endif
+
+inline void *largeAlloc(size_t size) {
+    size = (size + LARGE_ALLOC_ALIGNMENT - 1) / LARGE_ALLOC_ALIGNMENT * LARGE_ALLOC_ALIGNMENT;
+    void *mem = ::operator new(size, std::align_val_t(LARGE_ALLOC_ALIGNMENT), std::nothrow);
+#if defined(__linux__) && defined(MADV_HUGEPAGE)
+    if (mem) madvise(mem, size, MADV_HUGEPAGE);
+#endif
+    return mem;
+}
+
+inline void largeFree(void *mem) {
+    ::operator delete(mem, std::align_val_t(LARGE_ALLOC_ALIGNMENT));
 }
 
 inline int parseInt(const std::string &str) {
