@@ -120,7 +120,7 @@ TUNABLE(ProbCutTtDepth, 4, 1, 5, 0.5)
 // Move count pruning, in 1/1024
 TUNABLE(LmpBase, 5400, 1024, 6144, 256)
 TUNABLE(LmpImproving, 1030, 512, 2048, 64)
-TUNABLE(LmpNotImproving, 113, 128, 1024, 40)
+TUNABLE(LmpNotImproving, 113, 32, 1024, 40)
 
 // Futility pruning
 TUNABLE(FpLmrDepth, 6, 3, 10, 0.5)
