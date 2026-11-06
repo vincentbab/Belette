@@ -21,6 +21,7 @@ struct SearchLimits {
     TimeMs increment[NB_SIDE] = {0};
     int movesToGo = 0;
     int maxDepth = 0;
+    int mate = 0;
     size_t maxNodes = 0;
     TimeMs maxTime = 0;
     TimeMs moveOverhead = 0;

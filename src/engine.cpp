@@ -164,6 +164,8 @@ void Engine::idSearch() {
 
         if (sd->limits.maxDepth > 0 && depth >= sd->limits.maxDepth) break;
 
+        if (sd->limits.mate > 0 && bestScore >= SCORE_MATE_MAX_PLY && SCORE_MATE - bestScore <= 2 * sd->limits.mate) break;
+
         // Instamove
         if (sd->useTournamentTime() && !sd->pondering && rootMoves.size() == 1) break;
 

@@ -323,7 +323,8 @@ bool Uci::cmdGo(std::istringstream& is) {
             is >> token;
             params.maxNodes = parseInt64(token);
         } else if (token == "mate") {
-            // unsupported
+            is >> token;
+            params.mate = parseInt(token);
         } else if (token == "movetime") {
             is >> token;
             params.maxTime = parseInt(token);
