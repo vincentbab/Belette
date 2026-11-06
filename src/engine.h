@@ -160,6 +160,8 @@ struct SearchData {
     double softScale = 1.0;
     Move lastBestMove = MOVE_NONE;
     int bestMoveStability = 0;
+    int bestMoveChanges = 0;
+    double bestMoveInstability = 0;
     int nmpMinPly = 0;
     size_t rootMoveNodes[NB_SQUARE*NB_SQUARE] = {0};
 
@@ -205,7 +207,7 @@ public:
     inline bool isSearching() { return searching; }
     inline bool searchAborted() { return aborted; }
     inline void setHashSize(size_t size) { abortSearch(); tt.resize(size); }
-    inline void newGame() { abortSearch(); tt.clear(); moveHistory.clear(); }
+    inline void newGame() { abortSearch(); tt.clear(); moveHistory.clear(); lastSearchScore = SCORE_NONE; }
 
 protected:
     virtual void onSearchProgress(const SearchEvent &event) = 0;
@@ -220,6 +222,7 @@ private:
     std::thread searchThread;
     std::atomic<bool> aborted = true;
     std::atomic<bool> searching = false;
+    Score lastSearchScore = SCORE_NONE;
 
     inline void idSearch() {
         if (Frc960::active)
