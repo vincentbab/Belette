@@ -131,7 +131,11 @@ void Engine::idSearch() {
             delta += delta * AspGrowth / 1024;
         }
 
-        if (searchAborted() && (depth > 1 || score == -SCORE_INFINITE)) break;
+        if (searchAborted() && (depth > 1 || score == -SCORE_INFINITE)) {
+            if (depth > 1 && sd->node(0).pv.size() > 0)
+                bestPv = sd->node(0).pv;
+            break;
+        }
 
         bestPv = sd->node(0).pv;
         const Score prevScore = bestScore;
