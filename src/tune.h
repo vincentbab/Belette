@@ -113,14 +113,14 @@ TUNABLE(NmpEvalMax, 3, 1, 6, 0.5)
 
 // ProbCut
 TUNABLE(ProbCutDepth, 3, 2, 8, 0.5)
-TUNABLE(ProbCutMargin, 106, 80, 300, 10)
+TUNABLE(ProbCutMargin, 113, 80, 300, 10)
 TUNABLE(ProbCutImproving, 75, 0, 120, 6)
 TUNABLE(ProbCutTtDepth, 4, 1, 5, 0.5)
 
 // Move count pruning, in 1/1024
-TUNABLE(LmpBase, 4440, 1024, 6144, 256)
+TUNABLE(LmpBase, 5400, 1024, 6144, 256)
 TUNABLE(LmpImproving, 1030, 512, 2048, 64)
-TUNABLE(LmpNotImproving, 131, 128, 1024, 40)
+TUNABLE(LmpNotImproving, 113, 128, 1024, 40)
 
 // Futility pruning
 TUNABLE(FpLmrDepth, 6, 3, 10, 0.5)
@@ -142,7 +142,7 @@ TUNABLE(CapFpHistMult, 101, 0, 192, 8)
 
 // History pruning
 TUNABLE(HpDepth, 7, 2, 10, 0.5)
-TUNABLE(HpMargin, 353, 256, 8192, 350)
+TUNABLE(HpMargin, 262, 256, 8192, 350)
 
 // Aspiration window
 TUNABLE(AspDepth, 4, 2, 8, 0.5)
@@ -171,14 +171,14 @@ TUNABLE(SeNegTt, 1, -2, 2, 0.5)
 TUNABLE(SeNegCut, 1, -2, 2, 0.5)
 
 // Quiescence search
-TUNABLE(QsFpMargin, 95, 30, 200, 8)
-TUNABLE(QsSeeMargin, -5, -50, 100, 6)
+TUNABLE(QsFpMargin, 89, 30, 200, 8)
+TUNABLE(QsSeeMargin, 7, -50, 100, 6)
 
 // Correction history weights, in 1/1024
-TUNABLE(CorrPawn, 1280, 256, 2048, 80)
-TUNABLE(CorrNonPawn, 1150, 256, 2048, 80)
-TUNABLE(CorrMinor, 1170, 256, 2048, 80)
-TUNABLE(CorrMajor, 1150, 256, 2048, 80)
+TUNABLE(CorrPawn, 1410, 256, 2048, 80)
+TUNABLE(CorrNonPawn, 1210, 256, 2048, 80)
+TUNABLE(CorrMinor, 1200, 256, 2048, 80)
+TUNABLE(CorrMajor, 1100, 256, 2048, 80)
 TUNABLE(CorrContPly2, 1260, 0, 2560, 80)
 TUNABLE(CorrContPly3, 1150, 0, 2560, 80)
 TUNABLE(CorrContPly4, 1110, 0, 2560, 80)
@@ -197,17 +197,17 @@ TUNABLE(CorrUpdateMax, 13, 8, 32, 1.5)
 TUNABLE(CorrLimit, 30, 16, 64, 3)
 
 // Late move reduction (LMR)
-TUNABLE(LmrQuietBase, 874, 250, 1250, 50)
-TUNABLE(LmrQuietScale, 424, 250, 700, 22)
+TUNABLE(LmrQuietBase, 930, 250, 1250, 50)
+TUNABLE(LmrQuietScale, 425, 250, 700, 22)
 TUNABLE(LmrTacticalBase, 208, -200, 800, 50)
 TUNABLE(LmrTacticalScale, 280, 100, 500, 20)
-TUNABLE(LmrPv, 1280, 0, 2560, 120)
+TUNABLE(LmrPv, 1430, 0, 2560, 120)
 TUNABLE(LmrInCheck, 1130, 0, 2560, 120)
 TUNABLE(LmrNoTtPv, 1020, 0, 2560, 120)
-TUNABLE(LmrTtTactical, 1240, 0, 2560, 120)
-TUNABLE(LmrCutNode, 1910, 512, 4096, 180)
+TUNABLE(LmrTtTactical, 1230, 0, 2560, 120)
+TUNABLE(LmrCutNode, 1930, 512, 4096, 180)
 TUNABLE(LmrNotImproving, 1020, 0, 2560, 120)
-TUNABLE(LmrChildCutoffs, 1350, 0, 2560, 120)
+TUNABLE(LmrChildCutoffs, 1440, 0, 2560, 120)
 
 // LMR history weights, in 1/1024
 TUNABLE(LmrQuietHist, 226, 64, 1024, 24)
