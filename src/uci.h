@@ -114,6 +114,7 @@ private:
     bool cmdPosition(std::istringstream& is);
     bool cmdGo(std::istringstream& is);
     bool cmdStop(std::istringstream& is);
+    bool cmdPonderHit(std::istringstream& is);
     bool cmdQuit(std::istringstream& is);
 
     bool cmdDebug(std::istringstream& is);

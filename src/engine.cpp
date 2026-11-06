@@ -68,6 +68,13 @@ void Engine::stop() {
     aborted = true;
 }
 
+void Engine::ponderHit() {
+    if (searching && sd) {
+        sd->timeOrigin = now();
+        sd->pondering = false;
+    }
+}
+
 void Engine::abortSearch() {
     stop();
     waitForSearchFinish();
@@ -158,7 +165,7 @@ void Engine::idSearch() {
         if (sd->limits.maxDepth > 0 && depth >= sd->limits.maxDepth) break;
 
         // Instamove
-        if (sd->useTournamentTime() && rootMoves.size() == 1) break;
+        if (sd->useTournamentTime() && !sd->pondering && rootMoves.size() == 1) break;
 
         if (sd->shouldStopSoft()) break;
     }
@@ -169,6 +176,9 @@ void Engine::idSearch() {
         event.depth = completedDepth;
         onSearchProgress(event);
     }
+
+    while ((sd->pondering || sd->limits.infinite) && !searchAborted())
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
     onSearchFinish(event);
 

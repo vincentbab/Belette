@@ -38,6 +38,7 @@ Uci::Uci()  {
     });
     options["Clear Hash"] = UciOption([&] (const UciOption &) { engine.newGame(); });
     options["Threads"] = UciOption(1, 1, 1);
+    options["Ponder"] = UciOption(false);
     options["Move Overhead"] = UciOption(10, 0, 5000);
     options["UCI_Chess960"] = UciOption(false, [&] (const UciOption &opt) { Frc960::uciFormat = bool(opt); });
 
@@ -57,6 +58,7 @@ Uci::Uci()  {
     commands["position"] = &Uci::cmdPosition;
     commands["go"] = &Uci::cmdGo;
     commands["stop"] = &Uci::cmdStop;
+    commands["ponderhit"] = &Uci::cmdPonderHit;
     commands["quit"] = &Uci::cmdQuit;
 
     commands["debug"] = &Uci::cmdDebug;
@@ -298,7 +300,7 @@ bool Uci::cmdGo(std::istringstream& is) {
         } else if (token == "searchmoves") {
             inSearchMoves = true;
         } else if (token == "ponder") {
-            // unsupported
+            params.ponder = true;
         } else if (token == "wtime") {
             is >> token;
             params.timeLeft[WHITE] = parseInt(token);
@@ -326,7 +328,7 @@ bool Uci::cmdGo(std::istringstream& is) {
             is >> token;
             params.maxTime = parseInt(token);
         } else if (token == "infinite") {
-             
+            params.infinite = true;
         }
     }
 
@@ -398,6 +400,11 @@ bool Uci::cmdStop(std::istringstream& is) {
     return true;
 }
 
+bool Uci::cmdPonderHit(std::istringstream& is) {
+    engine.ponderHit();
+    return true;
+}
+
 bool Uci::cmdQuit(std::istringstream& is) {
     engine.abortSearch();
     return false;
@@ -465,7 +472,12 @@ void UciEngine::onSearchFinish(const SearchEvent &event) {
         });
     }
 
-    console << "bestmove " << Uci::formatMove(bestMove) << std::endl;
+    console << "bestmove " << Uci::formatMove(bestMove);
+
+    if (event.pv.size() >= 2)
+        console << " ponder " << Uci::formatMove(event.pv[1]);
+
+    console << std::endl;
 }
 
 

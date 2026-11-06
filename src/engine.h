@@ -24,6 +24,8 @@ struct SearchLimits {
     size_t maxNodes = 0;
     TimeMs maxTime = 0;
     TimeMs moveOverhead = 0;
+    bool ponder = false;
+    bool infinite = false;
     MoveList searchMoves;
 };
 
@@ -59,7 +61,7 @@ struct Node {
 
 struct SearchData {
     SearchData(const Position& pos_, const SearchLimits& limits_, MoveHistory& moveHistory_)
-    : position(pos_), limits(limits_), nbNodes(0), moveHistory(moveHistory_) {
+    : position(pos_), limits(limits_), nbNodes(0), pondering(limits_.ponder), moveHistory(moveHistory_) {
         for (int i = 1; i <= NODE_SENTINELS; i++)
             node(-i).setNullMove(moveHistory);
 
@@ -70,7 +72,7 @@ struct SearchData {
 
     inline TimeMs getElapsed() { return now() - startTime; }
     inline void start() {
-        startTime = now();
+        startTime = timeOrigin = now();
         initAllocatedTime();
     }
     
@@ -82,21 +84,28 @@ struct SearchData {
     inline bool shouldStop() {
         // Check time every 1024 nodes for performance reason
         if (nbNodes % 1024 != 0)  return false;
-        
-        TimeMs elapsed = now() - startTime;
+
+        if (useNodeCountLimit() && nbNodes >= limits.maxNodes)
+            return true;
+
+        if (pondering)
+            return false;
+
+        TimeMs elapsed = now() - timeOrigin;
 
         if (useTournamentTime() && elapsed >= hardTimeLimit)
             return true;
         if (useFixedTime() && (elapsed > std::max<TimeMs>(1, limits.maxTime - limits.moveOverhead)))
             return true;
-        if (useNodeCountLimit() && nbNodes >= limits.maxNodes)
-            return true;
-        
+
         return false;
     }
 
     inline bool shouldStopSoft() {
-        TimeMs elapsed = now() - startTime;
+        if (pondering)
+            return false;
+
+        TimeMs elapsed = now() - timeOrigin;
 
         if (useTournamentTime() && elapsed >= std::min<TimeMs>(hardTimeLimit, TimeMs(softTimeLimit * softScale)))
             return true;
@@ -142,6 +151,8 @@ struct SearchData {
     int selDepth;
 
     TimeMs startTime;
+    std::atomic<TimeMs> timeOrigin;
+    std::atomic<bool> pondering;
     TimeMs lastCheck;
     TimeMs softTimeLimit;
     TimeMs hardTimeLimit;
@@ -188,6 +199,7 @@ public:
     void stop();
     void waitForSearchFinish();
     void abortSearch();
+    void ponderHit();
     inline bool isSearching() { return searching; }
     inline bool searchAborted() { return aborted; }
     inline void setHashSize(size_t size) { abortSearch(); tt.resize(size); }
