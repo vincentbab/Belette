@@ -28,13 +28,19 @@ void updatePv(PvList &pv, Move move, const PvList &childPv) {
 }
 
 void SearchData::initAllocatedTime() {
-    int64_t moves = limits.movesToGo > 0 ? limits.movesToGo + 5 : 30;
-    Side stm = position.getSideToMove();
+    const Side stm = position.getSideToMove();
+    const TimeMs time = limits.timeLeft[stm];
+    const int mtg = limits.movesToGo > 0 ? std::min<int>(limits.movesToGo, TmHorizon) : TmHorizon;
 
-    TimeMs timeLeft = std::max<TimeMs>(1, limits.timeLeft[stm] - limits.moveOverhead);
+    const TimeMs budget = std::max<TimeMs>(1, time + limits.increment[stm] * (mtg - 1) - limits.moveOverhead * (2 + mtg));
 
-    hardTimeLimit = 0.49 * timeLeft;
-    softTimeLimit = std::min<TimeMs>(hardTimeLimit, timeLeft / moves + 0.9 * limits.increment[stm]);
+    const double optScale = limits.movesToGo > 0 ? 1.0 / mtg
+        : (TmOptBase + TmOptGrowth * std::sqrt(double(position.getHalfMoves()))) / 10000.0;
+    const double maxOptScale = TmOptCap / 1000.0 * double(time) / double(budget);
+
+    softTimeLimit = std::max<TimeMs>(1, TimeMs(std::min(optScale, maxOptScale) * budget));
+    hardTimeLimit = std::max<TimeMs>(1, std::min<TimeMs>(TimeMs(TmHardFrac / 1000.0 * time) - limits.moveOverhead,
+                                                         TimeMs(TmMaxScale / 100.0 * softTimeLimit)));
 }
 
 Engine::~Engine() {
@@ -86,6 +92,7 @@ void Engine::idSearch() {
     PvList bestPv;
     Score bestScore = SCORE_DRAW;
     int depth, searchDepth, completedDepth = 0;
+    Score iterScores[MAX_PLY];
 
     MoveList rootMoves;
     generateLegalMoves<Frc>(sd->position, rootMoves);
@@ -134,9 +141,12 @@ void Engine::idSearch() {
         if (searchAborted() && (depth > 1 || score == -SCORE_INFINITE)) break;
 
         bestPv = sd->node(0).pv;
-        const Score prevScore = bestScore;
         bestScore = score;
         completedDepth = depth;
+        iterScores[depth] = score;
+
+        if (depth == 1)
+            sd->bestMoveChanges = 0;
 
         // Best move stability
         if (bestPv.size() > 0) {
@@ -146,17 +156,24 @@ void Engine::idSearch() {
                 sd->bestMoveStability = 0;
 
             sd->lastBestMove = bestPv.front();
-            sd->softScale = 1.3 - 0.069 * sd->bestMoveStability;
+            sd->softScale = (TmStabBase - TmStabSlope * sd->bestMoveStability) / 1000.0;
+
+            // Best move instability
+            sd->bestMoveInstability = sd->bestMoveInstability / 2 + sd->bestMoveChanges;
+            sd->bestMoveChanges = 0;
+            sd->softScale *= 1.0 + TmInstab / 1000.0 * sd->bestMoveInstability;
 
             // Best move effort
             if (depth >= 5) {
                 double effort = double(sd->rootMoveNodes[moveFromTo(bestPv.front())]) / double(sd->nbNodes);
-                sd->softScale *= (1.5 - effort) * 1.35;
+                sd->softScale *= (TmEffortBase / 1000.0 - effort) * TmEffortMul / 1000.0;
             }
 
-            // Score trend
+            // Falling eval
             if (depth >= 5) {
-                sd->softScale *= std::clamp(1.0 + 0.02 * (prevScore - score), 1.0, 1.4);
+                const Score prevSearch = lastSearchScore != SCORE_NONE ? lastSearchScore : score;
+                const double falling = 1.0 + (TmFallPrev * double(prevSearch - score) + TmFallIter * double(iterScores[depth - 3] - score)) / 1000.0;
+                sd->softScale *= std::clamp(falling, TmFallMin / 1000.0, TmFallMax / 1000.0);
             }
         }
 
@@ -178,6 +195,8 @@ void Engine::idSearch() {
         event.depth = completedDepth;
         onSearchProgress(event);
     }
+
+    lastSearchScore = completedDepth > 0 ? bestScore : SCORE_NONE;
 
     while ((sd->pondering || sd->limits.infinite) && !searchAborted())
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -555,6 +574,9 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             bestScore = score;
             
             if (bestScore > alpha) {
+                if (RootNode && nbMoves > 1)
+                    sd->bestMoveChanges++;
+
                 bestMove = move;
                 alpha = bestScore;
                 if (PvNode)

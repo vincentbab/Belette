@@ -213,6 +213,23 @@ TUNABLE(LmrChildCutoffs, 1440, 0, 2560, 120)
 TUNABLE(LmrQuietHist, 226, 64, 1024, 24)
 TUNABLE(LmrCaptHist, 376, 64, 1024, 24)
 
+// Time management
+TUNABLE(TmHorizon, 50, 20, 80, 4)
+TUNABLE(TmOptBase, 120, 40, 400, 16)
+TUNABLE(TmOptGrowth, 25, 5, 80, 4)
+TUNABLE(TmOptCap, 210, 100, 400, 16)
+TUNABLE(TmMaxScale, 650, 300, 1000, 40)
+TUNABLE(TmHardFrac, 800, 500, 950, 25)
+TUNABLE(TmStabBase, 1300, 900, 1800, 50)
+TUNABLE(TmStabSlope, 69, 20, 120, 6)
+TUNABLE(TmInstab, 1000, 0, 3000, 150)
+TUNABLE(TmEffortBase, 1500, 1100, 2000, 50)
+TUNABLE(TmEffortMul, 1350, 900, 1800, 50)
+TUNABLE(TmFallPrev, 15, 0, 50, 3)
+TUNABLE(TmFallIter, 10, 0, 50, 3)
+TUNABLE(TmFallMin, 600, 300, 1000, 40)
+TUNABLE(TmFallMax, 1600, 1000, 2500, 80)
+
 } /* namespace Belette */
 
 #endif /* TUNE_H_INCLUDED */
