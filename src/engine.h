@@ -5,6 +5,7 @@
 #include <atomic>
 #include <memory>
 #include <thread>
+#include <vector>
 #include "chess.h"
 #include "position.h"
 #include "evaluate.h"
@@ -114,6 +115,8 @@ struct SearchData {
         return false;
     }
 
+    inline void addNode() { nbNodes.store(nbNodes.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed); }
+
     inline Node &node(int ply) { assert(ply >= -NODE_SENTINELS && ply < MAX_PLY); return nodes[ply + NODE_SENTINELS]; }
 
     inline ContCorrContext contCorrContext(int ply) {
@@ -148,7 +151,7 @@ struct SearchData {
 
     Position position;
     SearchLimits limits;
-    size_t nbNodes;
+    std::atomic<size_t> nbNodes;
     int selDepth;
 
     TimeMs startTime;
@@ -189,40 +192,32 @@ enum class NodeType {
     NonPV
 };
 
-class Engine {
+class Engine;
+
+class SearchThread {
 public:
-    static void init();
-    
-    Engine() = default;
-    virtual ~Engine();
+    SearchThread(Engine &engine_, int id_) : engine(engine_), id(id_) {}
 
-    inline Position &position() { return rootPosition; }
-    inline const Position &position() const { return rootPosition; }
+    inline bool isMain() const { return id == 0; }
+    inline size_t nbNodes() const { return sd ? sd->nbNodes.load(std::memory_order_relaxed) : 0; }
 
-    void search(const SearchLimits &limits);
-    void stop();
-    void waitForSearchFinish();
-    void abortSearch();
-    void ponderHit();
-    inline bool isSearching() { return searching; }
-    inline bool searchAborted() { return aborted; }
-    inline void setHashSize(size_t size) { abortSearch(); tt.resize(size); }
-    inline void newGame() { abortSearch(); tt.clear(); moveHistory.clear(); lastSearchScore = SCORE_NONE; }
-
-protected:
-    virtual void onSearchProgress(const SearchEvent &event) = 0;
-    virtual void onSearchFinish(const SearchEvent &event) = 0;
+    void prepare(const Position &pos, const SearchLimits &limits);
+    void start();
+    void join();
+    inline void newGame() { moveHistory.clear(); lastSearchScore = SCORE_NONE; }
 
 private:
-    static int LMRTable[2][MAX_PLY][MAX_MOVE];
+    friend class Engine;
 
+    Engine &engine;
+    const int id;
     MoveHistory moveHistory;
     std::unique_ptr<SearchData> sd;
-    Position rootPosition;
-    std::thread searchThread;
-    std::atomic<bool> aborted = true;
-    std::atomic<bool> searching = false;
+    std::thread thread;
     Score lastSearchScore = SCORE_NONE;
+
+    inline void stop();
+    inline bool searchAborted() const;
 
     inline void idSearch() {
         if (Frc960::active)
@@ -236,6 +231,49 @@ private:
 
     template<Side Me, NodeType NT, bool Frc> Score qSearch(Score alpha, Score beta, int ply);
 };
+
+class Engine {
+public:
+    static void init();
+
+    Engine() { setThreads(1); }
+    virtual ~Engine();
+
+    inline Position &position() { return rootPosition; }
+    inline const Position &position() const { return rootPosition; }
+
+    void search(const SearchLimits &limits);
+    void stop();
+    void waitForSearchFinish();
+    void abortSearch();
+    void ponderHit();
+    void setThreads(int n);
+    inline bool isSearching() { return searching; }
+    inline bool searchAborted() const { return aborted; }
+    inline void setHashSize(size_t size) { abortSearch(); tt.resize(size); }
+    inline void newGame() { abortSearch(); tt.clear(); for (auto &t : threads) t->newGame(); }
+
+protected:
+    virtual void onSearchProgress(const SearchEvent &event) = 0;
+    virtual void onSearchFinish(const SearchEvent &event) = 0;
+
+private:
+    friend class SearchThread;
+
+    static int LMRTable[2][MAX_PLY][MAX_MOVE];
+
+    std::vector<std::unique_ptr<SearchThread>> threads;
+    Position rootPosition;
+    std::atomic<bool> aborted = true;
+    std::atomic<bool> searching = false;
+
+    inline SearchThread &mainThread() { return *threads[0]; }
+    size_t nbNodes() const;
+    void waitHelpers();
+};
+
+inline void SearchThread::stop() { engine.stop(); }
+inline bool SearchThread::searchAborted() const { return engine.searchAborted(); }
 
 } /* namespace Belette */
 

@@ -47,27 +47,59 @@ Engine::~Engine() {
     abortSearch();
 }
 
+void Engine::setThreads(int n) {
+    abortSearch();
+    threads.clear();
+    for (int i = 0; i < n; i++)
+        threads.push_back(std::make_unique<SearchThread>(*this, i));
+}
+
+size_t Engine::nbNodes() const {
+    size_t total = 0;
+    for (auto &t : threads) total += t->nbNodes();
+    return total;
+}
+
 void Engine::waitForSearchFinish() {
-    if (searchThread.joinable()) {
-        searchThread.join();
-    }
+    if (!threads.empty())
+        mainThread().join();
+}
+
+void Engine::waitHelpers() {
+    for (size_t i = 1; i < threads.size(); i++)
+        threads[i]->join();
+}
+
+void SearchThread::prepare(const Position &pos, const SearchLimits &limits) {
+    moveHistory.clearAllKillers();
+    sd = std::make_unique<SearchData>(pos, limits, moveHistory);
+}
+
+void SearchThread::start() {
+    thread = std::thread([this] { idSearch(); });
+}
+
+void SearchThread::join() {
+    if (thread.joinable())
+        thread.join();
 }
 
 // Search entry point
 void Engine::search(const SearchLimits &limits) {
     abortSearch();
 
-    moveHistory.clearAllKillers();
+    for (auto &t : threads)
+        t->prepare(position(), limits);
 
-    sd = std::make_unique<SearchData>(position(), limits, moveHistory);
     aborted = false;
     searching = true;
-    
+
     tt.newSearch();
 
-    searchThread = std::thread([this] {
-        this->idSearch();
-    });
+    for (size_t i = 1; i < threads.size(); i++)
+        threads[i]->start();
+
+    mainThread().start();
 }
 
 void Engine::stop() {
@@ -75,20 +107,22 @@ void Engine::stop() {
 }
 
 void Engine::ponderHit() {
-    if (searching && sd) {
-        sd->timeOrigin = now();
-        sd->pondering = false;
+    SearchThread &main = mainThread();
+    if (searching && main.sd) {
+        main.sd->timeOrigin = now();
+        main.sd->pondering = false;
     }
 }
 
 void Engine::abortSearch() {
     stop();
     waitForSearchFinish();
+    waitHelpers();
 }
 
 // Iterative deepening loop
 template<Side Me, bool Frc>
-void Engine::idSearch() {
+void SearchThread::idSearch() {
     PvList bestPv;
     Score bestScore = SCORE_DRAW;
     int depth, searchDepth, completedDepth = 0;
@@ -177,11 +211,14 @@ void Engine::idSearch() {
             }
         }
 
-        onSearchProgress(SearchEvent(depth, sd->selDepth, bestPv, bestScore, sd->nbNodes, sd->getElapsed(), tt.usage()));
+        if (isMain())
+            engine.onSearchProgress(SearchEvent(depth, sd->selDepth, bestPv, bestScore, engine.nbNodes(), sd->getElapsed(), tt.usage()));
 
         if (sd->limits.maxDepth > 0 && depth >= sd->limits.maxDepth) break;
 
         if (sd->limits.mate > 0 && bestScore >= SCORE_MATE_MAX_PLY && SCORE_MATE - bestScore <= 2 * sd->limits.mate) break;
+
+        if (!isMain()) continue;
 
         // Instamove
         if (sd->useTournamentTime() && !sd->pondering && rootMoves.size() == 1) break;
@@ -189,26 +226,31 @@ void Engine::idSearch() {
         if (sd->shouldStopSoft()) break;
     }
 
-    SearchEvent event(depth, sd->selDepth, bestPv, bestScore, sd->nbNodes, sd->getElapsed(), tt.usage());
-
-    if (depth != completedDepth) {
-        event.depth = completedDepth;
-        onSearchProgress(event);
-    }
-
     lastSearchScore = completedDepth > 0 ? bestScore : SCORE_NONE;
+
+    if (!isMain()) return;
 
     while ((sd->pondering || sd->limits.infinite) && !searchAborted())
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-    onSearchFinish(event);
+    stop();
+    engine.waitHelpers();
 
-    searching = false;
+    SearchEvent event(depth, sd->selDepth, bestPv, bestScore, engine.nbNodes(), sd->getElapsed(), tt.usage());
+
+    if (depth != completedDepth) {
+        event.depth = completedDepth;
+        engine.onSearchProgress(event);
+    }
+
+    engine.onSearchFinish(event);
+
+    engine.searching = false;
 }
 
 // Negamax search
 template<Side Me, NodeType NT, bool Frc>
-Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode) {
+Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode) {
     constexpr bool PvNode = (NT != NodeType::NonPV);
     constexpr bool RootNode = (NT == NodeType::Root);
     constexpr NodeType QNodeType = PvNode ? NodeType::PV : NodeType::NonPV;
@@ -224,7 +266,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
     }
 
     // Check if we should stop according to limits
-    if (!RootNode && sd->shouldStop()) [[unlikely]] {
+    if (!RootNode && sd->shouldStop() && isMain()) [[unlikely]] {
         stop();
     }
 
@@ -383,7 +425,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             if (move == excludedMove || !pos.isTactical<Frc>(move)) return true;
             if (!pos.see(move, probCutBeta - node.staticEval)) return true;
 
-            sd->nbNodes++;
+            sd->addNode();
 
             node.setMove(sd->moveHistory, pos, move);
 
@@ -442,7 +484,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         MoveScore pruneScore = moveIsTactical ? statScore
                                               : statScore + sd->moveHistory.getPawnHistory(pos, move) * PrunePawn / 1024;
 
-        int lmrDepth = std::max(0, depth - 1 - LMRTable[0][depth][nbMoves] / LMR_FACTOR);
+        int lmrDepth = std::max(0, depth - 1 - Engine::LMRTable[0][depth][nbMoves] / LMR_FACTOR);
 
         // Late move pruning
         if (!RootNode && bestScore > -SCORE_MATE_MAX_PLY) {
@@ -516,7 +558,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         const size_t nodesBefore = sd->nbNodes;
 
-        sd->nbNodes++;
+        sd->addNode();
 
         if (PvNode)
             sd->node(ply+1).pv.clear();
@@ -533,7 +575,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
         // Late move reduction (LMR)
         if (depth >= 2 && nbMoves > 1) {
-            int R = LMRTable[moveIsTactical][depth][nbMoves];
+            int R = Engine::LMRTable[moveIsTactical][depth][nbMoves];
 
             R -= LmrPv * PvNode;
             R -= LmrInCheck * pos.inCheck();
@@ -637,11 +679,11 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
 
 // Quiescence search
 template<Side Me, NodeType NT, bool Frc>
-Score Engine::qSearch(Score alpha, Score beta, int ply) {
+Score SearchThread::qSearch(Score alpha, Score beta, int ply) {
     constexpr bool PvNode = (NT != NodeType::NonPV);
 
     // Check if we should stop according to limits
-    if (sd->shouldStop()) [[unlikely]] {
+    if (sd->shouldStop() && isMain()) [[unlikely]] {
         stop();
     }
 
@@ -746,7 +788,7 @@ Score Engine::qSearch(Score alpha, Score beta, int ply) {
             }
         }
 
-        sd->nbNodes++;
+        sd->addNode();
 
         sd->node(ply).setMove(sd->moveHistory, pos, move);
 
