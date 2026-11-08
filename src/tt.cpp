@@ -1,5 +1,8 @@
 #include <cstring>
+#include <algorithm>
 #include <stdexcept>
+#include <thread>
+#include <vector>
 #include "tt.h"
 #include "utils.h"
 
@@ -16,7 +19,7 @@ TranspositionTable::~TranspositionTable(){
     largeFree(buckets);
 }
 
-void TranspositionTable::resize(size_t size){
+void TranspositionTable::resize(size_t size, size_t nbThreads){
     largeFree(buckets);
     buckets = nullptr;
 
@@ -27,11 +30,22 @@ void TranspositionTable::resize(size_t size){
         if (!buckets) throw std::runtime_error("failed to allocate memory for transposition table");
     }
 
-    clear();
+    clear(nbThreads);
 }
 
-void TranspositionTable::clear() {
-    std::memset(buckets, 0, nbBuckets * sizeof(TTBucket));
+void TranspositionTable::clear(size_t nbThreads) {
+    nbThreads = std::max<size_t>(1, std::min(nbThreads, nbBuckets));
+    const size_t chunk = (nbBuckets + nbThreads - 1) / nbThreads;
+    std::vector<std::thread> workers;
+
+    for (size_t i = 0; i < nbThreads; i++) {
+        const size_t start = i * chunk;
+        const size_t count = std::min(chunk, nbBuckets - std::min(start, nbBuckets));
+        if (count == 0) break;
+        workers.emplace_back([this, start, count] { std::memset(&buckets[start], 0, count * sizeof(TTBucket)); });
+    }
+
+    for (auto &w : workers) w.join();
     age = 0;
 }
 

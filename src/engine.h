@@ -250,8 +250,8 @@ public:
     void setThreads(int n);
     inline bool isSearching() { return searching; }
     inline bool searchAborted() const { return aborted; }
-    inline void setHashSize(size_t size) { abortSearch(); tt.resize(size); }
-    inline void newGame() { abortSearch(); tt.clear(); for (auto &t : threads) t->newGame(); }
+    inline void setHashSize(size_t size) { abortSearch(); tt.resize(size, threads.size()); }
+    inline void newGame() { abortSearch(); tt.clear(threads.size()); for (auto &t : threads) t->newGame(); }
 
 protected:
     virtual void onSearchProgress(const SearchEvent &event) = 0;
