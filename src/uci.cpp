@@ -37,7 +37,7 @@ Uci::Uci()  {
         engine.setHashSize(int64_t(opt)*1024*1024);
     });
     options["Clear Hash"] = UciOption([&] (const UciOption &) { engine.newGame(); });
-    options["Threads"] = UciOption(1, 1, 1);
+    options["Threads"] = UciOption(1, 1, 1024, [&] (const UciOption &opt) { engine.setThreads(int(int64_t(opt))); });
     options["Ponder"] = UciOption(false);
     options["Move Overhead"] = UciOption(10, 0, 5000);
     options["UCI_Chess960"] = UciOption(false, [&] (const UciOption &opt) { Frc960::uciFormat = bool(opt); });
