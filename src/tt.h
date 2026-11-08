@@ -75,8 +75,8 @@ public:
     TranspositionTable(size_t defaultSize = TT_DEFAULT_SIZE);
     ~TranspositionTable();
 
-    void resize(size_t size);
-    void clear();
+    void resize(size_t size, size_t nbThreads = 1);
+    void clear(size_t nbThreads = 1);
     void newSearch();
 
     TTResult get(uint64_t hash);
