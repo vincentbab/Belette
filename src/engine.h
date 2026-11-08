@@ -3,6 +3,8 @@
 
 #include <algorithm>
 #include <atomic>
+#include <condition_variable>
+#include <mutex>
 #include <memory>
 #include <thread>
 #include <vector>
@@ -196,14 +198,15 @@ class Engine;
 
 class SearchThread {
 public:
-    SearchThread(Engine &engine_, int id_) : engine(engine_), id(id_) {}
+    SearchThread(Engine &engine_, int id_);
+    ~SearchThread();
 
     inline bool isMain() const { return id == 0; }
     inline size_t nbNodes() const { return sd ? sd->nbNodes.load(std::memory_order_relaxed) : 0; }
 
     void prepare(const Position &pos, const SearchLimits &limits);
     void start();
-    void join();
+    void wait();
     inline void newGame() { moveHistory.clear(); lastSearchScore = SCORE_NONE; }
 
 private:
@@ -214,7 +217,13 @@ private:
     MoveHistory moveHistory;
     std::unique_ptr<SearchData> sd;
     std::thread thread;
+    std::mutex mutex;
+    std::condition_variable cv;
+    bool running = true;
+    bool exiting = false;
     Score lastSearchScore = SCORE_NONE;
+
+    void idleLoop();
 
     inline void stop();
     inline bool searchAborted() const;

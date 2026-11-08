@@ -62,12 +62,12 @@ size_t Engine::nbNodes() const {
 
 void Engine::waitForSearchFinish() {
     if (!threads.empty())
-        mainThread().join();
+        mainThread().wait();
 }
 
 void Engine::waitHelpers() {
     for (size_t i = 1; i < threads.size(); i++)
-        threads[i]->join();
+        threads[i]->wait();
 }
 
 void SearchThread::prepare(const Position &pos, const SearchLimits &limits) {
@@ -75,13 +75,46 @@ void SearchThread::prepare(const Position &pos, const SearchLimits &limits) {
     sd = std::make_unique<SearchData>(pos, limits, moveHistory);
 }
 
-void SearchThread::start() {
-    thread = std::thread([this] { idSearch(); });
+SearchThread::SearchThread(Engine &engine_, int id_) : engine(engine_), id(id_) {
+    thread = std::thread(&SearchThread::idleLoop, this);
+    wait();
 }
 
-void SearchThread::join() {
-    if (thread.joinable())
-        thread.join();
+SearchThread::~SearchThread() {
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        exiting = true;
+        running = true;
+    }
+    cv.notify_all();
+    thread.join();
+}
+
+void SearchThread::idleLoop() {
+    while (true) {
+        std::unique_lock<std::mutex> lock(mutex);
+        running = false;
+        cv.notify_all();
+        cv.wait(lock, [this] { return running; });
+
+        if (exiting) return;
+
+        lock.unlock();
+        idSearch();
+    }
+}
+
+void SearchThread::start() {
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        running = true;
+    }
+    cv.notify_all();
+}
+
+void SearchThread::wait() {
+    std::unique_lock<std::mutex> lock(mutex);
+    cv.wait(lock, [this] { return !running; });
 }
 
 // Search entry point
