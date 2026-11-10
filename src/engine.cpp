@@ -542,7 +542,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             R += LmrCutNode * cutNode;
             R += LmrNotImproving * !improving;
             R += LmrChildCutoffs * (sd->node(ply+1).nbCutoffs > 2);
-            R -= LmrCorrplexity * (corrplexity > LmrCorrplexityMargin);
+            R += LmrCorrplexity * (!inCheck && corrplexity < LmrCorrplexityMargin);
             R -= statScore * (moveIsTactical ? LmrCaptHist : LmrQuietHist) / 1024;
 
             R = R <= 0 ? 0 : std::min(depth - 1, std::max(1, R / LMR_FACTOR));

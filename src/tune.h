@@ -209,7 +209,7 @@ TUNABLE(LmrCutNode, 1930, 512, 4096, 180)
 TUNABLE(LmrNotImproving, 1020, 0, 2560, 120)
 TUNABLE(LmrChildCutoffs, 1440, 0, 2560, 120)
 TUNABLE(LmrCorrplexity, 512, 0, 2560, 120)
-TUNABLE(LmrCorrplexityMargin, 128, 20, 300, 15)
+TUNABLE(LmrCorrplexityMargin, 32, 4, 200, 8)
 
 // LMR history weights, in 1/1024
 TUNABLE(LmrQuietHist, 226, 64, 1024, 24)
