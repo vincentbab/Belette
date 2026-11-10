@@ -322,6 +322,8 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
         node.staticEval = eval = SCORE_NONE;
     }
 
+    const int corrplexity = std::abs(node.staticEval - rawEval);
+
     // Internal Iterative Reduction (IIR)
     if (depth >= IirDepth && ttMove == MOVE_NONE) {
         depth--;
@@ -482,7 +484,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             && std::abs(ttScore) < SCORE_MATE_MAX_PLY && ttLower && ttDepth >= depth - SeTtDepth)
         {
             Score singularBeta = ttScore - depth*SeMargin/1024;
-            int corrAdj = std::abs(node.staticEval - rawEval) * SeCorrMult / 1024;
+            int corrAdj = corrplexity * SeCorrMult / 1024;
 
             node.excludedMove = ttMove;
             Score score = pvSearch<Me, NodeType::NonPV, Frc>(singularBeta-1, singularBeta, (depth-1)*SeSearchDepth/1024, ply, cutNode);
@@ -540,6 +542,7 @@ Score Engine::pvSearch(Score alpha, Score beta, int depth, int ply, bool cutNode
             R += LmrCutNode * cutNode;
             R += LmrNotImproving * !improving;
             R += LmrChildCutoffs * (sd->node(ply+1).nbCutoffs > 2);
+            R -= LmrCorrplexity * (corrplexity > LmrCorrplexityMargin);
             R -= statScore * (moveIsTactical ? LmrCaptHist : LmrQuietHist) / 1024;
 
             R = R <= 0 ? 0 : std::min(depth - 1, std::max(1, R / LMR_FACTOR));
