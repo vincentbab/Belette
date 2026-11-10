@@ -208,6 +208,8 @@ TUNABLE(LmrTtTactical, 1230, 0, 2560, 120)
 TUNABLE(LmrCutNode, 1930, 512, 4096, 180)
 TUNABLE(LmrNotImproving, 1020, 0, 2560, 120)
 TUNABLE(LmrChildCutoffs, 1440, 0, 2560, 120)
+TUNABLE(LmrDeeperMargin, 50, 10, 150, 6)
+TUNABLE(LmrShallowerMargin, 10, 0, 50, 3)
 
 // LMR history weights, in 1/1024
 TUNABLE(LmrQuietHist, 226, 64, 1024, 24)
