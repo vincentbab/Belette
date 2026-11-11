@@ -26,6 +26,7 @@ struct State {
 
     uint64_t hash;
     Bitboard threatsFor[NB_PIECE_TYPE];
+    uint64_t threatHash;
     Bitboard checkers;
     Bitboard checkMask;
     Bitboard pinDiag;
@@ -113,6 +114,7 @@ public:
     inline uint64_t nonPawnHash(Side side) const { return nonPawnKeys[side]; }
     inline uint64_t minorHash() const { return minorKey; }
     inline uint64_t majorHash() const { return majorKey; }
+    inline uint64_t threatHash() const { return state->threatHash; }
     uint64_t computeHash() const;
     inline uint64_t computePawnHash() const;
     inline uint64_t computeNonPawnHash(Side side) const;

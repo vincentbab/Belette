@@ -879,6 +879,12 @@ inline void Position::updateThreatenedSquares() {
     threatened |= attacks<KING>(getKingSquare(Opp));
 
     state->threatsFor[KING] = threatened;
+
+    state->threatHash = (threatened & getPiecesBB(Me, PAWN)) * 0x5CD50E37D1F69FE9ull
+                      ^ (threatened & getPiecesBB(Me, KNIGHT)) * 0x8605FF89B07B8DDBull
+                      ^ (threatened & getPiecesBB(Me, BISHOP)) * 0xD6147647BDE7F9A1ull
+                      ^ (threatened & getPiecesBB(Me, ROOK)) * 0xE42DF576E440CCC3ull
+                      ^ (threatened & getPiecesBB(Me, QUEEN)) * 0xEEACA733CCB27117ull;
 }
 
 template<Side Me, bool InCheck>

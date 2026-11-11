@@ -45,13 +45,15 @@ constexpr int PAWN_HIST_SIZE = 4096;
 
 using PawnHistory = std::array<std::array<std::array<int16_t, NB_SQUARE>, NB_PIECE>, PAWN_HIST_SIZE>;
 
-constexpr int CORR_HIST_SIZE = 16384;
+constexpr int CORR_HIST_BITS = 14;
+constexpr int CORR_HIST_SIZE = 1 << CORR_HIST_BITS;
 constexpr MoveScore CORR_HIST_GRAIN = 256;
 
 using CaptureHistory = std::array<std::array<std::array<std::array<std::array<MoveScore, NB_PIECE_TYPE>, NB_SQUARE>, NB_PIECE>, 2>, 2>;
 using NonPawnCorrHist = std::array<std::array<std::array<MoveScore, CORR_HIST_SIZE>, NB_SIDE>, NB_SIDE>;
 using MinorCorrHist = std::array<std::array<MoveScore, CORR_HIST_SIZE>, NB_SIDE>;
 using MajorCorrHist = std::array<std::array<MoveScore, CORR_HIST_SIZE>, NB_SIDE>;
+using ThreatCorrHist = std::array<std::array<MoveScore, CORR_HIST_SIZE>, NB_SIDE>;
 
 class MoveHistory {
 public:
@@ -59,6 +61,7 @@ public:
         nonPawnCorrHist(std::make_unique<NonPawnCorrHist>()),
         minorCorrHist(std::make_unique<MinorCorrHist>()),
         majorCorrHist(std::make_unique<MajorCorrHist>()),
+        threatCorrHist(std::make_unique<ThreatCorrHist>()),
         contCorrHist(std::make_unique<ContinuationHistory>()),
         contCorr2Hist(std::make_unique<ContinuationHistory>()),
         continuationHistory(std::make_unique<ContinuationHistory>()),
@@ -73,6 +76,7 @@ public:
         std::memset(nonPawnCorrHist.get(), 0, sizeof(NonPawnCorrHist));
         std::memset(minorCorrHist.get(), 0, sizeof(MinorCorrHist));
         std::memset(majorCorrHist.get(), 0, sizeof(MajorCorrHist));
+        std::memset(threatCorrHist.get(), 0, sizeof(ThreatCorrHist));
         std::memset(contCorrHist.get(), 0, sizeof(ContinuationHistory));
         std::memset(contCorr2Hist.get(), 0, sizeof(ContinuationHistory));
         std::memset(continuationHistory.get(), 0, sizeof(ContinuationHistory));
@@ -180,6 +184,7 @@ public:
         __builtin_prefetch(&(*nonPawnCorrHist)[Me][BLACK][pos.nonPawnHash(BLACK) & (CORR_HIST_SIZE - 1)]);
         __builtin_prefetch(&(*minorCorrHist)[Me][pos.minorHash() & (CORR_HIST_SIZE - 1)]);
         __builtin_prefetch(&(*majorCorrHist)[Me][pos.majorHash() & (CORR_HIST_SIZE - 1)]);
+        __builtin_prefetch(&(*threatCorrHist)[Me][threatIndex(pos)]);
     }
 
     template<Side Me>
@@ -188,7 +193,8 @@ public:
                              + CorrNonPawn * ((*nonPawnCorrHist)[Me][WHITE][pos.nonPawnHash(WHITE) & (CORR_HIST_SIZE - 1)]
                                             + (*nonPawnCorrHist)[Me][BLACK][pos.nonPawnHash(BLACK) & (CORR_HIST_SIZE - 1)])
                              + CorrMinor * (*minorCorrHist)[Me][pos.minorHash() & (CORR_HIST_SIZE - 1)]
-                             + CorrMajor * (*majorCorrHist)[Me][pos.majorHash() & (CORR_HIST_SIZE - 1)];
+                             + CorrMajor * (*majorCorrHist)[Me][pos.majorHash() & (CORR_HIST_SIZE - 1)]
+                             + CorrThreat * (*threatCorrHist)[Me][threatIndex(pos)];
 
         Move prevMove = pos.previousMove();
         if (isValidMove(prevMove)) {
@@ -222,6 +228,7 @@ public:
         updateCorrEntry((*nonPawnCorrHist)[Me][BLACK][pos.nonPawnHash(BLACK) & (CORR_HIST_SIZE - 1)], diff, weight);
         updateCorrEntry((*minorCorrHist)[Me][pos.minorHash() & (CORR_HIST_SIZE - 1)], diff, weight);
         updateCorrEntry((*majorCorrHist)[Me][pos.majorHash() & (CORR_HIST_SIZE - 1)], diff, weight);
+        updateCorrEntry((*threatCorrHist)[Me][threatIndex(pos)], diff, weight);
 
         Move prevMove = pos.previousMove();
         if (isValidMove(prevMove)) {
@@ -276,6 +283,7 @@ private:
     std::unique_ptr<NonPawnCorrHist> nonPawnCorrHist;
     std::unique_ptr<MinorCorrHist> minorCorrHist;
     std::unique_ptr<MajorCorrHist> majorCorrHist;
+    std::unique_ptr<ThreatCorrHist> threatCorrHist;
     std::unique_ptr<ContinuationHistory> contCorrHist;
     std::unique_ptr<ContinuationHistory> contCorr2Hist;
     std::unique_ptr<ContinuationHistory> continuationHistory;
@@ -290,6 +298,10 @@ private:
     inline MoveScore& captureEntry(const Position& pos, Move m) const {
         Bitboard threats = pos.threatsFor(KING);
         return (*captureHistory)[bool(threats & moveFrom(m))][bool(threats & moveTo(m))][pos.getPieceAt(moveFrom(m))][moveTo(m)][capturedType(pos, m)];
+    }
+
+    static inline size_t threatIndex(const Position& pos) {
+        return pos.threatHash() >> (64 - CORR_HIST_BITS);
     }
 
     inline MoveScore historyValue(int depth, int mult, int base, int max) {
