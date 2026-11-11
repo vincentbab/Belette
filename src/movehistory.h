@@ -131,6 +131,7 @@ public:
         MoveScore score = 2048 * getButterfly<Me>(pos, m);
         for (int i = 0; i < NbContHist; i++)
             score += EvasionCont * (*contHist[i])[pc][to];
+        score += EvasionPawn * getPawnHistory(pos, m);
 
         return score / 1024;
     }

@@ -79,6 +79,7 @@ TUNABLE(OrderPawn, 2710, 512, 4096, 200)
 
 // Evasion ordering weight, in 1/1024
 TUNABLE(EvasionCont, 674, 256, 2560, 100)
+TUNABLE(EvasionPawn, 1024, 0, 4096, 150)
 
 // statScore weights, in 1/1024
 TUNABLE(StatMain, 1530, 512, 4096, 200)
