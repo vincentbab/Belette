@@ -143,6 +143,7 @@ TUNABLE(CapFpHistMult, 101, 0, 192, 8)
 // History pruning
 TUNABLE(HpDepth, 7, 2, 10, 0.5)
 TUNABLE(HpMargin, 262, 256, 8192, 350)
+TUNABLE(PrunePawn, 1024, 0, 2048, 100)
 
 // Aspiration window
 TUNABLE(AspDepth, 4, 2, 8, 0.5)
