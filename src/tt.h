@@ -51,7 +51,7 @@ public:
     inline bool isUpperBound() const { return bound() & BOUND_UPPER; }
     inline bool canCutoff(Score score, Score beta) { return score != SCORE_NONE && (bound() & (score >= beta ? BOUND_LOWER : BOUND_UPPER)); }
 
-    inline void refresh(uint8_t age) { ageFlags8 = age | (ageFlags8 & (PV_MASK | BOUND_MASK)); }
+    inline void refresh(uint8_t age) { if ((ageFlags8 & AGE_MASK) != age) ageFlags8 = age | (ageFlags8 & (PV_MASK | BOUND_MASK)); }
 
     inline bool isBetterToKeep(const TTEntry &other, uint8_t age) const {
         return this->depth8 - ((AGE_CYCLE + age - this->ageFlags8) & AGE_MASK)
