@@ -201,6 +201,8 @@ enum class NodeType {
 // Number of threads sharing one correction history (0 = all threads)
 constexpr int CORR_HIST_SHARED_THREADS = 32;
 
+constexpr int VOTE_SCORE_BASE = 20;
+
 class Engine;
 
 class SearchThread {
@@ -230,6 +232,9 @@ private:
     bool running = true;
     bool exiting = false;
     Score lastSearchScore = SCORE_NONE;
+    PvList resultPv;
+    Score resultScore = SCORE_NONE;
+    int resultDepth = 0;
 
     void idleLoop();
 
@@ -293,6 +298,7 @@ private:
     inline SearchThread &mainThread() { return *threads[0]; }
     size_t nbNodes() const;
     void waitHelpers();
+    SearchThread &bestThread();
 };
 
 inline void SearchThread::stop() { engine.stop(); }
