@@ -50,8 +50,15 @@ Engine::~Engine() {
 void Engine::setThreads(int n) {
     abortSearch();
     threads.clear();
+    corrHistories.clear();
+
+    int groupSize = CORR_HIST_SHARED_THREADS > 0 ? std::min(CORR_HIST_SHARED_THREADS, n) : n;
+    int nbGroups = (n + groupSize - 1) / groupSize;
+    for (int g = 0; g < nbGroups; g++)
+        corrHistories.push_back(std::make_unique<SharedCorrectionHistory>((n + nbGroups - 1) / nbGroups));
+
     for (int i = 0; i < n; i++)
-        threads.push_back(std::make_unique<SearchThread>(*this, i));
+        threads.push_back(std::make_unique<SearchThread>(*this, i, *corrHistories[i * nbGroups / n]));
 }
 
 size_t Engine::nbNodes() const {
@@ -72,10 +79,11 @@ void Engine::waitHelpers() {
 
 void SearchThread::prepare(const Position &pos, const SearchLimits &limits) {
     moveHistory.clearAllKillers();
-    sd = std::make_unique<SearchData>(pos, limits, moveHistory);
+    sd = std::make_unique<SearchData>(pos, limits, moveHistory, corrHistory);
 }
 
-SearchThread::SearchThread(Engine &engine_, int id_) : engine(engine_), id(id_) {
+SearchThread::SearchThread(Engine &engine_, int id_, SharedCorrectionHistory &corrHistory_)
+    : engine(engine_), id(id_), corrHistory(corrHistory_) {
     thread = std::thread(&SearchThread::idleLoop, this);
     wait();
 }
@@ -381,7 +389,7 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
             tt.set(tte, pos.hash(), 0, ply, BOUND_NONE, MOVE_NONE, rawEval, SCORE_NONE, ttPv);
         }
 
-        node.staticEval = eval = sd->moveHistory.correctEval<Me>(pos, rawEval, corrCtx);
+        node.staticEval = eval = sd->corrHistory.correctEval<Me>(pos, rawEval, corrCtx);
 
         // Use score instead of eval if available.
         if (ttHit && !excludedMove && tte->canCutoff(ttScore, eval)) {
@@ -426,7 +434,7 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
         tt.prefetch(pos.getHashAfterNullMove());
         int R = NmpBase + depth * NmpDepthMult / 1024 + std::min((eval - beta) / NmpEvalDiv, NmpEvalMax);
 
-        node.setNullMove(sd->moveHistory);
+        node.setNullMove(sd->moveHistory, sd->corrHistory);
         pos.doNullMove<Me>();
         Score score = -pvSearch<~Me, NodeType::NonPV, Frc>(-beta, -beta+1, depth-R, ply+1, !cutNode);
         pos.undoNullMove<Me>();
@@ -460,7 +468,7 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
 
             sd->addNode();
 
-            node.setMove(sd->moveHistory, pos, move);
+            node.setMove(sd->moveHistory, sd->corrHistory, pos, move);
 
             pos.doMove<Me, Frc>(move);
             probCutScore = -qSearch<~Me, NodeType::NonPV, Frc>(-probCutBeta, -probCutBeta+1, ply+1);
@@ -597,11 +605,11 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
             sd->node(ply+1).pv.clear();
 
         // Continuation history
-        node.setMove(sd->moveHistory, pos, move);
+        node.setMove(sd->moveHistory, sd->corrHistory, pos, move);
 
         // Do move
         pos.doMove<Me, Frc>(move);
-        sd->moveHistory.prefetchCorrection<~Me>(pos);
+        sd->corrHistory.prefetchCorrection<~Me>(pos);
 
         Score score;
         int newDepth = depth - 1 + extension;
@@ -697,7 +705,7 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
     if (!inCheck && !excludedMove && !(bestMove != MOVE_NONE && pos.isTactical<Frc>(bestMove)) && std::abs(bestScore) < SCORE_MATE_MAX_PLY
         && ((bestScore < node.staticEval && bestScore < beta) || (bestScore > node.staticEval && bestMove != MOVE_NONE)))
     {
-        sd->moveHistory.updateCorrection<Me>(pos, bestScore, node.staticEval, depth, corrCtx);
+        sd->corrHistory.updateCorrection<Me>(pos, bestScore, node.staticEval, depth, corrCtx);
     }
 
     // Update Transposition Table
@@ -772,7 +780,7 @@ Score SearchThread::qSearch(Score alpha, Score beta, int ply) {
             tt.set(tte, pos.hash(), ttDepth, ply, BOUND_NONE, MOVE_NONE, rawEval, SCORE_NONE, ttPv);
         }
 
-        eval = sd->moveHistory.correctEval<Me>(pos, rawEval, corrCtx);
+        eval = sd->corrHistory.correctEval<Me>(pos, rawEval, corrCtx);
 
         // Use score instead of eval if available.
         if (ttHit && tte->canCutoff(ttScore, eval)) {
@@ -823,10 +831,10 @@ Score SearchThread::qSearch(Score alpha, Score beta, int ply) {
 
         sd->addNode();
 
-        sd->node(ply).setMove(sd->moveHistory, pos, move);
+        sd->node(ply).setMove(sd->moveHistory, sd->corrHistory, pos, move);
 
         pos.doMove<Me, Frc>(move);
-        sd->moveHistory.prefetchCorrection<~Me>(pos);
+        sd->corrHistory.prefetchCorrection<~Me>(pos);
         Score score = -qSearch<~Me, NT, Frc>(-beta, -alpha, ply+1);
         pos.undoMove<Me, Frc>(move);
 
