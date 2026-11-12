@@ -12,6 +12,7 @@
 #include "position.h"
 #include "evaluate.h"
 #include "movegen.h"
+#include "correctionhistory.h"
 #include "movehistory.h"
 #include "movepicker.h"
 #include "tt.h"
@@ -33,6 +34,8 @@ struct SearchLimits {
     MoveList searchMoves;
 };
 
+constexpr int NODE_SENTINELS = std::max({CONT_HIST_MAX_PLY, CONT_CORR_MAX_PLY, CONT_CORR2_MAX_PLY});
+
 struct Node {
     Score staticEval;
     PieceToHistory* contHist;
@@ -46,28 +49,28 @@ struct Node {
     PvList pv;
     //MovePicker mp;
 
-    inline void setMove(MoveHistory& moveHistory, const Position& pos, Move move) {
+    inline void setMove(MoveHistory& moveHistory, SharedCorrectionHistory& corrHistory, const Position& pos, Move move) {
         contHist = moveHistory.getContHistEntry(pos, move);
-        contCorr = moveHistory.getContCorrEntry(pos, move);
-        contCorr2 = moveHistory.getContCorr2Entry(pos, move);
+        contCorr = corrHistory.getContCorrEntry(pos, move);
+        contCorr2 = corrHistory.getContCorr2Entry(pos, move);
         movedPiece = pos.getPieceAt(moveFrom(move));
         movedTo = moveTo(move);
     }
 
-    inline void setNullMove(MoveHistory& moveHistory) {
+    inline void setNullMove(MoveHistory& moveHistory, SharedCorrectionHistory& corrHistory) {
         contHist = moveHistory.getDefaultContHist();
-        contCorr = moveHistory.getDefaultContCorr();
-        contCorr2 = moveHistory.getDefaultContCorr2();
+        contCorr = corrHistory.getDefaultContCorr();
+        contCorr2 = corrHistory.getDefaultContCorr2();
         movedPiece = NO_PIECE;
         movedTo = SQ_FIRST;
     }
 };
 
 struct SearchData {
-    SearchData(const Position& pos_, const SearchLimits& limits_, MoveHistory& moveHistory_)
-    : position(pos_), limits(limits_), nbNodes(0), pondering(limits_.ponder), moveHistory(moveHistory_) {
+    SearchData(const Position& pos_, const SearchLimits& limits_, MoveHistory& moveHistory_, SharedCorrectionHistory& corrHistory_)
+    : position(pos_), limits(limits_), nbNodes(0), pondering(limits_.ponder), moveHistory(moveHistory_), corrHistory(corrHistory_) {
         for (int i = 1; i <= NODE_SENTINELS; i++)
-            node(-i).setNullMove(moveHistory);
+            node(-i).setNullMove(moveHistory, corrHistory);
 
         start();
     }
@@ -171,6 +174,7 @@ struct SearchData {
     size_t rootMoveNodes[NB_SQUARE*NB_SQUARE] = {0};
 
     MoveHistory& moveHistory;
+    SharedCorrectionHistory& corrHistory;
 
     Node nodes[MAX_PLY+1+NODE_SENTINELS];
 };
@@ -194,11 +198,14 @@ enum class NodeType {
     NonPV
 };
 
+// Number of threads sharing one correction history (0 = all threads)
+constexpr int CORR_HIST_SHARED_THREADS = 32;
+
 class Engine;
 
 class SearchThread {
 public:
-    SearchThread(Engine &engine_, int id_);
+    SearchThread(Engine &engine_, int id_, SharedCorrectionHistory &corrHistory_);
     ~SearchThread();
 
     inline bool isMain() const { return id == 0; }
@@ -215,6 +222,7 @@ private:
     Engine &engine;
     const int id;
     MoveHistory moveHistory;
+    SharedCorrectionHistory &corrHistory;
     std::unique_ptr<SearchData> sd;
     std::thread thread;
     std::mutex mutex;
@@ -260,7 +268,12 @@ public:
     inline bool isSearching() { return searching; }
     inline bool searchAborted() const { return aborted; }
     inline void setHashSize(size_t size) { abortSearch(); tt.resize(size, threads.size()); }
-    inline void newGame() { abortSearch(); tt.clear(threads.size()); for (auto &t : threads) t->newGame(); }
+    inline void newGame() {
+        abortSearch();
+        tt.clear(threads.size());
+        for (auto &c : corrHistories) c->clear();
+        for (auto &t : threads) t->newGame();
+    }
 
 protected:
     virtual void onSearchProgress(const SearchEvent &event) = 0;
@@ -271,6 +284,7 @@ private:
 
     static int LMRTable[2][MAX_PLY][MAX_MOVE];
 
+    std::vector<std::unique_ptr<SharedCorrectionHistory>> corrHistories;
     std::vector<std::unique_ptr<SearchThread>> threads;
     Position rootPosition;
     std::atomic<bool> aborted = true;
