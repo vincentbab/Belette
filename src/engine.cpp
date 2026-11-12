@@ -77,6 +77,42 @@ void Engine::waitHelpers() {
         threads[i]->wait();
 }
 
+// Thread voting
+SearchThread &Engine::bestThread() {
+    SearchThread *best = &mainThread();
+    if (threads.size() == 1 || best->resultPv.empty())
+        return *best;
+
+    Score minScore = SCORE_INFINITE;
+    for (auto &t : threads)
+        if (!t->resultPv.empty())
+            minScore = std::min(minScore, t->resultScore);
+
+    int64_t votes[NB_SQUARE*NB_SQUARE] = {0};
+    for (auto &t : threads)
+        if (!t->resultPv.empty())
+            votes[moveFromTo(t->resultPv.front())] += int64_t(t->resultScore - minScore + VOTE_SCORE_BASE) * t->resultDepth;
+
+    for (auto &t : threads) {
+        if (t->resultPv.empty()) continue;
+
+        Score score = t->resultScore, bestScore = best->resultScore;
+        int64_t vote = votes[moveFromTo(t->resultPv.front())], bestVote = votes[moveFromTo(best->resultPv.front())];
+
+        if (bestScore >= SCORE_MATE_MAX_PLY) {
+            if (score > bestScore) best = t.get();
+        } else if (score >= SCORE_MATE_MAX_PLY) {
+            best = t.get();
+        } else if (bestScore <= -SCORE_MATE_MAX_PLY) {
+            if (score > bestScore) best = t.get();
+        } else if (score > -SCORE_MATE_MAX_PLY && vote > bestVote) {
+            best = t.get();
+        }
+    }
+
+    return *best;
+}
+
 void SearchThread::prepare(const Position &pos, const SearchLimits &limits) {
     moveHistory.clearAllKillers();
     sd = std::make_unique<SearchData>(pos, limits, moveHistory, corrHistory);
@@ -268,6 +304,9 @@ void SearchThread::idSearch() {
     }
 
     lastSearchScore = completedDepth > 0 ? bestScore : SCORE_NONE;
+    resultPv = bestPv;
+    resultScore = bestScore;
+    resultDepth = completedDepth;
 
     if (!isMain()) return;
 
@@ -277,10 +316,11 @@ void SearchThread::idSearch() {
     stop();
     engine.waitHelpers();
 
-    SearchEvent event(depth, sd->selDepth, bestPv, bestScore, engine.nbNodes(), sd->getElapsed(), tt.usage());
+    SearchThread &best = sd->limits.maxDepth > 0 ? *this : engine.bestThread();
+    SearchEvent event(depth, best.sd->selDepth, best.resultPv, best.resultScore, engine.nbNodes(), sd->getElapsed(), tt.usage());
 
-    if (depth != completedDepth) {
-        event.depth = completedDepth;
+    if (&best != this || depth != completedDepth) {
+        event.depth = best.resultDepth;
         engine.onSearchProgress(event);
     }
 
