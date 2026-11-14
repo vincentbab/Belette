@@ -276,7 +276,7 @@ void SearchThread::idSearch() {
 
             // Best move effort
             if (depth >= 5) {
-                double effort = double(sd->rootMoveNodes[moveFromTo(bestPv.front())]) / double(sd->nbNodes);
+                double effort = double(sd->rootMoveNodes[moveFromTo(bestPv.front())]) / double(sd->nodeCount());
                 sd->softScale *= (TmEffortBase / 1000.0 - effort) * TmEffortMul / 1000.0;
             }
 
@@ -367,17 +367,17 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
     Position &pos = sd->position;
 
     if (!RootNode && pos.isDraw(ply)) {
-        return scoreDraw(sd->nbNodes);
+        return scoreDraw(sd->nodeCount());
     }
 
     if (!RootNode && alpha < SCORE_DRAW && pos.hasUpcomingRepetition(ply)) {
-        alpha = scoreDraw(sd->nbNodes);
+        alpha = scoreDraw(sd->nodeCount());
         if (alpha >= beta)
             return alpha;
     }
 
     if (ply >= MAX_PLY) [[unlikely]] {
-        return pos.inCheck() ? scoreDraw(sd->nbNodes) : evaluate<Me>(pos);
+        return pos.inCheck() ? scoreDraw(sd->nodeCount()) : evaluate<Me>(pos);
     }
 
     Node& node = sd->node(ply);
@@ -637,7 +637,7 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
             }
         }
 
-        const size_t nodesBefore = sd->nbNodes;
+        const size_t nodesBefore = sd->nodeCount();
 
         sd->addNode();
 
@@ -697,7 +697,7 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
         pos.undoMove<Me, Frc>(move);
 
         if constexpr (RootNode)
-            sd->rootMoveNodes[moveFromTo(move)] += sd->nbNodes - nodesBefore;
+            sd->rootMoveNodes[moveFromTo(move)] += sd->nodeCount() - nodesBefore;
 
         if (searchAborted()) return false; // break
 
@@ -776,11 +776,11 @@ Score SearchThread::qSearch(Score alpha, Score beta, int ply) {
     Position &pos = sd->position;
 
     if (pos.isDraw(ply)) {
-        return scoreDraw(sd->nbNodes);
+        return scoreDraw(sd->nodeCount());
     }
 
     if (alpha < SCORE_DRAW && pos.hasUpcomingRepetition(ply)) {
-        alpha = scoreDraw(sd->nbNodes);
+        alpha = scoreDraw(sd->nodeCount());
         if (alpha >= beta)
             return alpha;
     }
@@ -791,7 +791,7 @@ Score SearchThread::qSearch(Score alpha, Score beta, int ply) {
     //Node& node = sd->node(ply);
 
     if (ply >= MAX_PLY) [[unlikely]] {
-        return pos.inCheck() ? scoreDraw(sd->nbNodes) : evaluate<Me>(pos);
+        return pos.inCheck() ? scoreDraw(sd->nodeCount()) : evaluate<Me>(pos);
     }
 
     bool inCheck = pos.inCheck();

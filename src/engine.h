@@ -90,9 +90,9 @@ struct SearchData {
 
     inline bool shouldStop() {
         // Check time every 1024 nodes for performance reason
-        if (nbNodes % 1024 != 0)  return false;
+        if (nodeCount() % 1024 != 0)  return false;
 
-        if (useNodeCountLimit() && nbNodes >= limits.maxNodes)
+        if (useNodeCountLimit() && nodeCount() >= limits.maxNodes)
             return true;
 
         if (pondering)
@@ -120,7 +120,8 @@ struct SearchData {
         return false;
     }
 
-    inline void addNode() { nbNodes.store(nbNodes.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed); }
+    inline size_t nodeCount() const { return nbNodes.load(std::memory_order_relaxed); }
+    inline void addNode() { nbNodes.store(nodeCount() + 1, std::memory_order_relaxed); }
 
     inline Node &node(int ply) { assert(ply >= -NODE_SENTINELS && ply < MAX_PLY); return nodes[ply + NODE_SENTINELS]; }
 
@@ -211,7 +212,7 @@ public:
     ~SearchThread();
 
     inline bool isMain() const { return id == 0; }
-    inline size_t nbNodes() const { return sd ? sd->nbNodes.load(std::memory_order_relaxed) : 0; }
+    inline size_t nbNodes() const { return sd ? sd->nodeCount() : 0; }
 
     void prepare(const Position &pos, const SearchLimits &limits);
     void start();
