@@ -3,7 +3,7 @@
 # Belette
 Another UCI-compatible chess engine written in C++. 
 
-For now it only supports CPUs with AVX2 and BMI2 instructions. Support for other architectures might be added in the future.
+Requires an x86-64 CPU with AVX2 and BMI2 instructions.
 
 See [Release page](https://github.com/vincentbab/Belette/releases) for precompiled binaries
 
@@ -16,9 +16,12 @@ The Bot will only accept one challenge at a time.
 Tested on Windows and Linux with GCC >= 12 and CLang >= 19
 
 ```sh
-make
+make                # native
+make ARCH=avx2      # x86-64-v3
+make ARCH=avx512    # x86-64-v4
+make pgo            # profile-guided build
 ```
-Executable will be in `./build/Release/bin/belette[.exe]`
+Executable will be in `./build/belette-release[.exe]` (`./build/belette-pgo[.exe]` for the PGO build)
 
 ## UCI Options
 
@@ -32,7 +35,10 @@ Specify the hash table size in megabytes
 Clear the hash table and all history tables
 
 ### Threads
-For now this option doesn't do anything. It's only for compatibility purpose
+Number of search threads (default 1, max 1024)
+
+### Ponder
+Allow the GUI to use pondering (`go ponder` / `ponderhit`)
 
 ### Move Overhead
 Time in milliseconds subtracted from the remaining time and from movetime to compensate for communication delays (default 10ms)
@@ -57,35 +63,51 @@ Time: 3455ms
 ### Search
  - Iterative deepening
  - Aspiration window
- - Negamax
- - Transpositation Table
+ - Principal variation search (PVS)
+ - Transposition Table
+ - Upcoming repetition detection
  - Check extension
  - Null move pruning (NMP), with dynamic reduction
  - Reverse futility pruning (RFP)
+ - Razoring
  - Futility pruning (fail-soft)
+ - Capture futility pruning
  - History pruning
  - ProbCut
  - Singular extensions (including double and triple extensions)
  - Internal iterative reduction (IIR)
- - Late move reduction (LMR)
+ - Late move reduction (LMR), with deeper/shallower re-search
  - Late move pruning (LMP)
  - Improving heuristic
  - SEE pruning
+ - Correction history
+   - Pawn
+   - Non-pawn
+   - Major
+   - Minor
+   - Continuation
  - Quiescence
+   - Futility pruning
+   - SEE pruning
 
- ### Move ordering
-  - Hash move (TT Move)
-  - MVV-LVA
-  - Killer moves
-  - Counter move
-  - Threats
-  - Checks
-  - Butterfly history (threat-indexed)
-  - Pawn history
-  - Continuation history
-  - Capture history
-  - Correction history (pawn, non-pawn, major, minor, continuation)
-  - Staged move generation (good captures, good quiets, bad captures, bad quiets), with lazy selection of quiet moves
+### Multithreading
+ - Lazy SMP
+ - Shared transposition table
+ - Shared correction histories, sized by thread count
+ - Best thread selection by voting, weighted by score and depth
+
+### Move ordering
+ - Hash move (TT Move)
+ - MVV-LVA
+ - Killer moves
+ - Counter move
+ - Threats
+ - Checks
+ - Butterfly history (threat-indexed)
+ - Pawn history
+ - Continuation history
+ - Capture history
+ - Staged move generation (good captures, good quiets, bad captures, bad quiets), with lazy selection of quiet moves
 
 ### Evaluation
  - Tapered
@@ -94,7 +116,8 @@ Time: 3455ms
 
 ### Time management
  - Soft and hard time limits
- - Scaling from best move stability, best move effort and score trend
+ - Soft limit grows with game progress, supports `movestogo`
+ - Scaling from best move stability, best move instability, best move effort and score trend
 
 ### Tuning
  - Search parameters tuned with SPSA
