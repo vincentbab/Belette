@@ -297,8 +297,8 @@ void SearchThread::idSearch() {
 
         if (!isMain()) continue;
 
-        // Instamove
-        if (sd->useTournamentTime() && !sd->pondering && rootMoves.size() == 1) break;
+        // Single legal move capped at 500ms
+        if (sd->useTournamentTime() && !sd->pondering && rootMoves.size() == 1 && sd->getElapsed() >= 500) break;
 
         if (sd->shouldStopSoft()) break;
     }
