@@ -106,7 +106,7 @@ Time: 3455ms
  - Butterfly history (threat-indexed)
  - Pawn history
  - Continuation history
- - Capture history
+ - Capture history (threat-indexed)
  - Staged move generation (good captures, good quiets, bad captures, bad quiets), with lazy selection of quiet moves
 
 ### Evaluation
@@ -134,4 +134,4 @@ Resources and other engines that inspired me:
  - [Ethereal](https://github.com/AndyGrant/Ethereal)
  - [Stormphrax](https://github.com/Ciekce/Stormphrax)
  - [Potential](https://github.com/ProgramciDusunur/Potential)
- 
+ - [Sirius](https://github.com/mcthouacbb/Sirius)
