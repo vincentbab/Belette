@@ -47,6 +47,10 @@ CPPFLAGS := -Wall -std=c++20 -fno-rtti $(ARCH_FLAGS) -D_CRT_SECURE_NO_WARNINGS
 ifeq ($(TUNE),1)
 	CPPFLAGS += -DTUNE
 endif
+PEXT ?= 0
+ifeq ($(PEXT),0)
+	CPPFLAGS += -DNO_PEXT
+endif
 CPPFLAGS_DEBUG := $(CPPFLAGS) -g -O0 -DDEBUG
 CPPFLAGS_RELEASE := $(CPPFLAGS) -O3 -funroll-loops -finline -fomit-frame-pointer -flto -DNDEBUG
 

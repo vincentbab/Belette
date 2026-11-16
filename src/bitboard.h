@@ -15,9 +15,9 @@ void init();
 
 } // namespace Bitboard
 
-inline uint64_t pext(uint64_t b, uint64_t m) {
-    return _pext_u64(b, m);
-}
+#if defined(__BMI2__) && !defined(NO_PEXT)
+#define USE_PEXT
+#endif
 
 inline int popcount(Bitboard b) {
     return __builtin_popcountll(b);
@@ -34,20 +34,28 @@ inline Square bitscan(Bitboard b) {
 #define bitscan_loop(B) for(; B; B &= B - 1)
 //#define bitscan_loop(B) for(; B; B = _blsr_u64(B))
 
-struct PextEntry {
-    Bitboard  mask;
+struct SliderEntry {
+    Bitboard mask;
     Bitboard *data;
+#ifndef USE_PEXT
+    uint64_t magic;
+#endif
 
+    template<PieceType Pt>
     inline Bitboard attacks(Bitboard occupied) const {
-        return data[pext(occupied, mask)];
+#ifdef USE_PEXT
+        return data[_pext_u64(occupied, mask)];
+#else
+        return data[((occupied | mask) * magic) >> (Pt == ROOK ? 64 - 12 : 64 - 9)];
+#endif
     }
 };
 
 extern Bitboard PAWN_ATTACK[NB_SIDE][NB_SQUARE];
 extern Bitboard KNIGHT_MOVE[NB_SQUARE];
 extern Bitboard KING_MOVE[NB_SQUARE];
-extern PextEntry BISHOP_MOVE[NB_SQUARE];
-extern PextEntry ROOK_MOVE[NB_SQUARE];
+extern SliderEntry BISHOP_MOVE[NB_SQUARE];
+extern SliderEntry ROOK_MOVE[NB_SQUARE];
 
 extern Bitboard BETWEEN_BB[NB_SQUARE][NB_SQUARE];
 extern Bitboard LINE_BB[NB_SQUARE][NB_SQUARE];
@@ -85,9 +93,9 @@ inline Bitboard sliderAttacks(Square sq, Bitboard occupied) {
     static_assert(Pt == ROOK || Pt == BISHOP);
 
     if constexpr (Pt == ROOK)
-        return ROOK_MOVE[sq].attacks(occupied);
+        return ROOK_MOVE[sq].attacks<ROOK>(occupied);
     else
-        return BISHOP_MOVE[sq].attacks(occupied);
+        return BISHOP_MOVE[sq].attacks<BISHOP>(occupied);
 }
 
 template<PieceType Pt>
