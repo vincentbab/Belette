@@ -208,53 +208,80 @@ void SearchThread::idSearch() {
     MoveList rootMoves;
     generateLegalMoves<Frc>(sd->position, rootMoves);
 
-    for (depth = 1; depth < MAX_PLY; depth++) {
-        Score alpha = -SCORE_INFINITE, beta = SCORE_INFINITE;
-        Score delta = 0, score = -SCORE_INFINITE;
+    int nbRootMoves = 0;
+    for (Move m : rootMoves)
+        nbRootMoves += sd->limits.searchMoves.empty() || sd->limits.searchMoves.contains(m);
+    const int multiPv = std::clamp(sd->limits.multiPv, 1, std::max(1, nbRootMoves));
+    pvLines.assign(multiPv, PvLine());
 
+    for (depth = 1; depth < MAX_PLY; depth++) {
         // Reset selDepth
         sd->selDepth = 0;
+        sd->rootExcluded.clear();
+        std::vector<PvLine> lines;
 
-        searchDepth = depth;
+        for (sd->pvIdx = 0; sd->pvIdx < multiPv; sd->pvIdx++) {
+            Score alpha = -SCORE_INFINITE, beta = SCORE_INFINITE;
+            Score delta = 0, score = -SCORE_INFINITE;
+            const Score prevScore = pvLines[sd->pvIdx].score;
 
-        // Aspiration window
-        if (depth > AspDepth) {
-            delta = AspDelta + std::abs(bestScore)/AspScoreDiv;
-            alpha = std::max(-SCORE_INFINITE, bestScore - delta);
-            beta  = std::min( SCORE_INFINITE, bestScore + delta);
-        }
+            searchDepth = depth;
 
-        while (true) {
-            if (alpha < -SCORE_MATE_MAX_PLY) alpha = -SCORE_INFINITE;
-            if (beta > SCORE_MATE_MAX_PLY) beta = SCORE_INFINITE;
-            //std::cout << "  depth=" << searchDepth << " d=" << delta << std::endl;
-            score = pvSearch<Me, NodeType::Root, Frc>(alpha, beta, searchDepth, 0, false);
-
-            if (searchAborted()) break;
-
-            if (score <= alpha) { // Fail low
-                //std::cout << "  Fail Low: a=" << alpha << " b=" << beta << " score=" << score << std::endl;
-                beta = (alpha + beta) / 2;
-                alpha = std::max(score - delta, -SCORE_INFINITE);
-                searchDepth = depth;
-            } else if (score >= beta) { // Fail high
-                //std::cout << "  Fail High: a=" << alpha << " b=" << beta << " score=" << score << std::endl;
-                beta = std::min(score + delta, SCORE_INFINITE);
-                //searchDepth = std::max(std::max(1, depth - 4), searchDepth - 1);
-                searchDepth = std::max(1, searchDepth - (std::abs(score) < 1000));
-            } else {
-                break;
+            // Aspiration window
+            if (depth > AspDepth) {
+                delta = AspDelta + std::abs(prevScore)/AspScoreDiv;
+                alpha = std::max(-SCORE_INFINITE, prevScore - delta);
+                beta  = std::min( SCORE_INFINITE, prevScore + delta);
             }
 
-            delta += delta * AspGrowth / 1024;
+            while (true) {
+                if (alpha < -SCORE_MATE_MAX_PLY) alpha = -SCORE_INFINITE;
+                if (beta > SCORE_MATE_MAX_PLY) beta = SCORE_INFINITE;
+                //std::cout << "  depth=" << searchDepth << " d=" << delta << std::endl;
+                score = pvSearch<Me, NodeType::Root, Frc>(alpha, beta, searchDepth, 0, false);
+
+                if (searchAborted()) break;
+
+                if (score <= alpha) { // Fail low
+                    //std::cout << "  Fail Low: a=" << alpha << " b=" << beta << " score=" << score << std::endl;
+                    beta = (alpha + beta) / 2;
+                    alpha = std::max(score - delta, -SCORE_INFINITE);
+                    searchDepth = depth;
+                } else if (score >= beta) { // Fail high
+                    //std::cout << "  Fail High: a=" << alpha << " b=" << beta << " score=" << score << std::endl;
+                    beta = std::min(score + delta, SCORE_INFINITE);
+                    //searchDepth = std::max(std::max(1, depth - 4), searchDepth - 1);
+                    searchDepth = std::max(1, searchDepth - (std::abs(score) < 1000));
+                } else {
+                    break;
+                }
+
+                delta += delta * AspGrowth / 1024;
+            }
+
+            if (searchAborted() && (depth > 1 || score == -SCORE_INFINITE || sd->pvIdx > 0)) break;
+
+            lines.push_back(PvLine{sd->node(0).pv, score, depth, sd->selDepth});
+
+            if (!sd->node(0).pv.empty())
+                sd->rootExcluded.push_back(sd->node(0).pv.front());
+
+            if (searchAborted()) break;
         }
 
-        if (searchAborted() && (depth > 1 || score == -SCORE_INFINITE)) break;
+        if (lines.empty()) break;
 
-        bestPv = sd->node(0).pv;
-        bestScore = score;
+        std::stable_sort(lines.begin(), lines.end(), [](const PvLine &a, const PvLine &b) { return a.score > b.score; });
+        for (const PvLine &line : pvLines)
+            if (lines.size() < size_t(multiPv) && !line.pv.empty() && !sd->rootExcluded.contains(line.pv.front()))
+                lines.push_back(line);
+        lines.resize(multiPv);
+        pvLines = std::move(lines);
+
+        bestPv = pvLines[0].pv;
+        bestScore = pvLines[0].score;
         completedDepth = depth;
-        iterScores[depth] = score;
+        iterScores[depth] = bestScore;
 
         if (depth == 1)
             sd->bestMoveChanges = 0;
@@ -282,14 +309,14 @@ void SearchThread::idSearch() {
 
             // Falling eval
             if (depth >= 5) {
-                const Score prevSearch = lastSearchScore != SCORE_NONE ? lastSearchScore : score;
-                const double falling = 1.0 + (TmFallPrev * double(prevSearch - score) + TmFallIter * double(iterScores[depth - 3] - score)) / 1000.0;
+                const Score prevSearch = lastSearchScore != SCORE_NONE ? lastSearchScore : bestScore;
+                const double falling = 1.0 + (TmFallPrev * double(prevSearch - bestScore) + TmFallIter * double(iterScores[depth - 3] - bestScore)) / 1000.0;
                 sd->softScale *= std::clamp(falling, TmFallMin / 1000.0, TmFallMax / 1000.0);
             }
         }
 
         if (isMain())
-            engine.onSearchProgress(SearchEvent(depth, sd->selDepth, bestPv, bestScore, engine.nbNodes(), sd->getElapsed(), tt.usage()));
+            reportLines();
 
         if (sd->limits.maxDepth > 0 && depth >= sd->limits.maxDepth) break;
 
@@ -316,17 +343,25 @@ void SearchThread::idSearch() {
     stop();
     engine.waitHelpers();
 
-    SearchThread &best = sd->limits.maxDepth > 0 ? *this : engine.bestThread();
+    SearchThread &best = sd->limits.maxDepth > 0 || pvLines.size() > 1 ? *this : engine.bestThread();
     SearchEvent event(depth, best.sd->selDepth, best.resultPv, best.resultScore, engine.nbNodes(), sd->getElapsed(), tt.usage());
 
-    if (&best != this || depth != completedDepth) {
+    if (&best != this) {
         event.depth = best.resultDepth;
         engine.onSearchProgress(event);
+    } else if (depth != completedDepth) {
+        reportLines();
     }
 
     engine.onSearchFinish(event);
 
     engine.searching = false;
+}
+
+void SearchThread::reportLines() {
+    for (size_t i = 0; i < pvLines.size(); i++)
+        if (!pvLines[i].pv.empty())
+            engine.onSearchProgress(SearchEvent(pvLines[i].depth, pvLines[i].selDepth, pvLines[i].pv, pvLines[i].score, engine.nbNodes(), sd->getElapsed(), tt.usage(), int(i) + 1));
 }
 
 // Negamax search
@@ -552,6 +587,10 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
         if (RootNode && sd->limits.searchMoves.size() > 0 && !sd->limits.searchMoves.contains(move))
             return true; // continue
 
+        // MultiPV
+        if (RootNode && sd->rootExcluded.contains(move))
+            return true; // continue
+
         if (move == excludedMove)
             return true; // continue
 
@@ -705,7 +744,7 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
             bestScore = score;
             
             if (bestScore > alpha) {
-                if (RootNode && nbMoves > 1)
+                if (RootNode && nbMoves > 1 && sd->pvIdx == 0)
                     sd->bestMoveChanges++;
 
                 bestMove = move;
@@ -742,14 +781,14 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
     }
 
     // Update correction history
-    if (!inCheck && !excludedMove && !(bestMove != MOVE_NONE && pos.isTactical<Frc>(bestMove)) && std::abs(bestScore) < SCORE_MATE_MAX_PLY
+    if (!inCheck && !excludedMove && !(RootNode && sd->pvIdx > 0) && !(bestMove != MOVE_NONE && pos.isTactical<Frc>(bestMove)) && std::abs(bestScore) < SCORE_MATE_MAX_PLY
         && ((bestScore < node.staticEval && bestScore < beta) || (bestScore > node.staticEval && bestMove != MOVE_NONE)))
     {
         sd->corrHistory.updateCorrection<Me>(pos, bestScore, node.staticEval, depth, corrCtx);
     }
 
     // Update Transposition Table
-    if (!excludedMove) {
+    if (!excludedMove && !(RootNode && sd->pvIdx > 0)) {
         Bound ttBound = bestScore >= beta                ? BOUND_LOWER :
                         PvNode && bestMove != MOVE_NONE  ? BOUND_EXACT : BOUND_UPPER;
         tt.set(tte, pos.hash(), depth, ply, ttBound, bestMove, rawEval, bestScore, ttPv);

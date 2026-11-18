@@ -39,6 +39,7 @@ Uci::Uci()  {
     options["Clear Hash"] = UciOption([&] (const UciOption &) { engine.newGame(); });
     options["Threads"] = UciOption(1, 1, 1024, [&] (const UciOption &opt) { engine.setThreads(int(int64_t(opt))); });
     options["Ponder"] = UciOption(false);
+    options["MultiPV"] = UciOption(1, 1, MAX_MOVE);
     options["Move Overhead"] = UciOption(10, 0, 5000);
     options["UCI_Chess960"] = UciOption(false, [&] (const UciOption &opt) { Frc960::uciFormat = bool(opt); });
 
@@ -280,6 +281,7 @@ bool Uci::cmdGo(std::istringstream& is) {
     std::string token;
     SearchLimits params;
     params.moveOverhead = int64_t(options["Move Overhead"]);
+    params.multiPv = int(int64_t(options["MultiPV"]));
 
     bool inSearchMoves = false;
 
@@ -448,7 +450,7 @@ void UciEngine::onSearchProgress(const SearchEvent &event) {
     console << "info"
         << " depth " << event.depth 
         << " seldepth " << event.selDepth 
-        << " multipv " << 1
+        << " multipv " << event.multiPv
         << " score " << Uci::formatScore(event.bestScore)
         << " nodes " << event.nbNodes
         << " nps " << (int)((float)event.nbNodes / std::max<std::common_type_t<int, TimeMs>>(1, event.elapsed) * 1000.0f)
