@@ -31,6 +31,7 @@ struct SearchLimits {
     TimeMs moveOverhead = 0;
     bool ponder = false;
     bool infinite = false;
+    int multiPv = 1;
     MoveList searchMoves;
 };
 
@@ -172,6 +173,8 @@ struct SearchData {
     int bestMoveChanges = 0;
     double bestMoveInstability = 0;
     int nmpMinPly = 0;
+    int pvIdx = 0;
+    MoveList rootExcluded;
     size_t rootMoveNodes[NB_SQUARE*NB_SQUARE] = {0};
 
     MoveHistory& moveHistory;
@@ -181,8 +184,8 @@ struct SearchData {
 };
 
 struct SearchEvent {
-    SearchEvent(int depth_, int selDepth_, const PvList &pv_, Score bestScore_, size_t nbNode_, TimeMs elapsed_, size_t hashfull_):
-        depth(depth_), selDepth(selDepth_), pv(pv_), bestScore(bestScore_), nbNodes(nbNode_), elapsed(elapsed_), hashfull(hashfull_) { }
+    SearchEvent(int depth_, int selDepth_, const PvList &pv_, Score bestScore_, size_t nbNode_, TimeMs elapsed_, size_t hashfull_, int multiPv_ = 1):
+        depth(depth_), selDepth(selDepth_), pv(pv_), bestScore(bestScore_), nbNodes(nbNode_), elapsed(elapsed_), hashfull(hashfull_), multiPv(multiPv_) { }
 
     int depth;
     int selDepth;
@@ -191,6 +194,14 @@ struct SearchEvent {
     size_t nbNodes;
     TimeMs elapsed;
     size_t hashfull;
+    int multiPv;
+};
+
+struct PvLine {
+    PvList pv;
+    Score score = SCORE_DRAW;
+    int depth = 0;
+    int selDepth = 0;
 };
 
 enum class NodeType {
@@ -236,8 +247,10 @@ private:
     PvList resultPv;
     Score resultScore = SCORE_NONE;
     int resultDepth = 0;
+    std::vector<PvLine> pvLines;
 
     void idleLoop();
+    void reportLines();
 
     inline void stop();
     inline bool searchAborted() const;
