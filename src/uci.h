@@ -107,6 +107,7 @@ private:
     std::map<std::string, UciCommandHandler> commands;
     UciEngine engine;
 
+    bool execute(const std::string &line);
     bool cmdUci(std::istringstream& is);
     bool cmdIsReady(std::istringstream& is);
     bool cmdUciNewGame(std::istringstream& is);
@@ -123,6 +124,7 @@ private:
     bool cmdPerftmp(std::istringstream& is);
     bool cmdTest(std::istringstream& is);
     bool cmdBench(std::istringstream& is);
+    bool cmdGenfens(std::istringstream& is);
 #ifdef TUNE
     bool cmdSpsa(std::istringstream& is);
 #endif

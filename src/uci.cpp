@@ -8,6 +8,7 @@
 #include "utils.h"
 #include "movepicker.h"
 #include "bench.h"
+#include "datagen.h"
 #include "tune.h"
 
 namespace Belette {
@@ -41,6 +42,7 @@ Uci::Uci()  {
     options["Ponder"] = UciOption(false);
     options["MultiPV"] = UciOption(1, 1, MAX_MOVE);
     options["Move Overhead"] = UciOption(10, 0, 5000);
+    options["SoftNodes"] = UciOption(false);
     options["UCI_Chess960"] = UciOption(false, [&] (const UciOption &opt) { Frc960::uciFormat = bool(opt); });
 
 #ifdef TUNE
@@ -69,6 +71,7 @@ Uci::Uci()  {
     commands["perftmp"] = &Uci::cmdPerftmp;
     commands["test"] = &Uci::cmdTest;
     commands["bench"] = &Uci::cmdBench;
+    commands["genfens"] = &Uci::cmdGenfens;
 #ifdef TUNE
     commands["spsa"] = &Uci::cmdSpsa;
 #endif
@@ -153,41 +156,39 @@ void Uci::loop(int argc, char* argv[]) {
         return;
     }
 
+    if (argc > 1) {
+        for (int i = 1; i < argc && execute(argv[i]); i++);
 
-    std::string line, token;
+        return;
+    }
+
+    std::string line;
 
     while(console.getline(line)) {
-        std::istringstream parser(line);
-
-        if (line.empty()) continue;
-
-        token.clear();
-        parser >> std::skipws >> token;
-
-        bool unknowCommand = true, exit = false;
-        for (auto const& [cmd, handler] : commands) {
-            if (cmd != token) continue;
-
-            unknowCommand = false;
-
-            if (!(this->*handler)(parser)) {
-                exit = true;
-            }
-
-            break;
-        }
-
-        if (unknowCommand) {
-            console << "Unknow command '" << token << "'" << std::endl;
-        }
-
-        if (exit) {
+        if (!execute(line)) {
             break;
         }
     }
 
     // cleanup
     console << "Exiting UCI loop" << std::endl;
+}
+
+bool Uci::execute(const std::string &line) {
+    std::istringstream parser(line);
+    std::string token;
+
+    if (line.empty()) return true;
+
+    parser >> std::skipws >> token;
+
+    auto it = commands.find(token);
+    if (it == commands.end()) {
+        console << "Unknow command '" << token << "'" << std::endl;
+        return true;
+    }
+
+    return (this->*(it->second))(parser);
 }
 
 bool Uci::cmdUci(std::istringstream &is) {
@@ -335,6 +336,11 @@ bool Uci::cmdGo(std::istringstream& is) {
         }
     }
 
+    if (bool(options["SoftNodes"]) && params.maxNodes > 0) {
+        params.softNodes = params.maxNodes;
+        params.maxNodes *= HARD_NODES_FACTOR;
+    }
+
     engine.search(params);
     return true;
 }
@@ -430,6 +436,35 @@ bool Uci::cmdBench(std::istringstream& is) {
     const std::string fen = engine.position().fen();
 
     bench(depth);
+
+    engine.position().setFromFEN(fen);
+
+    return true;
+}
+
+bool Uci::cmdGenfens(std::istringstream& is) {
+    std::string token, book;
+    int count = 0;
+    uint64_t seed = 0;
+    GenfensParams params;
+
+    is >> count;
+
+    while (is >> token) {
+        if (token == "seed") is >> seed;
+        else if (token == "book") is >> book;
+        else if (token == "plies") is >> params.plies;
+        else if (token == "multipvMin") is >> params.multiPvMin;
+        else if (token == "multipvMax") is >> params.multiPvMax;
+        else if (token == "multipvStep") is >> params.multiPvStep;
+        else if (token == "margin") is >> params.margin;
+        else if (token == "nodes") is >> params.nodes;
+    }
+
+    engine.abortSearch();
+    const std::string fen = engine.position().fen();
+
+    genfens(count, seed, book, params);
 
     engine.position().setFromFEN(fen);
 

@@ -328,6 +328,8 @@ void SearchThread::idSearch() {
         if (sd->useTournamentTime() && !sd->pondering && rootMoves.size() == 1 && sd->getElapsed() >= 500) break;
 
         if (sd->shouldStopSoft()) break;
+
+        if (sd->limits.softNodes > 0 && sd->nodeCount() >= sd->limits.softNodes) break;
     }
 
     lastSearchScore = completedDepth > 0 ? bestScore : SCORE_NONE;
