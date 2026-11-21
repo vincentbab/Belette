@@ -27,6 +27,7 @@ struct SearchLimits {
     int maxDepth = 0;
     int mate = 0;
     size_t maxNodes = 0;
+    size_t softNodes = 0;
     TimeMs maxTime = 0;
     TimeMs moveOverhead = 0;
     bool ponder = false;
@@ -215,6 +216,8 @@ constexpr int CORR_HIST_SHARED_THREADS = 32;
 
 constexpr int VOTE_SCORE_BASE = 20;
 
+constexpr int HARD_NODES_FACTOR = 8;
+
 class Engine;
 
 class SearchThread {
@@ -286,6 +289,7 @@ public:
     void setThreads(int n);
     inline bool isSearching() { return searching; }
     inline bool searchAborted() const { return aborted; }
+    inline const std::vector<PvLine> &pvLines() const { return threads[0]->pvLines; }
     inline void setHashSize(size_t size) { abortSearch(); tt.resize(size, threads.size()); }
     inline void newGame() {
         abortSearch();
