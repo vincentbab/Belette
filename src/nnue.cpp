@@ -61,6 +61,34 @@ static inline void screluDot(const int16_t *acc, const int16_t *weights, Vec (&s
     }
 }
 
+template<int NA, int NS>
+static inline void updateScreluDot(int16_t *dst, const int16_t *src, const int16_t *const *wa, const int16_t *const *ws,
+                                   const int16_t *weights, Vec (&sums)[NB_SUMS]) {
+    const Vec zero = vecZero();
+    const Vec qa = vecSet16(QA);
+
+    for (int i = 0; i < HIDDEN_SIZE; i += NB_SUMS * VEC_SIZE) {
+        for (int j = 0; j < NB_SUMS; j++) {
+            const int o = i + j * VEC_SIZE;
+            Vec a = vecLoad(&src[o]);
+            for (int k = 0; k < NA; k++) a = vecAdd16(a, vecLoad(&wa[k][o]));
+            for (int k = 0; k < NS; k++) a = vecSub16(a, vecLoad(&ws[k][o]));
+            vecStore(&dst[o], a);
+
+            const Vec v = vecMin16(vecMax16(a, zero), qa);
+            const Vec vw = vecMullo16(v, vecLoad(&weights[o]));
+            sums[j] = vecAdd32(sums[j], vecMadd16(vw, v));
+        }
+    }
+}
+
+static inline int output(Vec (&sums)[NB_SUMS]) {
+    for (int j = 1; j < NB_SUMS; j++) sums[0] = vecAdd32(sums[0], sums[j]);
+
+    int out = vecHsum32(sums[0]) / QA + network.outBias;
+    return out * EVAL_SCALE / (QA * QB);
+}
+
 int evaluate(const Accumulator &acc, Side stm) {
     Vec sums[NB_SUMS];
     for (int j = 0; j < NB_SUMS; j++) sums[j] = vecZero();
@@ -68,10 +96,23 @@ int evaluate(const Accumulator &acc, Side stm) {
     screluDot(acc.values[stm], network.outWeights, sums);
     screluDot(acc.values[~stm], network.outWeights + HIDDEN_SIZE, sums);
 
-    for (int j = 1; j < NB_SUMS; j++) sums[0] = vecAdd32(sums[0], sums[j]);
+    return output(sums);
+}
 
-    int output = vecHsum32(sums[0]) / QA + network.outBias;
-    return output * EVAL_SCALE / (QA * QB);
+template<int NA, int NS>
+static inline int updateAndEvaluate(Accumulator &dst, const Accumulator &src, const DirtyPiece &dp, Side stm) {
+    Vec sums[NB_SUMS];
+    for (int j = 0; j < NB_SUMS; j++) sums[j] = vecZero();
+
+    for (Side s : {stm, ~stm}) {
+        const int16_t *wa[NA], *ws[NS];
+        for (int k = 0; k < NA; k++) wa[k] = featureWeights(s, dp.add[k]);
+        for (int k = 0; k < NS; k++) ws[k] = featureWeights(s, dp.sub[k]);
+
+        updateScreluDot<NA, NS>(dst.values[s], src.values[s], wa, ws, network.outWeights + (s == stm ? 0 : HIDDEN_SIZE), sums);
+    }
+
+    return output(sums);
 }
 #else
 static inline int screluDot(const int16_t *acc, const int16_t *weights) {
@@ -91,6 +132,18 @@ int evaluate(const Accumulator &acc, Side stm) {
     output = output / QA + network.outBias;
     return output * EVAL_SCALE / (QA * QB);
 }
+
+template<int NA, int NS>
+static inline int updateAndEvaluate(Accumulator &dst, const Accumulator &src, const DirtyPiece &dp, Side stm) {
+    dst.updateFrom<NA, NS>(src, dp);
+    return evaluate(dst, stm);
+}
 #endif
+
+int evaluateUpdate(Accumulator &dst, const Accumulator &src, const DirtyPiece &dp, Side stm) {
+    if (dp.nAdd == 1 && dp.nSub == 1) return updateAndEvaluate<1, 1>(dst, src, dp, stm);
+    if (dp.nAdd == 1) return updateAndEvaluate<1, 2>(dst, src, dp, stm);
+    return updateAndEvaluate<2, 2>(dst, src, dp, stm);
+}
 
 } /* namespace Belette::NNUE */
