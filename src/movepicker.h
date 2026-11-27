@@ -19,7 +19,7 @@ inline MoveScore pieceThreatenedValue(PieceType pt) {
 }
 
 struct ScoredMove {
-    ScoredMove() { };
+    ScoredMove() = default;
 
     inline ScoredMove(Move move_, MoveScore score_) 
     : score(score_), move(move_) { }
