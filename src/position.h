@@ -109,7 +109,7 @@ public:
     inline bool inCheck() const { return !!state->checkers; }
 
     inline uint64_t hash() const { return state->hash; }
-    inline const NNUE::Accumulator& accumulator() const { return acc; }
+    inline const NNUE::DirtyPiece& dirtyPiece() const { return dirty; }
     inline uint64_t pawnHash() const { return pawnKey; }
     inline uint64_t nonPawnHash(Side side) const { return nonPawnKeys[side]; }
     inline uint64_t minorHash() const { return minorKey; }
@@ -180,7 +180,7 @@ private:
     uint64_t nonPawnKeys[NB_SIDE];
     uint64_t minorKey;
     uint64_t majorKey;
-    NNUE::Accumulator acc;
+    NNUE::DirtyPiece dirty;
 
     Side sideToMove;
 

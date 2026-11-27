@@ -4,6 +4,7 @@
 #include <cstring>
 #include "incbin.h"
 #include "nnue.h"
+#include "position.h"
 
 INCBIN(Network, EVALFILE);
 
@@ -28,6 +29,19 @@ void init() {
     std::memcpy(network.outWeights, data, sizeof(network.outWeights));
     data += sizeof(network.outWeights);
     std::memcpy(&network.outBias, data, sizeof(network.outBias));
+}
+
+Accumulator computeAccumulator(const Position &pos) {
+    Accumulator acc;
+    acc.reset();
+    Bitboard occupied = pos.getPiecesBB();
+
+    bitscan_loop(occupied) {
+        Square sq = bitscan(occupied);
+        acc.add(pos.getPieceAt(sq), sq);
+    }
+
+    return acc;
 }
 
 static inline int screluDot(const int16_t *acc, const int16_t *weights) {

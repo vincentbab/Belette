@@ -414,7 +414,7 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
     }
 
     if (ply >= MAX_PLY) [[unlikely]] {
-        return pos.inCheck() ? scoreDraw(sd->nodeCount()) : evaluate<Me>(pos);
+        return pos.inCheck() ? scoreDraw(sd->nodeCount()) : evaluate<Me>(pos, sd->accumulators.current());
     }
 
     Node& node = sd->node(ply);
@@ -460,9 +460,9 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
     Score rawEval = SCORE_NONE;
     if (!inCheck) {
         if (ttHit) {
-            rawEval = (tte->eval() != SCORE_NONE ? tte->eval() : evaluate<Me>(pos));
+            rawEval = (tte->eval() != SCORE_NONE ? tte->eval() : evaluate<Me>(pos, sd->accumulators.current()));
         } else {
-            rawEval = evaluate<Me>(pos);
+            rawEval = evaluate<Me>(pos, sd->accumulators.current());
             tt.set(tte, pos.hash(), 0, ply, BOUND_NONE, MOVE_NONE, rawEval, SCORE_NONE, ttPv);
         }
 
@@ -547,13 +547,13 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
 
             node.setMove(sd->moveHistory, sd->corrHistory, pos, move);
 
-            pos.doMove<Me, Frc>(move);
+            sd->doMove<Me, Frc>(move);
             probCutScore = -qSearch<~Me, NodeType::NonPV, Frc>(-probCutBeta, -probCutBeta+1, ply+1);
 
             if (probCutScore >= probCutBeta)
                 probCutScore = -pvSearch<~Me, NodeType::NonPV, Frc>(-probCutBeta, -probCutBeta+1, depth-4, ply+1, !cutNode);
 
-            pos.undoMove<Me, Frc>(move);
+            sd->undoMove<Me, Frc>(move);
 
             if (searchAborted()) return false;
 
@@ -689,7 +689,7 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
         node.setMove(sd->moveHistory, sd->corrHistory, pos, move);
 
         // Do move
-        pos.doMove<Me, Frc>(move);
+        sd->doMove<Me, Frc>(move);
         sd->corrHistory.prefetchCorrection<~Me>(pos);
 
         Score score;
@@ -735,7 +735,7 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
         }
 
         // Undo move
-        pos.undoMove<Me, Frc>(move);
+        sd->undoMove<Me, Frc>(move);
 
         if constexpr (RootNode)
             sd->rootMoveNodes[moveFromTo(move)] += sd->nodeCount() - nodesBefore;
@@ -832,7 +832,7 @@ Score SearchThread::qSearch(Score alpha, Score beta, int ply) {
     //Node& node = sd->node(ply);
 
     if (ply >= MAX_PLY) [[unlikely]] {
-        return pos.inCheck() ? scoreDraw(sd->nodeCount()) : evaluate<Me>(pos);
+        return pos.inCheck() ? scoreDraw(sd->nodeCount()) : evaluate<Me>(pos, sd->accumulators.current());
     }
 
     bool inCheck = pos.inCheck();
@@ -855,9 +855,9 @@ Score SearchThread::qSearch(Score alpha, Score beta, int ply) {
     Score rawEval = SCORE_NONE;
     if (!inCheck) {
         if (ttHit) {
-            rawEval = (tte->eval() != SCORE_NONE ? tte->eval() : evaluate<Me>(pos));
+            rawEval = (tte->eval() != SCORE_NONE ? tte->eval() : evaluate<Me>(pos, sd->accumulators.current()));
         } else {
-            rawEval = evaluate<Me>(pos);
+            rawEval = evaluate<Me>(pos, sd->accumulators.current());
             tt.set(tte, pos.hash(), ttDepth, ply, BOUND_NONE, MOVE_NONE, rawEval, SCORE_NONE, ttPv);
         }
 
@@ -914,10 +914,10 @@ Score SearchThread::qSearch(Score alpha, Score beta, int ply) {
 
         sd->node(ply).setMove(sd->moveHistory, sd->corrHistory, pos, move);
 
-        pos.doMove<Me, Frc>(move);
+        sd->doMove<Me, Frc>(move);
         sd->corrHistory.prefetchCorrection<~Me>(pos);
         Score score = -qSearch<~Me, NT, Frc>(-beta, -alpha, ply+1);
-        pos.undoMove<Me, Frc>(move);
+        sd->undoMove<Me, Frc>(move);
 
         if (searchAborted()) return false; // break
 
