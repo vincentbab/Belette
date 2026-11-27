@@ -159,7 +159,7 @@ void Position::reset() {
     nonPawnKeys[WHITE] = nonPawnKeys[BLACK] = 0;
     minorKey = 0;
     majorKey = 0;
-    psqValue[MG] = psqValue[EG] = 0;
+    acc.reset();
     //for(int i=0; i<NB_PIECE_TYPE; i++) typeBB[i] = EmptyBB;
     //typeBB[ALL_PIECES] = EmptyBB;
     sideBB[WHITE] = sideBB[BLACK] = EmptyBB;
@@ -497,8 +497,7 @@ inline void Position::setPiece(Square sq, Piece p) {
     (pt == PAWN ? pawnKey : nonPawnKeys[Me]) ^= Zobrist::keys[p][sq];
     if (pt == KNIGHT || pt == BISHOP || pt == KING) minorKey ^= Zobrist::keys[p][sq];
     if (pt == ROOK || pt == QUEEN || pt == KING) majorKey ^= Zobrist::keys[p][sq];
-    psqValue[MG] += PSQ[p][sq].mg;
-    psqValue[EG] += PSQ[p][sq].eg;
+    acc.add(p, sq);
 }
 template<Side Me>
 inline void Position::unsetPiece(Square sq) {
@@ -513,8 +512,7 @@ inline void Position::unsetPiece(Square sq) {
     (pt == PAWN ? pawnKey : nonPawnKeys[Me]) ^= Zobrist::keys[p][sq];
     if (pt == KNIGHT || pt == BISHOP || pt == KING) minorKey ^= Zobrist::keys[p][sq];
     if (pt == ROOK || pt == QUEEN || pt == KING) majorKey ^= Zobrist::keys[p][sq];
-    psqValue[MG] -= PSQ[p][sq].mg;
-    psqValue[EG] -= PSQ[p][sq].eg;
+    acc.sub(p, sq);
 }
 template<Side Me>
 inline void Position::movePiece(Square from, Square to) {
@@ -531,20 +529,20 @@ inline void Position::movePiece(Square from, Square to) {
     (pt == PAWN ? pawnKey : nonPawnKeys[Me]) ^= Zobrist::keys[p][from] ^ Zobrist::keys[p][to];
     if (pt == KNIGHT || pt == BISHOP || pt == KING) minorKey ^= Zobrist::keys[p][from] ^ Zobrist::keys[p][to];
     if (pt == ROOK || pt == QUEEN || pt == KING) majorKey ^= Zobrist::keys[p][from] ^ Zobrist::keys[p][to];
-    psqValue[MG] += PSQ[p][to].mg - PSQ[p][from].mg;
-    psqValue[EG] += PSQ[p][to].eg - PSQ[p][from].eg;
+    acc.move(p, from, to);
 }
 
-[[maybe_unused]] static int computePsq(const Position& pos, Phase ph) {
-    int v = 0;
+[[maybe_unused]] static NNUE::Accumulator computeAccumulator(const Position& pos) {
+    NNUE::Accumulator a;
+    a.reset();
     Bitboard occupied = pos.getPiecesBB();
 
     bitscan_loop(occupied) {
         Square sq = bitscan(occupied);
-        v += (ph == MG ? PSQ[pos.getPieceAt(sq)][sq].mg : PSQ[pos.getPieceAt(sq)][sq].eg);
+        a.add(pos.getPieceAt(sq), sq);
     }
 
-    return v;
+    return a;
 }
 
 template<Side Me, MoveType Mt, bool Frc>
@@ -678,7 +676,7 @@ void Position::doMove(Move m) {
     assert(computeNonPawnHash(BLACK) == nonPawnHash(BLACK));
     assert(computeMinorHash() == minorHash());
     assert(computeMajorHash() == majorHash());
-    assert(computePsq(*this, MG) == psq(MG) && computePsq(*this, EG) == psq(EG));
+    assert(computeAccumulator(*this) == accumulator());
 
     state->repetition = 0;
     const int end = std::min(state->fiftyMoveRule, state->pliesFromNull);
@@ -763,7 +761,7 @@ void Position::undoMove(Move m) {
     assert(computeNonPawnHash(BLACK) == nonPawnHash(BLACK));
     assert(computeMinorHash() == minorHash());
     assert(computeMajorHash() == majorHash());
-    assert(computePsq(*this, MG) == psq(MG) && computePsq(*this, EG) == psq(EG));
+    assert(computeAccumulator(*this) == accumulator());
 }
 
 template void Position::undoMove<WHITE, NORMAL, false>(Move m);
