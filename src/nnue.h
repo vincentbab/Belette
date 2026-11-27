@@ -7,7 +7,7 @@
 namespace Belette::NNUE {
 
 constexpr int INPUT_SIZE = 768;
-constexpr int HIDDEN_SIZE = 128;
+constexpr int HIDDEN_SIZE = 256;
 
 constexpr int QA = 255;
 constexpr int QB = 64;
