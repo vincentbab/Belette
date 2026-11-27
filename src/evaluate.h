@@ -45,12 +45,9 @@ template <Phase P>
 constexpr Score PieceValue(Piece p) { return PIECE_VALUE[p][P]; }
 
 template<Side Me>
-Score evaluate(const Position &pos, const NNUE::Accumulator &acc);
+Score evaluate(const Position &pos, NNUE::AccumulatorStack &accumulators);
 
-inline Score evaluate(const Position &pos) {
-    const NNUE::Accumulator acc = NNUE::computeAccumulator(pos);
-    return pos.getSideToMove() == WHITE ? evaluate<WHITE>(pos, acc) : evaluate<BLACK>(pos, acc);
-};
+Score evaluate(const Position &pos);
 
 } /* namespace Belette */
 

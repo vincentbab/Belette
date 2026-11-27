@@ -414,7 +414,7 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
     }
 
     if (ply >= MAX_PLY) [[unlikely]] {
-        return pos.inCheck() ? scoreDraw(sd->nodeCount()) : evaluate<Me>(pos, sd->accumulators.current());
+        return pos.inCheck() ? scoreDraw(sd->nodeCount()) : evaluate<Me>(pos, sd->accumulators);
     }
 
     Node& node = sd->node(ply);
@@ -460,9 +460,9 @@ Score SearchThread::pvSearch(Score alpha, Score beta, int depth, int ply, bool c
     Score rawEval = SCORE_NONE;
     if (!inCheck) {
         if (ttHit) {
-            rawEval = (tte->eval() != SCORE_NONE ? tte->eval() : evaluate<Me>(pos, sd->accumulators.current()));
+            rawEval = (tte->eval() != SCORE_NONE ? tte->eval() : evaluate<Me>(pos, sd->accumulators));
         } else {
-            rawEval = evaluate<Me>(pos, sd->accumulators.current());
+            rawEval = evaluate<Me>(pos, sd->accumulators);
             tt.set(tte, pos.hash(), 0, ply, BOUND_NONE, MOVE_NONE, rawEval, SCORE_NONE, ttPv);
         }
 
@@ -832,7 +832,7 @@ Score SearchThread::qSearch(Score alpha, Score beta, int ply) {
     //Node& node = sd->node(ply);
 
     if (ply >= MAX_PLY) [[unlikely]] {
-        return pos.inCheck() ? scoreDraw(sd->nodeCount()) : evaluate<Me>(pos, sd->accumulators.current());
+        return pos.inCheck() ? scoreDraw(sd->nodeCount()) : evaluate<Me>(pos, sd->accumulators);
     }
 
     bool inCheck = pos.inCheck();
@@ -855,9 +855,9 @@ Score SearchThread::qSearch(Score alpha, Score beta, int ply) {
     Score rawEval = SCORE_NONE;
     if (!inCheck) {
         if (ttHit) {
-            rawEval = (tte->eval() != SCORE_NONE ? tte->eval() : evaluate<Me>(pos, sd->accumulators.current()));
+            rawEval = (tte->eval() != SCORE_NONE ? tte->eval() : evaluate<Me>(pos, sd->accumulators));
         } else {
-            rawEval = evaluate<Me>(pos, sd->accumulators.current());
+            rawEval = evaluate<Me>(pos, sd->accumulators);
             tt.set(tte, pos.hash(), ttDepth, ply, BOUND_NONE, MOVE_NONE, rawEval, SCORE_NONE, ttPv);
         }
 

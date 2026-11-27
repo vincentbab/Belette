@@ -162,19 +162,51 @@ struct Accumulator {
 
 Accumulator computeAccumulator(const Position &pos);
 
+int evaluate(const Accumulator &acc, Side stm);
+int evaluateUpdate(Accumulator &dst, const Accumulator &src, const DirtyPiece &dp, Side stm);
+
 class AccumulatorStack {
 public:
-    inline void reset(const Position &pos) { idx = 0; accs[0] = computeAccumulator(pos); }
-    inline void push(const DirtyPiece &dp) { assert(idx < MAX_PLY); accs[idx + 1].update(accs[idx], dp); idx++; }
+    inline void reset(const Position &pos) { idx = 0; accs[0] = computeAccumulator(pos); computed[0] = true; }
+    inline void push(const DirtyPiece &dp) { assert(idx < MAX_PLY); idx++; dirty[idx] = dp; computed[idx] = false; }
     inline void pop() { assert(idx > 0); idx--; }
-    inline const Accumulator &current() const { return accs[idx]; }
+
+    inline const Accumulator &current() {
+        if (!computed[idx]) {
+            int i = idx;
+            while (!computed[i - 1]) i--;
+
+            for (; i <= idx; i++) {
+                accs[i].update(accs[i - 1], dirty[i]);
+                computed[i] = true;
+            }
+        }
+
+        return accs[idx];
+    }
+
+    inline int evaluate(Side stm) {
+        if (computed[idx])
+            return NNUE::evaluate(accs[idx], stm);
+
+        int i = idx;
+        while (!computed[i - 1]) i--;
+
+        for (; i < idx; i++) {
+            accs[i].update(accs[i - 1], dirty[i]);
+            computed[i] = true;
+        }
+
+        computed[idx] = true;
+        return evaluateUpdate(accs[idx], accs[idx - 1], dirty[idx], stm);
+    }
 
 private:
     Accumulator accs[MAX_PLY + 1];
+    DirtyPiece dirty[MAX_PLY + 1];
+    bool computed[MAX_PLY + 1];
     int idx = 0;
 };
-
-int evaluate(const Accumulator &acc, Side stm);
 
 } /* namespace Belette::NNUE */
 
