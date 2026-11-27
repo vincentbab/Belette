@@ -74,7 +74,20 @@ struct SearchData {
         for (int i = 1; i <= NODE_SENTINELS; i++)
             node(-i).setNullMove(moveHistory, corrHistory);
 
+        accumulators.reset(position);
         start();
+    }
+
+    template<Side Me, bool Frc>
+    inline void doMove(Move m) {
+        position.doMove<Me, Frc>(m);
+        accumulators.push(position.dirtyPiece());
+    }
+
+    template<Side Me, bool Frc>
+    inline void undoMove(Move m) {
+        position.undoMove<Me, Frc>(m);
+        accumulators.pop();
     }
 
     void initAllocatedTime();
@@ -158,6 +171,7 @@ struct SearchData {
     }
 
     Position position;
+    NNUE::AccumulatorStack accumulators;
     SearchLimits limits;
     std::atomic<size_t> nbNodes;
     int selDepth;

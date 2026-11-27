@@ -159,7 +159,6 @@ void Position::reset() {
     nonPawnKeys[WHITE] = nonPawnKeys[BLACK] = 0;
     minorKey = 0;
     majorKey = 0;
-    acc.reset();
     //for(int i=0; i<NB_PIECE_TYPE; i++) typeBB[i] = EmptyBB;
     //typeBB[ALL_PIECES] = EmptyBB;
     sideBB[WHITE] = sideBB[BLACK] = EmptyBB;
@@ -497,7 +496,6 @@ inline void Position::setPiece(Square sq, Piece p) {
     (pt == PAWN ? pawnKey : nonPawnKeys[Me]) ^= Zobrist::keys[p][sq];
     if (pt == KNIGHT || pt == BISHOP || pt == KING) minorKey ^= Zobrist::keys[p][sq];
     if (pt == ROOK || pt == QUEEN || pt == KING) majorKey ^= Zobrist::keys[p][sq];
-    acc.add(p, sq);
 }
 template<Side Me>
 inline void Position::unsetPiece(Square sq) {
@@ -512,7 +510,6 @@ inline void Position::unsetPiece(Square sq) {
     (pt == PAWN ? pawnKey : nonPawnKeys[Me]) ^= Zobrist::keys[p][sq];
     if (pt == KNIGHT || pt == BISHOP || pt == KING) minorKey ^= Zobrist::keys[p][sq];
     if (pt == ROOK || pt == QUEEN || pt == KING) majorKey ^= Zobrist::keys[p][sq];
-    acc.sub(p, sq);
 }
 template<Side Me>
 inline void Position::movePiece(Square from, Square to) {
@@ -529,20 +526,6 @@ inline void Position::movePiece(Square from, Square to) {
     (pt == PAWN ? pawnKey : nonPawnKeys[Me]) ^= Zobrist::keys[p][from] ^ Zobrist::keys[p][to];
     if (pt == KNIGHT || pt == BISHOP || pt == KING) minorKey ^= Zobrist::keys[p][from] ^ Zobrist::keys[p][to];
     if (pt == ROOK || pt == QUEEN || pt == KING) majorKey ^= Zobrist::keys[p][from] ^ Zobrist::keys[p][to];
-    acc.move(p, from, to);
-}
-
-[[maybe_unused]] static NNUE::Accumulator computeAccumulator(const Position& pos) {
-    NNUE::Accumulator a;
-    a.reset();
-    Bitboard occupied = pos.getPiecesBB();
-
-    bitscan_loop(occupied) {
-        Square sq = bitscan(occupied);
-        a.add(pos.getPieceAt(sq), sq);
-    }
-
-    return a;
 }
 
 template<Side Me, MoveType Mt, bool Frc>
@@ -583,8 +566,11 @@ void Position::doMove(Move m) {
             h ^= Zobrist::keys[capture][to];
             unsetPiece<~Me>(to);
             state->fiftyMoveRule = 0;
+            dirty.set({p, to}, {p, from}, {capture, to});
+        } else {
+            dirty.set({p, to}, {p, from});
         }
-        
+
         h ^= Zobrist::keys[p][from] ^ Zobrist::keys[p][to];
         movePiece<Me>(from, to);
 
@@ -618,6 +604,7 @@ void Position::doMove(Move m) {
 
         h ^= Zobrist::keys[piece(Me, KING)][from] ^ Zobrist::keys[piece(Me, KING)][to];
         h ^= Zobrist::keys[piece(Me, ROOK)][rookFrom] ^ Zobrist::keys[piece(Me, ROOK)][rookTo];
+        dirty.set({piece(Me, KING), to}, {piece(Me, ROOK), rookTo}, {piece(Me, KING), from}, {piece(Me, ROOK), rookFrom});
 
         if constexpr (Frc) {
             unsetPiece<Me>(from);
@@ -642,6 +629,9 @@ void Position::doMove(Move m) {
         if (capture != NO_PIECE) {
             h ^= Zobrist::keys[capture][to];
             unsetPiece<~Me>(to);
+            dirty.set({piece(Me, promotionType), to}, {piece(Me, PAWN), from}, {capture, to});
+        } else {
+            dirty.set({piece(Me, promotionType), to}, {piece(Me, PAWN), from});
         }
 
         h ^= Zobrist::keys[piece(Me, PAWN)][from] ^ Zobrist::keys[piece(Me, promotionType)][to];
@@ -660,6 +650,7 @@ void Position::doMove(Move m) {
 
         h ^= Zobrist::keys[piece(~Me, PAWN)][epsq];
         h ^= Zobrist::keys[piece(Me, PAWN)][from] ^ Zobrist::keys[piece(Me, PAWN)][to];
+        dirty.set({piece(Me, PAWN), to}, {piece(Me, PAWN), from}, {piece(~Me, PAWN), epsq});
         unsetPiece<~Me>(epsq);
         movePiece<Me>(from, to);
 
@@ -676,7 +667,6 @@ void Position::doMove(Move m) {
     assert(computeNonPawnHash(BLACK) == nonPawnHash(BLACK));
     assert(computeMinorHash() == minorHash());
     assert(computeMajorHash() == majorHash());
-    assert(computeAccumulator(*this) == accumulator());
 
     state->repetition = 0;
     const int end = std::min(state->fiftyMoveRule, state->pliesFromNull);
@@ -761,7 +751,6 @@ void Position::undoMove(Move m) {
     assert(computeNonPawnHash(BLACK) == nonPawnHash(BLACK));
     assert(computeMinorHash() == minorHash());
     assert(computeMajorHash() == majorHash());
-    assert(computeAccumulator(*this) == accumulator());
 }
 
 template void Position::undoMove<WHITE, NORMAL, false>(Move m);
