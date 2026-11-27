@@ -36,6 +36,14 @@ endif
 
 SRCS := $(wildcard $(SRC_DIR)/*.cpp)
 
+NET_NAME := $(strip $(file < network.txt))
+NET_URL := https://github.com/vincentbab/Belette-NN/releases/download/$(NET_NAME)/$(NET_NAME).bin
+
+ifndef EVALFILE
+	EVALFILE := $(NET_NAME).bin
+	DOWNLOAD_NET := 1
+endif
+
 # idea from Stormphrax
 PGO_EXEC := profile-belette
 PGO_GENERATE := -fprofile-instr-generate
@@ -44,6 +52,7 @@ PGO_MERGE := llvm-profdata merge -output=$(PGO_DATA) *.profraw
 PGO_USE := -fprofile-instr-use=$(PGO_DATA)
 
 CPPFLAGS := -Wall -std=c++20 -fno-rtti $(ARCH_FLAGS) -D_CRT_SECURE_NO_WARNINGS
+CPPFLAGS += -DEVALFILE=\"$(abspath $(EVALFILE))\"
 ifeq ($(TUNE),1)
 	CPPFLAGS += -DTUNE
 endif
@@ -56,11 +65,18 @@ LDFLAGS_RELEASE := $(LDFLAGS) -flto -static
 
 OUT = $(if $(EXE),$(EXE),$(TARGET_BIN_DIR)/$(TARGET_EXEC)$(TARGET_SUFFIX))
 
-.PHONY: all pgo debug release
+.PHONY: all pgo debug release net
 
 all: release
 
-pgo: $(SRCS)
+ifdef DOWNLOAD_NET
+$(EVALFILE):
+	curl -sSfL -o $@ $(NET_URL)
+endif
+
+net: $(EVALFILE)
+
+pgo: $(SRCS) | $(EVALFILE)
 # idea from Stormphrax
 	$(eval TARGET_EXEC = $(TARGET_NAME)-pgo)
 	$(CXX) $(CPPFLAGS_RELEASE) $(LDFLAGS_RELEASE) $(PGO_GENERATE) -o $(TARGET_BIN_DIR)/$(PGO_EXEC)$(TARGET_SUFFIX) $^
@@ -70,10 +86,10 @@ pgo: $(SRCS)
 	$(CXX) $(CPPFLAGS_RELEASE) $(LDFLAGS_RELEASE) $(PGO_USE) -o $(OUT) $^
 	-$(RM) *.profraw $(PGO_DATA)
 
-release: $(SRCS)
+release: $(SRCS) | $(EVALFILE)
 	$(eval TARGET_EXEC = $(TARGET_NAME)-release)
 	$(CXX) $(CPPFLAGS_RELEASE) $(LDFLAGS_RELEASE) -o $(OUT) $^
 
-debug: $(SRCS)
+debug: $(SRCS) | $(EVALFILE)
 	$(eval TARGET_EXEC = $(TARGET_NAME)-debug)
 	$(CXX) $(CPPFLAGS_DEBUG) $(LDFLAGS_DEBUG) -o $(OUT) $^

@@ -7,6 +7,7 @@
 #include "test.h"
 #include "perft.h"
 #include "zobrist.h"
+#include "nnue.h"
 
 using namespace Belette;
 
@@ -16,6 +17,7 @@ int main(int argc, char* argv[])
     BB::init();
     Zobrist::init();
     Position::init();
+    NNUE::init();
 
     Uci uci;
     uci.loop(argc, argv);

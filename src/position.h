@@ -7,6 +7,7 @@
 #include "chess.h"
 #include "bitboard.h"
 #include "zobrist.h"
+#include "nnue.h"
 
 #define STARTPOS_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 #define KIWIPETE_FEN "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
@@ -108,7 +109,7 @@ public:
     inline bool inCheck() const { return !!state->checkers; }
 
     inline uint64_t hash() const { return state->hash; }
-    inline int psq(Phase p) const { return psqValue[p]; }
+    inline const NNUE::Accumulator& accumulator() const { return acc; }
     inline uint64_t pawnHash() const { return pawnKey; }
     inline uint64_t nonPawnHash(Side side) const { return nonPawnKeys[side]; }
     inline uint64_t minorHash() const { return minorKey; }
@@ -179,7 +180,7 @@ private:
     uint64_t nonPawnKeys[NB_SIDE];
     uint64_t minorKey;
     uint64_t majorKey;
-    int psqValue[NB_PHASE];
+    NNUE::Accumulator acc;
 
     Side sideToMove;
 
