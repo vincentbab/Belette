@@ -15,7 +15,24 @@ struct GenfensParams {
     size_t nodes = 5000;
 };
 
+struct SelfgenParams {
+    std::string output = "selfgen.binpack";
+    std::string book;
+    uint64_t seed = 0;
+    size_t games = 0;
+    size_t nodes = 5000;
+    size_t hash = 16;
+    GenfensParams opening;
+    int resignMoves = 0;
+    int resignScore = 0;
+    int drawMoveNumber = 0;
+    int drawMoves = 0;
+    int drawScore = 0;
+    int flushGames = 64;
+};
+
 void genfens(int count, uint64_t seed, const std::string &bookFile, const GenfensParams &params);
+void selfgen(const SelfgenParams &params);
 
 } /* namespace Belette */
 

@@ -72,6 +72,7 @@ Uci::Uci()  {
     commands["test"] = &Uci::cmdTest;
     commands["bench"] = &Uci::cmdBench;
     commands["genfens"] = &Uci::cmdGenfens;
+    commands["selfgen"] = &Uci::cmdSelfgen;
 #ifdef TUNE
     commands["spsa"] = &Uci::cmdSpsa;
 #endif
@@ -152,6 +153,14 @@ void Uci::loop(int argc, char* argv[]) {
         if (argc > 2) depth = parseInt(std::string(argv[2]));
 
         bench(depth);
+
+        return;
+    }
+
+    if (argc > 1 && std::string(argv[1]) == "selfgen") {
+        std::string cmd;
+        for (int i = 1; i < argc; i++) cmd += std::string(i > 1 ? " " : "") + argv[i];
+        execute(cmd);
 
         return;
     }
@@ -467,6 +476,37 @@ bool Uci::cmdGenfens(std::istringstream& is) {
     genfens(count, seed, book, params);
 
     engine.position().setFromFEN(fen);
+
+    return true;
+}
+
+bool Uci::cmdSelfgen(std::istringstream& is) {
+    std::string token;
+    SelfgenParams params;
+
+    while (is >> token) {
+        if (token == "output") is >> params.output;
+        else if (token == "book") is >> params.book;
+        else if (token == "seed") is >> params.seed;
+        else if (token == "games") is >> params.games;
+        else if (token == "nodes") is >> params.nodes;
+        else if (token == "hash") is >> params.hash;
+        else if (token == "plies") is >> params.opening.plies;
+        else if (token == "multipvMin") is >> params.opening.multiPvMin;
+        else if (token == "multipvMax") is >> params.opening.multiPvMax;
+        else if (token == "multipvStep") is >> params.opening.multiPvStep;
+        else if (token == "margin") is >> params.opening.margin;
+        else if (token == "openingNodes") is >> params.opening.nodes;
+        else if (token == "resignMoves") is >> params.resignMoves;
+        else if (token == "resignScore") is >> params.resignScore;
+        else if (token == "drawMoveNumber") is >> params.drawMoveNumber;
+        else if (token == "drawMoves") is >> params.drawMoves;
+        else if (token == "drawScore") is >> params.drawScore;
+        else if (token == "flush") is >> params.flushGames;
+    }
+
+    engine.abortSearch();
+    selfgen(params);
 
     return true;
 }

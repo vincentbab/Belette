@@ -125,6 +125,7 @@ private:
     bool cmdTest(std::istringstream& is);
     bool cmdBench(std::istringstream& is);
     bool cmdGenfens(std::istringstream& is);
+    bool cmdSelfgen(std::istringstream& is);
 #ifdef TUNE
     bool cmdSpsa(std::istringstream& is);
 #endif

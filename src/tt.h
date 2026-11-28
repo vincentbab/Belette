@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <tuple>
+#include <utility>
 #include "chess.h"
 
 namespace Belette {
@@ -86,6 +87,12 @@ public:
 
     size_t usage() const;
     inline size_t size() const { return nbBuckets; }
+
+    inline void swap(TranspositionTable &other) {
+        std::swap(buckets, other.buckets);
+        std::swap(nbBuckets, other.nbBuckets);
+        std::swap(age, other.age);
+    }
 
 private:
     struct alignas(32) TTBucket {
