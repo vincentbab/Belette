@@ -33,7 +33,7 @@ Uci::Uci()  {
     console << "Belette " << VERSION << " by Vincent Bab" << std::endl;
     
     options["Debug Log File"] = UciOption("", [&] (const UciOption &opt) { console.setLogFile(opt); });
-    options["Hash"] = UciOption(64, 1, 1048576, [&] (const UciOption &opt) { 
+    options["Hash"] = UciOption(TT_DEFAULT_SIZE / (1024*1024), 1, 1048576, [&] (const UciOption &opt) { 
         engine.setHashSize(int64_t(opt)*1024*1024);
     });
     options["Clear Hash"] = UciOption([&] (const UciOption &) { engine.newGame(); });
